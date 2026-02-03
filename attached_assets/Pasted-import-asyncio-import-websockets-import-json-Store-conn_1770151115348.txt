@@ -1,0 +1,72 @@
+import asyncio
+import websockets
+import json
+
+# Store connected clients and their usernames
+connected_clients = {}  # websocket -> username
+
+async def notify_user_list():
+    """Send updated user list to all clients."""
+    users = list(connected_clients.values())
+    message = json.dumps({
+        "type": "user_list",
+        "users": users
+    })
+    await asyncio.gather(*[
+        client.send(message) for client in connected_clients
+    ])
+
+async def notify_message(sender, text):
+    """Broadcast a chat message to all clients."""
+    message = json.dumps({
+        "type": "chat",
+        "sender": sender,
+        "text": text
+    })
+    await asyncio.gather(*[
+        client.send(message) for client in connected_clients
+    ])
+
+async def handle_client(websocket):
+    try:
+        # First message MUST be username
+        raw = await websocket.recv()
+        data = json.loads(raw)
+
+        if data["type"] != "join":
+            await websocket.close()
+            return
+
+        username = data["username"]
+        connected_clients[websocket] = username
+
+        # Announce join
+        await notify_message("SERVER", f"{username} joined the chat")
+        await notify_user_list()
+
+        # Main loop: receive messages
+        while True:
+            raw = await websocket.recv()
+            data = json.loads(raw)
+
+            if data["type"] == "chat":
+                await notify_message(username, data["text"])
+
+    except websockets.exceptions.ConnectionClosed:
+        pass
+
+    finally:
+        # Handle disconnect
+        if websocket in connected_clients:
+            left_user = connected_clients[websocket]
+            del connected_clients[websocket]
+
+            await notify_message("SERVER", f"{left_user} left the chat")
+            await notify_user_list()
+
+async def main():
+    print("Server running...")
+    async with websockets.serve(handle_client, "0.0.0.0", 8765):
+        await asyncio.Future()  # run forever
+
+asyncio.run(main())
