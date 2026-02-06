@@ -1,21 +1,19 @@
 """
 CHAT CLIENT
 -----------
-Run this script on any computer to connect to the chat server.
+Run this on any computer to connect to the chat server.
+
+Requirements:
+  pip install websockets
 
 Usage:
   python client.py
-
-It will ask you for:
-  1. The server URL  (the Replit URL of whoever is hosting)
-  2. Your username
 """
 
 import asyncio
 import websockets
 import json
 import sys
-import threading
 
 async def receive_messages(ws):
     try:
@@ -35,7 +33,7 @@ async def receive_messages(ws):
                 print("  You: ", end="", flush=True)
 
             elif data["type"] == "error":
-                print(f"\r  [ERROR] {data['text']}")
+                print(f"\r  [!] {data['text']}")
                 print("  You: ", end="", flush=True)
 
     except websockets.exceptions.ConnectionClosed:
@@ -49,9 +47,9 @@ async def run():
     print("=" * 50)
     print()
 
-    url = input("  Server URL (Replit URL): ").strip()
+    url = input("  Server URL: ").strip()
     if not url:
-        print("  No URL provided. Exiting.")
+        print("  No URL provided.")
         return
 
     if url.startswith("http://"):
@@ -63,20 +61,21 @@ async def run():
 
     if url.endswith("/"):
         url = url[:-1]
+    url += "/ws"
 
     name = input("  Your username: ").strip()
     if not name:
-        print("  No username provided. Exiting.")
+        print("  No username provided.")
         return
 
     print()
-    print(f"  Connecting to {url} ...")
+    print(f"  Connecting...")
 
     try:
         async with websockets.connect(url) as ws:
             await ws.send(json.dumps({"type": "join", "username": name}))
 
-            print("  Connected! Type your messages below.")
+            print("  Connected! Type messages below.")
             print("  Type /quit to leave.")
             print("-" * 50)
             print()
