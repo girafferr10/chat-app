@@ -779,10 +779,13 @@ function renderBanned(list) {
   });
 }
 
+var adminConnected = false;
 function connectAdmin(token) {
   var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  adminConnected = false;
   ws = new WebSocket(protocol + '//' + location.host + '/admin-ws?token=' + token);
   ws.onopen = function() {
+    adminConnected = true;
     isAdmin = true;
     document.getElementById('nameInput').style.display = 'block';
     document.getElementById('joinScreen').style.display = 'none';
@@ -790,6 +793,13 @@ function connectAdmin(token) {
     document.getElementById('msgInput').focus();
   };
   ws.onclose = function() {
+    if (!adminConnected) {
+      var err = document.getElementById('adminError');
+      err.textContent = 'Invalid token or connection failed.';
+      err.style.display = 'block';
+      ws = null;
+      return;
+    }
     var div = document.createElement('div');
     div.className = 'msg-error';
     div.textContent = 'Disconnected from server.';
@@ -797,11 +807,7 @@ function connectAdmin(token) {
     document.getElementById('sendBtn').disabled = true;
     document.getElementById('msgInput').disabled = true;
   };
-  ws.onerror = function() {
-    var err = document.getElementById('adminError');
-    err.textContent = 'Invalid token or connection failed.';
-    err.style.display = 'block';
-  };
+  ws.onerror = function() {};
   ws.onmessage = function(event) {
     var data = JSON.parse(event.data);
     if (data.type === 'chat') { addChat(data.sender, data.text, data.admin || false); }
