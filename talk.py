@@ -1,13 +1,21 @@
 import asyncio
 import json
+import os
+import secrets
+import re
 import aiohttp
 from aiohttp import web
 
 connected = {}       # ws -> {"username": str, "ws": ws}
 banned_users = set() # set of banned usernames
 admin_ws = None      # admin websocket connection
+ADMIN_TOKEN = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 
-ADMIN_HTML = """<!DOCTYPE html>
+USERNAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,20}$')
+
+
+def get_admin_html(token):
+    return """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -32,114 +40,57 @@ ADMIN_HTML = """<!DOCTYPE html>
     align-items: center;
     justify-content: space-between;
   }
-  header h1 {
-    font-size: 20px;
-    font-weight: 700;
-    color: #1a1a1a;
-  }
+  header h1 { font-size: 20px; font-weight: 700; color: #1a1a1a; }
   header .status {
-    font-size: 13px;
-    color: #666;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    font-size: 13px; color: #666;
+    display: flex; align-items: center; gap: 6px;
   }
   header .status .dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: #22c55e;
+    width: 8px; height: 8px; border-radius: 50%; background: #22c55e;
   }
   header .status.offline .dot { background: #ef4444; }
 
-  .container {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
-  }
+  .container { flex: 1; display: flex; overflow: hidden; }
 
   .sidebar {
-    width: 300px;
-    background: #fff;
+    width: 300px; background: #fff;
     border-right: 1px solid #e0e0e0;
-    display: flex;
-    flex-direction: column;
+    display: flex; flex-direction: column;
   }
   .sidebar-header {
-    padding: 14px 20px;
-    border-bottom: 1px solid #eee;
-    font-size: 13px;
-    font-weight: 600;
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    padding: 14px 20px; border-bottom: 1px solid #eee;
+    font-size: 13px; font-weight: 600; color: #666;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    display: flex; justify-content: space-between; align-items: center;
   }
   .sidebar-header .count {
-    background: #e0e0e0;
-    color: #333;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 12px;
+    background: #e0e0e0; color: #333;
+    padding: 2px 8px; border-radius: 10px; font-size: 12px;
   }
-  .user-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px;
-  }
+  .user-list { flex: 1; overflow-y: auto; padding: 8px; }
   .user-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 12px;
-    border-radius: 8px;
-    margin-bottom: 2px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-radius: 8px; margin-bottom: 2px;
   }
   .user-item:hover { background: #f5f5f5; }
   .user-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-    min-width: 0;
+    display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;
   }
   .user-avatar {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    background: #e0e0e0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 600;
-    color: #555;
-    flex-shrink: 0;
+    width: 32px; height: 32px; border-radius: 50%; background: #e0e0e0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; color: #555; flex-shrink: 0;
   }
   .user-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: #1a1a1a;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 14px; font-weight: 500; color: #1a1a1a;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .user-actions {
-    display: flex;
-    gap: 4px;
-    visibility: hidden;
-  }
+  .user-actions { display: flex; gap: 4px; visibility: hidden; }
   .user-item:hover .user-actions { visibility: visible; }
   .btn {
-    padding: 5px 10px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    background: #fff;
-    color: #333;
-    transition: all 0.15s;
+    padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    background: #fff; color: #333; transition: all 0.15s;
   }
   .btn:hover { background: #f0f0f0; }
   .btn-danger { color: #ef4444; border-color: #fecaca; }
@@ -148,140 +99,68 @@ ADMIN_HTML = """<!DOCTYPE html>
   .btn-warn:hover { background: #fffbeb; }
 
   .chat-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: #fafafa;
+    flex: 1; display: flex; flex-direction: column; background: #fafafa;
   }
-  .messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px 24px;
-  }
+  .messages { flex: 1; overflow-y: auto; padding: 20px 24px; }
   .msg {
-    margin-bottom: 12px;
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
+    margin-bottom: 12px; display: flex; gap: 10px; align-items: flex-start;
   }
   .msg-avatar {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    background: #e0e0e0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 600;
-    color: #555;
-    flex-shrink: 0;
-    margin-top: 2px;
+    width: 28px; height: 28px; border-radius: 50%; background: #e0e0e0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: #555;
+    flex-shrink: 0; margin-top: 2px;
   }
   .msg-content { flex: 1; min-width: 0; }
   .msg-header {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 2px;
+    display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px;
   }
-  .msg-sender {
-    font-size: 13px;
-    font-weight: 600;
-    color: #1a1a1a;
-  }
-  .msg-time {
-    font-size: 11px;
-    color: #999;
-  }
+  .msg-sender { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .msg-time { font-size: 11px; color: #999; }
   .msg-text {
-    font-size: 14px;
-    color: #333;
-    line-height: 1.5;
-    word-break: break-word;
+    font-size: 14px; color: #333; line-height: 1.5; word-break: break-word;
   }
-  .msg-system {
-    text-align: center;
-    padding: 8px;
-    margin-bottom: 12px;
-  }
+  .msg-system { text-align: center; padding: 8px; margin-bottom: 12px; }
   .msg-system span {
-    font-size: 12px;
-    color: #999;
-    background: #eee;
-    padding: 4px 12px;
-    border-radius: 10px;
+    font-size: 12px; color: #999; background: #eee;
+    padding: 4px 12px; border-radius: 10px;
   }
 
   .admin-input {
-    padding: 16px 24px;
-    background: #fff;
-    border-top: 1px solid #e0e0e0;
-    display: flex;
-    gap: 8px;
+    padding: 16px 24px; background: #fff;
+    border-top: 1px solid #e0e0e0; display: flex; gap: 8px;
   }
   .admin-input input {
-    flex: 1;
-    padding: 10px 14px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 14px;
-    outline: none;
-    background: #f9f9f9;
-    color: #1a1a1a;
+    flex: 1; padding: 10px 14px; border: 1px solid #ddd;
+    border-radius: 8px; font-size: 14px; outline: none;
+    background: #f9f9f9; color: #1a1a1a;
   }
   .admin-input input:focus { border-color: #999; background: #fff; }
   .admin-input button {
-    padding: 10px 20px;
-    background: #1a1a1a;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
+    padding: 10px 20px; background: #1a1a1a; color: #fff;
+    border: none; border-radius: 8px; font-size: 14px;
+    font-weight: 500; cursor: pointer;
   }
   .admin-input button:hover { background: #333; }
 
   .banned-section {
-    border-top: 1px solid #eee;
-    padding: 12px 20px;
-    max-height: 150px;
-    overflow-y: auto;
+    border-top: 1px solid #eee; padding: 12px 20px;
+    max-height: 150px; overflow-y: auto;
   }
   .banned-header {
-    font-size: 12px;
-    font-weight: 600;
-    color: #999;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
+    font-size: 12px; font-weight: 600; color: #999;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
   }
   .banned-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 0;
+    display: flex; align-items: center; justify-content: space-between; padding: 6px 0;
   }
-  .banned-name {
-    font-size: 13px;
-    color: #999;
-    text-decoration: line-through;
-  }
-  .btn-unban {
-    font-size: 11px;
-    padding: 3px 8px;
-    color: #22c55e;
-    border-color: #bbf7d0;
-  }
+  .banned-name { font-size: 13px; color: #999; text-decoration: line-through; }
+  .btn-unban { font-size: 11px; padding: 3px 8px; color: #22c55e; border-color: #bbf7d0; }
   .btn-unban:hover { background: #f0fdf4; }
 
   .empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: #bbb;
-    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; color: #bbb; font-size: 14px;
   }
 </style>
 </head>
@@ -318,10 +197,10 @@ ADMIN_HTML = """<!DOCTYPE html>
 </div>
 
 <script>
+const ADMIN_TOKEN = '__TOKEN__';
 const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-const wsUrl = protocol + '//' + location.host + '/admin-ws';
+const wsUrl = protocol + '//' + location.host + '/admin-ws?token=' + ADMIN_TOKEN;
 let ws;
-let bannedSet = new Set();
 
 function connectWS() {
   ws = new WebSocket(wsUrl);
@@ -348,6 +227,12 @@ function connectWS() {
   };
 }
 
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
 function renderUsers(users) {
   const el = document.getElementById('user-list');
   document.getElementById('user-count').textContent = users.length;
@@ -355,22 +240,52 @@ function renderUsers(users) {
     el.innerHTML = '<div class="empty" style="height:100px;">No users online</div>';
     return;
   }
-  el.innerHTML = users.map(u => `
-    <div class="user-item">
-      <div class="user-info">
-        <div class="user-avatar">${u.substring(0,2).toUpperCase()}</div>
-        <div class="user-name">${esc(u)}</div>
-      </div>
-      <div class="user-actions">
-        <button class="btn btn-warn" onclick="kickUser('${esc(u)}')">Kick</button>
-        <button class="btn btn-danger" onclick="banUser('${esc(u)}')">Ban</button>
-      </div>
-    </div>
-  `).join('');
+  el.innerHTML = '';
+  users.forEach(u => {
+    const item = document.createElement('div');
+    item.className = 'user-item';
+
+    const info = document.createElement('div');
+    info.className = 'user-info';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'user-avatar';
+    avatar.textContent = u.substring(0,2).toUpperCase();
+
+    const name = document.createElement('div');
+    name.className = 'user-name';
+    name.textContent = u;
+
+    info.appendChild(avatar);
+    info.appendChild(name);
+
+    const actions = document.createElement('div');
+    actions.className = 'user-actions';
+
+    const kickBtn = document.createElement('button');
+    kickBtn.className = 'btn btn-warn';
+    kickBtn.textContent = 'Kick';
+    kickBtn.addEventListener('click', () => {
+      ws.send(JSON.stringify({type: 'kick', username: u}));
+    });
+
+    const banBtn = document.createElement('button');
+    banBtn.className = 'btn btn-danger';
+    banBtn.textContent = 'Ban';
+    banBtn.addEventListener('click', () => {
+      ws.send(JSON.stringify({type: 'ban', username: u}));
+    });
+
+    actions.appendChild(kickBtn);
+    actions.appendChild(banBtn);
+
+    item.appendChild(info);
+    item.appendChild(actions);
+    el.appendChild(item);
+  });
 }
 
 function renderBanned(list) {
-  bannedSet = new Set(list);
   const section = document.getElementById('banned-section');
   const el = document.getElementById('banned-list');
   if (list.length === 0) {
@@ -378,48 +293,80 @@ function renderBanned(list) {
     return;
   }
   section.style.display = 'block';
-  el.innerHTML = list.map(u => `
-    <div class="banned-item">
-      <span class="banned-name">${esc(u)}</span>
-      <button class="btn btn-unban" onclick="unbanUser('${esc(u)}')">Unban</button>
-    </div>
-  `).join('');
+  el.innerHTML = '';
+  list.forEach(u => {
+    const item = document.createElement('div');
+    item.className = 'banned-item';
+
+    const name = document.createElement('span');
+    name.className = 'banned-name';
+    name.textContent = u;
+
+    const unbanBtn = document.createElement('button');
+    unbanBtn.className = 'btn btn-unban';
+    unbanBtn.textContent = 'Unban';
+    unbanBtn.addEventListener('click', () => {
+      ws.send(JSON.stringify({type: 'unban', username: u}));
+    });
+
+    item.appendChild(name);
+    item.appendChild(unbanBtn);
+    el.appendChild(item);
+  });
 }
 
 function addMessage(sender, text) {
   document.getElementById('empty-state')?.remove();
   const el = document.getElementById('messages');
   const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  const initials = sender.substring(0,2).toUpperCase();
-  el.innerHTML += `
-    <div class="msg">
-      <div class="msg-avatar">${initials}</div>
-      <div class="msg-content">
-        <div class="msg-header">
-          <span class="msg-sender">${esc(sender)}</span>
-          <span class="msg-time">${time}</span>
-        </div>
-        <div class="msg-text">${esc(text)}</div>
-      </div>
-    </div>`;
+
+  const msg = document.createElement('div');
+  msg.className = 'msg';
+
+  const avatarEl = document.createElement('div');
+  avatarEl.className = 'msg-avatar';
+  avatarEl.textContent = sender.substring(0,2).toUpperCase();
+
+  const content = document.createElement('div');
+  content.className = 'msg-content';
+
+  const header = document.createElement('div');
+  header.className = 'msg-header';
+
+  const senderEl = document.createElement('span');
+  senderEl.className = 'msg-sender';
+  senderEl.textContent = sender;
+
+  const timeEl = document.createElement('span');
+  timeEl.className = 'msg-time';
+  timeEl.textContent = time;
+
+  header.appendChild(senderEl);
+  header.appendChild(timeEl);
+
+  const textEl = document.createElement('div');
+  textEl.className = 'msg-text';
+  textEl.textContent = text;
+
+  content.appendChild(header);
+  content.appendChild(textEl);
+
+  msg.appendChild(avatarEl);
+  msg.appendChild(content);
+  el.appendChild(msg);
   el.scrollTop = el.scrollHeight;
 }
 
 function addSystemMessage(text) {
   document.getElementById('empty-state')?.remove();
   const el = document.getElementById('messages');
-  el.innerHTML += '<div class="msg-system"><span>' + esc(text) + '</span></div>';
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg-system';
+  const span = document.createElement('span');
+  span.textContent = text;
+  wrapper.appendChild(span);
+  el.appendChild(wrapper);
   el.scrollTop = el.scrollHeight;
-}
-
-function kickUser(username) {
-  ws.send(JSON.stringify({type: 'kick', username: username}));
-}
-function banUser(username) {
-  ws.send(JSON.stringify({type: 'ban', username: username}));
-}
-function unbanUser(username) {
-  ws.send(JSON.stringify({type: 'unban', username: username}));
 }
 
 function sendMsg() {
@@ -435,16 +382,10 @@ document.getElementById('msg-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendMsg();
 });
 
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
 connectWS();
 </script>
 </body>
-</html>"""
+</html>""".replace('__TOKEN__', token)
 
 
 async def broadcast_to_clients(message):
@@ -485,11 +426,22 @@ async def send_user_list():
 
 
 async def handle_admin_page(request):
-    return web.Response(text=ADMIN_HTML, content_type="text/html")
+    token = request.query.get("token", "")
+    if token != ADMIN_TOKEN:
+        return web.Response(
+            text="<h2>Access Denied</h2><p>Invalid admin token. Check the server console for the correct URL.</p>",
+            content_type="text/html",
+            status=403
+        )
+    return web.Response(text=get_admin_html(token), content_type="text/html")
 
 
 async def handle_admin_ws(request):
     global admin_ws
+    token = request.query.get("token", "")
+    if token != ADMIN_TOKEN:
+        return web.Response(text="Unauthorized", status=403)
+
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     admin_ws = ws
@@ -573,6 +525,13 @@ async def handle_client_ws(request):
 
                     name = data["username"].strip()
 
+                    if not USERNAME_RE.match(name):
+                        await ws.send_str(json.dumps({
+                            "type": "error",
+                            "text": "Username must be 1-20 characters: letters, numbers, _ or - only."
+                        }))
+                        continue
+
                     if name.lower() == "admin":
                         await ws.send_str(json.dumps({
                             "type": "error",
@@ -639,9 +598,12 @@ async def main():
     print("=" * 50)
     print()
     print("  Server running on port 5000")
-    print("  Open the Webview to see the admin panel.")
-    print("  Share your Replit URL with friends so")
-    print("  they can connect using client.py")
+    print()
+    print("  ADMIN URL (keep this secret!):")
+    print(f"  /?token={ADMIN_TOKEN}")
+    print()
+    print("  Friends connect using client.py")
+    print("  and your Replit URL (no token needed).")
     print()
     print("  Waiting for connections...")
     print("=" * 50)
