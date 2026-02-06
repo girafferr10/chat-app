@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import os
 import secrets
@@ -9,7 +10,8 @@ from aiohttp import web
 connected = {}       # ws -> {"username": str, "ws": ws}
 banned_users = set() # set of banned usernames
 admin_ws = None      # admin websocket connection
-ADMIN_TOKEN = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
+_raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
+ADMIN_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 USERNAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,20}$')
 
