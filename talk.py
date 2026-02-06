@@ -10,6 +10,11 @@ from aiohttp import web
 connected = {}       # ws -> {"username": str, "ws": ws}
 banned_users = set() # set of banned usernames
 admin_ws = None      # admin websocket connection
+dm_store = {}        # (sorted_user_a, sorted_user_b) -> [{"sender":..., "recipient":..., "text":..., "ts":...}]
+import time as _time
+
+def dm_key(a, b):
+    return tuple(sorted([a, b]))
 _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 ADMIN_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
@@ -428,8 +433,10 @@ def get_client_html():
   --accent-hover: #4752c4;
   --green: #23a559;
   --red: #ed4245;
+  --orange: #f0b232;
   --admin-color: #e03e3e;
   --input-bg: #383a40;
+  --dm-color: #9b59b6;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -481,22 +488,39 @@ header h1 { font-size: 16px; font-weight: 600; }
 .container { display: flex; flex: 1; overflow: hidden; }
 
 .sidebar {
-  width: 220px; background: var(--bg-secondary);
+  width: 240px; background: var(--bg-secondary);
   display: flex; flex-direction: column; flex-shrink: 0;
 }
-.sidebar-header {
-  padding: 12px 16px; font-size: 11px; font-weight: 700;
-  color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px;
-  display: flex; align-items: center; gap: 8px;
+.sidebar-section {
+  padding: 10px 10px 0 10px;
 }
-.sidebar-header .count {
+.sidebar-label {
+  padding: 4px 6px; font-size: 11px; font-weight: 700;
+  color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px;
+  display: flex; align-items: center; gap: 6px;
+}
+.sidebar-label .count {
   background: var(--bg-tertiary); color: var(--text-secondary);
   padding: 1px 6px; border-radius: 8px; font-size: 11px;
 }
-#userList { flex: 1; overflow-y: auto; padding: 0 8px; }
-.user-item {
-  padding: 6px 8px; font-size: 14px; color: var(--text-secondary);
+.channel-item {
+  padding: 7px 10px; font-size: 14px; color: var(--text-secondary);
   border-radius: 4px; margin-bottom: 1px; display: flex; align-items: center; gap: 8px;
+  cursor: pointer;
+}
+.channel-item:hover { background: var(--bg-message-hover); }
+.channel-item.active { background: var(--bg-message-hover); color: var(--text-primary); font-weight: 600; }
+.channel-icon { font-size: 16px; opacity: 0.6; }
+.dm-badge {
+  margin-left: auto; background: var(--red); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px;
+  min-width: 16px; text-align: center;
+}
+.user-list-area { flex: 1; overflow-y: auto; padding: 0 10px 10px 10px; }
+.user-item {
+  padding: 6px 10px; font-size: 14px; color: var(--text-secondary);
+  border-radius: 4px; margin-bottom: 1px; display: flex; align-items: center; gap: 8px;
+  cursor: pointer; position: relative;
 }
 .user-item:hover { background: var(--bg-message-hover); }
 .user-avatar {
@@ -504,9 +528,17 @@ header h1 { font-size: 16px; font-weight: 600; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 600; color: #fff; flex-shrink: 0;
 }
-.user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.user-actions { display: flex; gap: 4px; visibility: hidden; }
+.user-item:hover .user-actions { visibility: visible; }
 
 .chat-area { flex: 1; display: flex; flex-direction: column; }
+
+.channel-header {
+  padding: 10px 16px; border-bottom: 1px solid var(--bg-tertiary);
+  font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+}
+.channel-header .dm-label { color: var(--dm-color); }
 
 #messages { flex: 1; overflow-y: auto; padding: 16px 16px; }
 .msg { padding: 2px 8px; border-radius: 4px; line-height: 1.4; }
@@ -516,6 +548,7 @@ header h1 { font-size: 16px; font-weight: 600; }
 .msg-sender.is-admin { color: var(--admin-color); }
 .msg-badge { font-size: 10px; font-weight: 700; color: #fff; background: var(--admin-color);
   padding: 1px 4px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
+.msg-badge.dm-badge-inline { background: var(--dm-color); }
 .msg-colon { color: var(--text-tertiary); margin-right: 6px; }
 .msg-time { font-size: 11px; color: var(--text-muted); margin-left: 6px; }
 .msg-text { font-size: 14px; color: var(--text-secondary); word-break: break-word; }
@@ -544,6 +577,32 @@ header h1 { font-size: 16px; font-weight: 600; }
 
 .chat-screen { display: none; height: 100vh; flex-direction: column; }
 
+.banned-section {
+  border-top: 1px solid var(--bg-tertiary); padding: 10px 16px;
+  max-height: 120px; overflow-y: auto;
+}
+.banned-header {
+  font-size: 11px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+}
+
+.dm-spy-section {
+  border-top: 1px solid var(--bg-tertiary); padding: 10px;
+}
+.dm-spy-label {
+  padding: 4px 6px; font-size: 11px; font-weight: 700;
+  color: var(--dm-color); text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.dm-spy-item {
+  padding: 5px 10px; font-size: 13px; color: var(--text-secondary);
+  border-radius: 4px; cursor: pointer; margin-bottom: 1px;
+  display: flex; align-items: center; gap: 6px;
+}
+.dm-spy-item:hover { background: var(--bg-message-hover); }
+.dm-spy-item.active { background: var(--bg-message-hover); color: var(--text-primary); }
+.dm-spy-icon { color: var(--dm-color); font-size: 14px; }
+
 body.theme-light {
   --bg-primary: #ffffff;
   --bg-secondary: #f2f3f5;
@@ -556,6 +615,7 @@ body.theme-light {
   --border: #e3e5e8;
   --input-bg: #e3e5e8;
   --admin-color: #c0392b;
+  --dm-color: #8e44ad;
 }
 body.theme-midnight {
   --bg-primary: #0a0a0f;
@@ -569,6 +629,7 @@ body.theme-midnight {
   --border: #1a1a24;
   --input-bg: #14141c;
   --admin-color: #ff5555;
+  --dm-color: #bb86fc;
 }
 
 @media (max-width: 600px) {
@@ -616,14 +677,33 @@ body.theme-midnight {
   </header>
   <div class="container">
     <div class="sidebar">
-      <div class="sidebar-header">Online <span class="count" id="userCount" data-testid="text-user-count">0</span></div>
-      <div id="userList" data-testid="list-users"></div>
-      <div id="bannedSection" style="display:none;border-top:1px solid var(--bg-tertiary);padding:10px 16px;max-height:120px;overflow-y:auto;">
-        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Banned</div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Channels</div>
+        <div class="channel-item active" id="channelGeneral" data-testid="channel-general">
+          <span class="channel-icon">#</span> General
+        </div>
+      </div>
+      <div class="sidebar-section" id="dmChannelsSection" style="display:none;">
+        <div class="sidebar-label">Direct Messages</div>
+        <div id="dmChannelsList"></div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Online <span class="count" id="userCount" data-testid="text-user-count">0</span></div>
+      </div>
+      <div class="user-list-area" id="userList" data-testid="list-users"></div>
+      <div id="dmSpySection" class="dm-spy-section" style="display:none;">
+        <div class="dm-spy-label">DM Spy</div>
+        <div id="dmSpyList"></div>
+      </div>
+      <div id="bannedSection" class="banned-section" style="display:none;">
+        <div class="banned-header">Banned</div>
         <div id="bannedList"></div>
       </div>
     </div>
     <div class="chat-area">
+      <div class="channel-header" id="channelHeaderBar">
+        <span class="channel-icon">#</span> <span id="channelName" data-testid="text-channel-name">General</span>
+      </div>
       <div id="messages" data-testid="list-messages">
         <div class="empty" id="emptyState">No messages yet</div>
       </div>
@@ -640,6 +720,12 @@ body.theme-midnight {
 var ws = null;
 var myUsername = '';
 var isAdmin = false;
+var currentChannel = 'general';
+var generalMessages = [];
+var dmMessages = {};
+var dmUnread = {};
+var onlineUsers = [];
+var activeDmPairs = [];
 var themes = ['theme-dark', 'theme-light', 'theme-midnight'];
 var themeLabels = ['Dark', 'Light', 'Midnight'];
 var themeIdx = parseInt(localStorage.getItem('chat-theme') || '0');
@@ -675,15 +761,35 @@ document.getElementById('backBtn2').addEventListener('click', function() {
   document.getElementById('roleBox').style.display = 'block';
 });
 
-function addMsg(div) {
-  var m = document.getElementById('messages');
-  var e = document.getElementById('emptyState');
-  if (e) e.remove();
-  m.appendChild(div);
-  m.scrollTop = m.scrollHeight;
+function switchChannel(channel) {
+  currentChannel = channel;
+  renderMessages();
+  renderSidebar();
+  var nameEl = document.getElementById('channelName');
+  var headerBar = document.getElementById('channelHeaderBar');
+  if (channel === 'general') {
+    headerBar.innerHTML = '<span class="channel-icon">#</span> <span id="channelName" data-testid="text-channel-name">General</span>';
+    document.getElementById('msgInput').placeholder = 'Message #General';
+  } else if (channel.startsWith('dm:')) {
+    var target = channel.substring(3);
+    headerBar.innerHTML = '<span class="channel-icon" style="color:var(--dm-color);">@</span> <span id="channelName" data-testid="text-channel-name" class="dm-label">' + escapeHtml(target) + '</span>';
+    document.getElementById('msgInput').placeholder = 'Message @' + target;
+    if (dmUnread[target]) { dmUnread[target] = 0; renderDmChannels(); }
+  } else if (channel.startsWith('spy:')) {
+    var parts = channel.substring(4);
+    headerBar.innerHTML = '<span class="dm-spy-icon">SPY</span> <span id="channelName" data-testid="text-channel-name" style="color:var(--dm-color);">DM Spy: ' + escapeHtml(parts) + '</span>';
+    document.getElementById('msgInput').placeholder = 'Viewing DMs (read-only)';
+  }
+  document.getElementById('msgInput').focus();
 }
 
-function addChat(sender, text, admin) {
+function escapeHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function makeMessageDiv(sender, text, admin, isDm, time) {
   var div = document.createElement('div');
   div.className = 'msg msg-inline';
   var senderEl = document.createElement('span');
@@ -696,6 +802,12 @@ function addChat(sender, text, admin) {
     badge.textContent = 'ADMIN';
     div.appendChild(badge);
   }
+  if (isDm && !admin) {
+    var dmBadge = document.createElement('span');
+    dmBadge.className = 'msg-badge dm-badge-inline';
+    dmBadge.textContent = 'DM';
+    div.appendChild(dmBadge);
+  }
   var colon = document.createElement('span');
   colon.className = 'msg-colon';
   colon.textContent = ': ';
@@ -704,29 +816,94 @@ function addChat(sender, text, admin) {
   textEl.className = 'msg-text';
   textEl.textContent = text;
   div.appendChild(textEl);
-  var time = document.createElement('span');
-  time.className = 'msg-time';
-  time.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  div.appendChild(time);
-  addMsg(div);
+  var timeEl = document.createElement('span');
+  timeEl.className = 'msg-time';
+  timeEl.textContent = time || new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  div.appendChild(timeEl);
+  return div;
 }
 
-function addSystem(text) {
-  var div = document.createElement('div');
-  div.className = 'msg-system';
-  var span = document.createElement('span');
-  span.textContent = text;
-  div.appendChild(span);
-  addMsg(div);
+function renderMessages() {
+  var el = document.getElementById('messages');
+  el.innerHTML = '';
+  var msgs = [];
+  if (currentChannel === 'general') {
+    msgs = generalMessages;
+  } else if (currentChannel.startsWith('dm:')) {
+    var target = currentChannel.substring(3);
+    msgs = dmMessages[target] || [];
+  } else if (currentChannel.startsWith('spy:')) {
+    var pair = currentChannel.substring(4);
+    msgs = dmMessages['spy:' + pair] || [];
+  }
+  if (msgs.length === 0) {
+    var empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.id = 'emptyState';
+    empty.textContent = currentChannel === 'general' ? 'No messages yet' : 'No messages in this conversation';
+    el.appendChild(empty);
+    return;
+  }
+  msgs.forEach(function(m) {
+    if (m.type === 'system') {
+      var wrapper = document.createElement('div');
+      wrapper.className = 'msg-system';
+      var span = document.createElement('span');
+      span.textContent = m.text;
+      wrapper.appendChild(span);
+      el.appendChild(wrapper);
+    } else {
+      el.appendChild(makeMessageDiv(m.sender, m.text, m.admin || false, m.isDm || false, m.time));
+    }
+  });
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderSidebar() {
+  renderDmChannels();
+  var generalEl = document.getElementById('channelGeneral');
+  generalEl.className = 'channel-item' + (currentChannel === 'general' ? ' active' : '');
+}
+
+function renderDmChannels() {
+  var section = document.getElementById('dmChannelsSection');
+  var list = document.getElementById('dmChannelsList');
+  var dmKeys = Object.keys(dmMessages).filter(function(k) { return !k.startsWith('spy:'); });
+  if (dmKeys.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = '';
+  dmKeys.forEach(function(target) {
+    var item = document.createElement('div');
+    item.className = 'channel-item' + (currentChannel === 'dm:' + target ? ' active' : '');
+    item.setAttribute('data-testid', 'dm-channel-' + target);
+    var icon = document.createElement('span');
+    icon.className = 'channel-icon';
+    icon.style.color = 'var(--dm-color)';
+    icon.textContent = '@';
+    item.appendChild(icon);
+    var nameSpan = document.createElement('span');
+    nameSpan.textContent = ' ' + target;
+    item.appendChild(nameSpan);
+    if (dmUnread[target] && dmUnread[target] > 0 && currentChannel !== 'dm:' + target) {
+      var badge = document.createElement('span');
+      badge.className = 'dm-badge';
+      badge.textContent = dmUnread[target];
+      item.appendChild(badge);
+    }
+    item.addEventListener('click', function() { switchChannel('dm:' + target); });
+    list.appendChild(item);
+  });
 }
 
 function renderUsers(list) {
+  onlineUsers = list;
   document.getElementById('userCount').textContent = list.length;
   var ul = document.getElementById('userList');
   ul.innerHTML = '';
   list.forEach(function(name) {
     var div = document.createElement('div');
     div.className = 'user-item';
+    div.setAttribute('data-testid', 'user-item-' + name);
     var avatar = document.createElement('div');
     avatar.className = 'user-avatar';
     avatar.textContent = name.substring(0,2).toUpperCase();
@@ -735,26 +912,45 @@ function renderUsers(list) {
     nameEl.textContent = name + (name === myUsername ? ' (you)' : '');
     div.appendChild(avatar);
     div.appendChild(nameEl);
+    if (name !== myUsername && !isAdmin) {
+      div.style.cursor = 'pointer';
+      div.title = 'Click to DM ' + name;
+      div.addEventListener('click', function(e) {
+        if (e.target.tagName === 'BUTTON') return;
+        openDm(name);
+      });
+    }
     if (isAdmin) {
+      if (name !== myUsername) {
+        div.style.cursor = 'pointer';
+        div.title = 'Click to DM ' + name;
+        div.addEventListener('click', function(e) {
+          if (e.target.tagName === 'BUTTON') return;
+          openDm(name);
+        });
+      }
       var actions = document.createElement('div');
       actions.className = 'user-actions';
-      actions.style.cssText = 'display:flex;gap:4px;visibility:hidden;margin-left:auto;';
       var kickBtn = document.createElement('button');
       kickBtn.style.cssText = 'padding:4px 8px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:var(--bg-tertiary);color:var(--orange);';
       kickBtn.textContent = 'Kick';
-      kickBtn.addEventListener('click', function() { ws.send(JSON.stringify({type:'kick',username:name})); });
+      kickBtn.addEventListener('click', function(e) { e.stopPropagation(); ws.send(JSON.stringify({type:'kick',username:name})); });
       var banBtn = document.createElement('button');
       banBtn.style.cssText = 'padding:4px 8px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:var(--bg-tertiary);color:var(--red);';
       banBtn.textContent = 'Ban';
-      banBtn.addEventListener('click', function() { ws.send(JSON.stringify({type:'ban',username:name})); });
+      banBtn.addEventListener('click', function(e) { e.stopPropagation(); ws.send(JSON.stringify({type:'ban',username:name})); });
       actions.appendChild(kickBtn);
       actions.appendChild(banBtn);
       div.appendChild(actions);
-      div.addEventListener('mouseenter', function() { actions.style.visibility = 'visible'; });
-      div.addEventListener('mouseleave', function() { actions.style.visibility = 'hidden'; });
     }
     ul.appendChild(div);
   });
+}
+
+function openDm(target) {
+  if (!dmMessages[target]) { dmMessages[target] = []; }
+  switchChannel('dm:' + target);
+  ws.send(JSON.stringify({type: 'dm_open', target: target}));
 }
 
 function renderBanned(list) {
@@ -779,6 +975,99 @@ function renderBanned(list) {
   });
 }
 
+function renderDmSpy(pairs) {
+  activeDmPairs = pairs;
+  var section = document.getElementById('dmSpySection');
+  var list = document.getElementById('dmSpyList');
+  if (!isAdmin || !pairs || pairs.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = '';
+  pairs.forEach(function(pair) {
+    var item = document.createElement('div');
+    item.className = 'dm-spy-item' + (currentChannel === 'spy:' + pair ? ' active' : '');
+    item.setAttribute('data-testid', 'dm-spy-' + pair);
+    var icon = document.createElement('span');
+    icon.className = 'dm-spy-icon';
+    icon.textContent = 'SPY';
+    item.appendChild(icon);
+    var label = document.createElement('span');
+    label.textContent = pair;
+    item.appendChild(label);
+    item.addEventListener('click', function() {
+      if (!dmMessages['spy:' + pair]) { dmMessages['spy:' + pair] = []; }
+      switchChannel('spy:' + pair);
+      ws.send(JSON.stringify({type: 'dm_spy_open', pair: pair}));
+    });
+    list.appendChild(item);
+  });
+}
+
+function handleMessage(data) {
+  if (data.type === 'chat') {
+    var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    generalMessages.push({sender: data.sender, text: data.text, admin: data.admin || false, time: time});
+    if (currentChannel === 'general') renderMessages();
+  } else if (data.type === 'system') {
+    generalMessages.push({type: 'system', text: data.text});
+    if (currentChannel === 'general') renderMessages();
+  } else if (data.type === 'users') {
+    renderUsers(data.list);
+  } else if (data.type === 'banned_list') {
+    renderBanned(data.list);
+  } else if (data.type === 'dm') {
+    var other;
+    if (isAdmin) {
+      var adminName = document.getElementById('nameInput').value.trim() || 'Admin';
+      if (data.sender === adminName || data.admin) {
+        other = data.recipient;
+      } else {
+        other = data.sender;
+      }
+    } else if (data.admin_dm) {
+      other = 'Admin';
+    } else {
+      other = data.sender === myUsername ? data.recipient : data.sender;
+    }
+    if (!dmMessages[other]) { dmMessages[other] = []; }
+    var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    dmMessages[other].push({sender: data.sender, text: data.text, admin: data.admin || false, isDm: true, time: time});
+    if (currentChannel === 'dm:' + other) {
+      renderMessages();
+    } else {
+      dmUnread[other] = (dmUnread[other] || 0) + 1;
+      renderDmChannels();
+    }
+  } else if (data.type === 'dm_history') {
+    var target = data.target;
+    dmMessages[target] = [];
+    (data.messages || []).forEach(function(m) {
+      dmMessages[target].push({sender: m.sender, text: m.text, admin: m.admin || false, isDm: true, time: m.time || ''});
+    });
+    if (currentChannel === 'dm:' + target) renderMessages();
+  } else if (data.type === 'dm_spy') {
+    var pair = data.pair;
+    dmMessages['spy:' + pair] = [];
+    (data.messages || []).forEach(function(m) {
+      dmMessages['spy:' + pair].push({sender: m.sender, text: m.text, admin: m.admin || false, isDm: true, time: m.time || ''});
+    });
+    if (currentChannel === 'spy:' + pair) renderMessages();
+  } else if (data.type === 'dm_spy_update') {
+    var pair = data.pair;
+    var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    if (!dmMessages['spy:' + pair]) dmMessages['spy:' + pair] = [];
+    dmMessages['spy:' + pair].push({sender: data.sender, text: data.text, admin: data.admin || false, isDm: true, time: time});
+    if (currentChannel === 'spy:' + pair) renderMessages();
+  } else if (data.type === 'dm_pairs') {
+    renderDmSpy(data.pairs);
+  } else if (data.type === 'error') {
+    if (!myUsername && !isAdmin) {
+      var err = document.getElementById('joinError');
+      err.textContent = data.text;
+      err.style.display = 'block';
+    }
+  }
+}
+
 var adminConnected = false;
 function connectAdmin(token) {
   var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -800,21 +1089,11 @@ function connectAdmin(token) {
       ws = null;
       return;
     }
-    var div = document.createElement('div');
-    div.className = 'msg-error';
-    div.textContent = 'Disconnected from server.';
-    addMsg(div);
     document.getElementById('sendBtn').disabled = true;
     document.getElementById('msgInput').disabled = true;
   };
   ws.onerror = function() {};
-  ws.onmessage = function(event) {
-    var data = JSON.parse(event.data);
-    if (data.type === 'chat') { addChat(data.sender, data.text, data.admin || false); }
-    else if (data.type === 'system') { addSystem(data.text); }
-    else if (data.type === 'users') { renderUsers(data.list); }
-    else if (data.type === 'banned_list') { renderBanned(data.list); }
-  };
+  ws.onmessage = function(event) { handleMessage(JSON.parse(event.data)); };
 }
 
 function connectGuest(username) {
@@ -823,30 +1102,9 @@ function connectGuest(username) {
   ws.onopen = function() {
     ws.send(JSON.stringify({ type: 'join', username: username }));
   };
-  ws.onmessage = function(event) {
-    var data = JSON.parse(event.data);
-    if (data.type === 'chat') { addChat(data.sender, data.text, data.admin || false); }
-    else if (data.type === 'system') { addSystem(data.text); }
-    else if (data.type === 'users') { renderUsers(data.list); }
-    else if (data.type === 'error') {
-      if (!myUsername) {
-        var err = document.getElementById('joinError');
-        err.textContent = data.text;
-        err.style.display = 'block';
-      } else {
-        var div = document.createElement('div');
-        div.className = 'msg-error';
-        div.textContent = data.text;
-        addMsg(div);
-      }
-    }
-  };
+  ws.onmessage = function(event) { handleMessage(JSON.parse(event.data)); };
   ws.onclose = function() {
     if (myUsername) {
-      var div = document.createElement('div');
-      div.className = 'msg-error';
-      div.textContent = 'Disconnected from server.';
-      addMsg(div);
       document.getElementById('sendBtn').disabled = true;
       document.getElementById('msgInput').disabled = true;
     }
@@ -854,6 +1112,10 @@ function connectGuest(username) {
 }
 
 var RESERVED = /admin|mod/i;
+
+document.getElementById('channelGeneral').addEventListener('click', function() {
+  switchChannel('general');
+});
 
 document.getElementById('joinBtn').addEventListener('click', function() {
   var name = document.getElementById('usernameInput').value.trim();
@@ -887,11 +1149,21 @@ document.getElementById('sendBtn').addEventListener('click', function() {
   var input = document.getElementById('msgInput');
   var text = input.value.trim();
   if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-  if (isAdmin) {
-    var name = document.getElementById('nameInput').value.trim() || 'Admin';
-    ws.send(JSON.stringify({ type: 'chat', text: text, name: name }));
-  } else {
-    ws.send(JSON.stringify({ type: 'chat', text: text }));
+  if (currentChannel === 'general') {
+    if (isAdmin) {
+      var name = document.getElementById('nameInput').value.trim() || 'Admin';
+      ws.send(JSON.stringify({ type: 'chat', text: text, name: name }));
+    } else {
+      ws.send(JSON.stringify({ type: 'chat', text: text }));
+    }
+  } else if (currentChannel.startsWith('dm:')) {
+    var target = currentChannel.substring(3);
+    if (isAdmin) {
+      var name = document.getElementById('nameInput').value.trim() || 'Admin';
+      ws.send(JSON.stringify({ type: 'dm_message', target: target, text: text, name: name }));
+    } else {
+      ws.send(JSON.stringify({ type: 'dm_message', target: target, text: text }));
+    }
   }
   input.value = '';
   input.focus();
@@ -1004,6 +1276,20 @@ if (params.has('token') && params.get('token') !== '') {
     return web.Response(text=login_html, content_type="text/html")
 
 
+def get_dm_pairs():
+    pairs = []
+    for key in dm_store:
+        a = "Admin" if key[0] == "~admin~" else key[0]
+        b = "Admin" if key[1] == "~admin~" else key[1]
+        pairs.append(a + " & " + b)
+    return pairs
+
+
+async def send_dm_pairs_to_admin():
+    pairs = get_dm_pairs()
+    await send_to_admin({"type": "dm_pairs", "pairs": pairs})
+
+
 async def handle_admin_ws(request):
     global admin_ws
     token = request.query.get("token", "")
@@ -1017,6 +1303,7 @@ async def handle_admin_ws(request):
 
     await send_to_admin({"type": "users", "list": user_list()})
     await send_to_admin({"type": "banned_list", "list": list(banned_users)})
+    await send_dm_pairs_to_admin()
 
     async for msg in ws:
         if msg.type == aiohttp.WSMsgType.TEXT:
@@ -1061,6 +1348,53 @@ async def handle_admin_ws(request):
                     if text:
                         await broadcast_all({"type": "chat", "sender": name, "text": text, "admin": True})
                         print(f"[{name} (Admin)] {text}")
+
+                elif data["type"] == "dm_message":
+                    target = data.get("target", "").strip()
+                    text = data.get("text", "").strip()
+                    name = data.get("name", "").strip() or "Admin"
+                    if target and text:
+                        key = dm_key("~admin~", target)
+                        if key not in dm_store:
+                            dm_store[key] = []
+                        ts = _time.strftime("%H:%M")
+                        dm_store[key].append({"sender": name, "recipient": target, "text": text, "time": ts, "admin": True})
+                        dm_msg_to_guest = {"type": "dm", "sender": name, "recipient": target, "text": text, "admin": True, "admin_dm": True}
+                        dm_msg_to_admin = {"type": "dm", "sender": name, "recipient": target, "text": text, "admin": True}
+                        for client_ws, info in connected.items():
+                            if info["username"] == target:
+                                try:
+                                    await client_ws.send_str(json.dumps(dm_msg_to_guest))
+                                except Exception:
+                                    pass
+                                break
+                        await ws.send_str(json.dumps(dm_msg_to_admin))
+                        await send_dm_pairs_to_admin()
+                        print(f"[DM] {name} (Admin) -> {target}: {text}")
+
+                elif data["type"] == "dm_open":
+                    target = data.get("target", "")
+                    key = dm_key("~admin~", target)
+                    history = dm_store.get(key, [])
+                    await ws.send_str(json.dumps({
+                        "type": "dm_history",
+                        "target": target,
+                        "messages": history
+                    }))
+
+                elif data["type"] == "dm_spy_open":
+                    pair_str = data.get("pair", "")
+                    parts = pair_str.split(" & ")
+                    if len(parts) == 2:
+                        a = "~admin~" if parts[0] == "Admin" else parts[0]
+                        b = "~admin~" if parts[1] == "Admin" else parts[1]
+                        key = dm_key(a, b)
+                        history = dm_store.get(key, [])
+                        await ws.send_str(json.dumps({
+                            "type": "dm_spy",
+                            "pair": pair_str,
+                            "messages": history
+                        }))
 
             except Exception as e:
                 print(f"[ADMIN] Error: {e}")
@@ -1135,6 +1469,46 @@ async def handle_client_ws(request):
                     if text:
                         await broadcast_all({"type": "chat", "sender": username, "text": text})
                         print(f"[{username}] {text}")
+
+                elif data.get("type") == "dm_message":
+                    target = data.get("target", "").strip()
+                    text = data.get("text", "").strip()
+                    if target and text and target != username:
+                        is_to_admin = (target == "Admin")
+                        store_target = "~admin~" if is_to_admin else target
+                        key = dm_key(username, store_target)
+                        if key not in dm_store:
+                            dm_store[key] = []
+                        ts = _time.strftime("%H:%M")
+                        dm_store[key].append({"sender": username, "recipient": target, "text": text, "time": ts})
+                        dm_msg = {"type": "dm", "sender": username, "recipient": target, "text": text}
+                        if is_to_admin:
+                            await send_to_admin(dm_msg)
+                        else:
+                            for client_ws_conn, info in connected.items():
+                                if info["username"] == target:
+                                    try:
+                                        await client_ws_conn.send_str(json.dumps(dm_msg))
+                                    except Exception:
+                                        pass
+                                    break
+                            spy_pair = key[0] + " & " + key[1]
+                            spy_pair_display = spy_pair.replace("~admin~", "Admin")
+                            await send_to_admin({"type": "dm_spy_update", "pair": spy_pair_display, "sender": username, "recipient": target, "text": text})
+                        await ws.send_str(json.dumps(dm_msg))
+                        await send_dm_pairs_to_admin()
+                        print(f"[DM] {username} -> {target}: {text}")
+
+                elif data.get("type") == "dm_open":
+                    target = data.get("target", "")
+                    store_target = "~admin~" if target == "Admin" else target
+                    key = dm_key(username, store_target)
+                    history = dm_store.get(key, [])
+                    await ws.send_str(json.dumps({
+                        "type": "dm_history",
+                        "target": target,
+                        "messages": history
+                    }))
 
             except Exception as e:
                 print(f"[!] Error: {e}")

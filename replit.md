@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a real-time chat application built with a React frontend and Express backend. Users can join with a username and communicate via WebSocket connections. The app features persistent message history stored in PostgreSQL and displays online users in real-time.
+This is a real-time chat application built as a single Python file (`talk.py`) using aiohttp for WebSocket-based communication. Features a Discord-like dark theme with Light and Midnight alternatives. Users join as Guest or Admin from a unified page at `/`. The app supports group chat (#General channel) and direct messaging (DMs) between users. Admins can view all DMs via a spy feature, change their display name anytime, and kick/ban users.
 
 ## User Preferences
 
@@ -10,46 +10,52 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend Architecture
-- **Framework**: React 18 with TypeScript
-- **Routing**: Wouter (lightweight React router)
-- **State Management**: TanStack React Query for server state, React hooks for local state
-- **UI Components**: shadcn/ui component library built on Radix UI primitives
-- **Styling**: Tailwind CSS with CSS variables for theming
-- **Build Tool**: Vite with path aliases (`@/` for client/src, `@shared/` for shared code)
+### Single-file Python Application
+- **File**: `talk.py` - Contains all server logic and embedded HTML/CSS/JS for the client
+- **Framework**: aiohttp (Python async web framework with WebSocket support)
+- **Server**: Node.js `server/index.ts` spawns the Python process and proxies requests
+- **Port**: 5000
 
-### Backend Architecture
-- **Framework**: Express 5 running on Node.js
-- **Real-time Communication**: Native WebSocket server (ws library) mounted at `/ws` path
-- **API Pattern**: REST endpoints for non-realtime operations (username availability check, message history)
-- **Build Process**: esbuild bundles server code, Vite handles client build
+### Routes
+- `GET /` - Main page with unified Guest/Admin join flow
+- `GET /admin` - Legacy admin login page
+- `GET /ws` - WebSocket endpoint for guest clients
+- `GET /admin-ws` - WebSocket endpoint for admin (requires `?token=...`)
 
-### Data Flow
-- WebSocket handles join, chat messages, user list updates, and message history
-- Messages are validated using Zod schemas in the shared routes module
-- The shared folder (`/shared`) contains schemas and route definitions used by both client and server
+### WebSocket Message Types
+- `join` - Guest sends username to join
+- `chat` - Group message in #General
+- `dm_message` - Send a direct message to another user
+- `dm_open` - Request DM history with a user
+- `dm` - Server delivers DM to participants
+- `dm_history` - Server sends DM conversation history
+- `dm_pairs` - Server sends list of active DM pairs (admin only)
+- `dm_spy_open` - Admin requests to view a specific DM pair
+- `dm_spy` - Server sends full DM conversation for spy viewing
+- `dm_spy_update` - Real-time DM update sent to admin
+- `users` - Online user list broadcast
+- `system` - System messages (join/leave)
+- `banned_list` - Banned user list (admin only)
+- `kick` / `ban` / `unban` - Admin moderation actions
 
 ### Key Design Decisions
-1. **Single-page chat with conditional login**: The Login component is rendered conditionally inside the Chat page based on WebSocket connection state, avoiding route-based auth complexity
-2. **Shared types and validation**: Zod schemas and TypeScript types are shared between client and server via the `/shared` directory
-3. **WebSocket-first communication**: Real-time features use WebSocket exclusively; REST is only for initial data fetching and validation
+1. **Unified join page**: Single page at `/` offers Guest or Admin choice
+2. **Admin stable identity**: Admin DMs use internal `~admin~` identity for dm_key so changing display name doesn't break conversation history
+3. **In-memory storage**: All messages and DM history stored in Python dicts (not persistent)
+4. **Three theme system**: Dark (default), Light, Midnight - stored in localStorage
+5. **Username restrictions**: Guest usernames cannot contain "admin" or "mod" (case-insensitive)
 
-## External Dependencies
+### Admin Features
+- **Admin Token**: Derived from SESSION_SECRET environment variable via SHA-256 hash
+- **Display Name**: Changeable anytime via input field; applies to both chat and DMs
+- **Kick/Ban**: Hover over users in sidebar to see kick/ban buttons
+- **DM Spy**: View all active DM conversations between users
+- **Banned List**: See and unban banned users
 
-### Database
-- **PostgreSQL**: Primary data store for users and messages
-- **Drizzle ORM**: Type-safe database queries with schema defined in `shared/schema.ts`
-- **Connection**: Uses `DATABASE_URL` environment variable via node-postgres pool
-
-### Key Libraries
-- **ws**: WebSocket server implementation
-- **connect-pg-simple**: PostgreSQL session store (available for session management if needed)
-- **date-fns**: Date formatting for message timestamps
-- **zod**: Runtime validation for API inputs and WebSocket messages
-
-### Database Schema
-- `users` table: id (serial), username (unique text)
-- `messages` table: id (serial), userId (integer), displayName (text), content (text), createdAt (timestamp)
+### External Dependencies
+- **aiohttp**: Python async web framework
+- **SESSION_SECRET**: Environment variable used to derive admin token
 
 ### Environment Variables Required
-- `DATABASE_URL`: PostgreSQL connection string
+- `SESSION_SECRET`: Used to generate admin token (falls back to random if not set)
+- `DATABASE_URL`: PostgreSQL connection string (available but not currently used by chat)
