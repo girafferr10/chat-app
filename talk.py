@@ -429,13 +429,59 @@ async def send_user_list():
 
 async def handle_admin_page(request):
     token = request.query.get("token", "")
-    if token != ADMIN_TOKEN:
-        return web.Response(
-            text="<h2>Access Denied</h2><p>Invalid admin token. Check the server console for the correct URL.</p>",
-            content_type="text/html",
-            status=403
-        )
-    return web.Response(text=get_admin_html(token), content_type="text/html")
+    if token == ADMIN_TOKEN:
+        return web.Response(text=get_admin_html(token), content_type="text/html")
+    login_html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f5f5; display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; color: #333; }
+.login-box { background: #fff; border: 1px solid #ddd; border-radius: 8px;
+  padding: 40px; max-width: 400px; width: 90%; }
+h2 { margin-bottom: 8px; font-size: 22px; }
+p { color: #666; margin-bottom: 24px; font-size: 14px; }
+label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+input { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px;
+  font-size: 14px; margin-bottom: 16px; }
+input:focus { outline: none; border-color: #555; }
+button { width: 100%; padding: 10px; background: #333; color: #fff; border: none;
+  border-radius: 6px; font-size: 14px; cursor: pointer; }
+button:hover { background: #555; }
+.error { color: #c00; font-size: 13px; margin-bottom: 12px; display: none; }
+</style>
+</head>
+<body>
+<div class="login-box">
+  <h2>Admin Login</h2>
+  <p>Enter the admin token from the server console.</p>
+  <div class="error" id="errorMsg">Invalid token. Please try again.</div>
+  <label for="tokenInput">Admin Token</label>
+  <input type="password" id="tokenInput" data-testid="input-token" placeholder="Paste token here..." autofocus />
+  <button id="loginBtn" data-testid="button-login">Login</button>
+</div>
+<script>
+document.getElementById('loginBtn').addEventListener('click', function() {
+  var token = document.getElementById('tokenInput').value.trim();
+  if (token) { window.location.href = '/?token=' + encodeURIComponent(token); }
+  else { var e = document.getElementById('errorMsg'); e.textContent = 'Please enter a token.'; e.style.display = 'block'; }
+});
+document.getElementById('tokenInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { document.getElementById('loginBtn').click(); }
+});
+var params = new URLSearchParams(window.location.search);
+if (params.has('token') && params.get('token') !== '') {
+  var e = document.getElementById('errorMsg'); e.textContent = 'Invalid token. Please try again.'; e.style.display = 'block';
+}
+</script>
+</body>
+</html>"""
+    return web.Response(text=login_html, content_type="text/html")
 
 
 async def handle_admin_ws(request):
