@@ -390,6 +390,258 @@ connectWS();
 </html>""".replace('__TOKEN__', token)
 
 
+def get_client_html():
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f5f5f5; color: #1a1a1a; height: 100vh;
+  display: flex; flex-direction: column;
+}
+header {
+  background: #fff; border-bottom: 1px solid #e0e0e0;
+  padding: 14px 20px; display: flex; align-items: center;
+  justify-content: space-between; gap: 8px; flex-wrap: wrap;
+}
+header h1 { font-size: 18px; font-weight: 700; }
+header .status { font-size: 13px; color: #666; display: flex; align-items: center; gap: 6px; }
+header .status .dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf50; }
+
+.container { display: flex; flex: 1; overflow: hidden; }
+
+.sidebar {
+  width: 220px; background: #fff; border-right: 1px solid #e0e0e0;
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.sidebar h3 {
+  padding: 14px 16px 10px; font-size: 13px; font-weight: 600;
+  color: #666; text-transform: uppercase; letter-spacing: 0.5px;
+  display: flex; align-items: center; gap: 8px;
+}
+.sidebar .count {
+  background: #e8e8e8; color: #555; font-size: 11px;
+  padding: 1px 7px; border-radius: 10px; font-weight: 600;
+}
+#userList {
+  flex: 1; overflow-y: auto; padding: 0 8px;
+}
+.user-item {
+  padding: 8px 10px; font-size: 14px; color: #333;
+  border-radius: 6px; margin-bottom: 2px;
+}
+
+.chat-area { flex: 1; display: flex; flex-direction: column; }
+
+#messages {
+  flex: 1; overflow-y: auto; padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.msg { padding: 4px 0; font-size: 14px; line-height: 1.5; }
+.msg .sender { font-weight: 600; margin-right: 6px; }
+.msg .sender.admin-name { color: #c00; }
+.msg .text { color: #333; }
+.msg.system-msg { color: #888; font-style: italic; font-size: 13px; }
+.msg.error-msg { color: #c00; font-weight: 500; }
+
+.input-bar {
+  padding: 12px 16px; background: #fff; border-top: 1px solid #e0e0e0;
+  display: flex; gap: 8px;
+}
+.input-bar input {
+  flex: 1; padding: 10px 14px; border: 1px solid #ddd;
+  border-radius: 6px; font-size: 14px; outline: none;
+}
+.input-bar input:focus { border-color: #999; }
+.input-bar button {
+  padding: 10px 20px; background: #333; color: #fff; border: none;
+  border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 500;
+}
+.input-bar button:hover { background: #555; }
+.input-bar button:disabled { background: #999; cursor: not-allowed; }
+
+.empty { color: #999; text-align: center; margin-top: 60px; font-size: 14px; }
+
+/* Join screen */
+.join-screen {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; background: #f5f5f5;
+}
+.join-box {
+  background: #fff; border: 1px solid #ddd; border-radius: 8px;
+  padding: 40px; max-width: 400px; width: 90%;
+}
+.join-box h2 { margin-bottom: 8px; font-size: 22px; }
+.join-box p { color: #666; margin-bottom: 24px; font-size: 14px; }
+.join-box label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.join-box input {
+  width: 100%; padding: 10px 12px; border: 1px solid #ccc;
+  border-radius: 6px; font-size: 14px; margin-bottom: 16px;
+}
+.join-box input:focus { outline: none; border-color: #555; }
+.join-box button {
+  width: 100%; padding: 10px; background: #333; color: #fff; border: none;
+  border-radius: 6px; font-size: 14px; cursor: pointer;
+}
+.join-box button:hover { background: #555; }
+.join-error { color: #c00; font-size: 13px; margin-bottom: 12px; display: none; }
+
+.chat-screen { display: none; height: 100vh; flex-direction: column; }
+
+@media (max-width: 600px) {
+  .sidebar { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="join-screen" id="joinScreen">
+  <div class="join-box">
+    <h2>Join Chat</h2>
+    <p>Pick a username to start chatting.</p>
+    <div class="join-error" id="joinError"></div>
+    <label for="usernameInput">Username</label>
+    <input type="text" id="usernameInput" data-testid="input-username" placeholder="Enter username..." maxlength="20" autofocus />
+    <button id="joinBtn" data-testid="button-join">Join</button>
+  </div>
+</div>
+
+<div class="chat-screen" id="chatScreen">
+  <header>
+    <h1 data-testid="text-header">Chat</h1>
+    <div class="status"><div class="dot"></div> Connected</div>
+  </header>
+  <div class="container">
+    <div class="sidebar">
+      <h3>Online <span class="count" id="userCount" data-testid="text-user-count">0</span></h3>
+      <div id="userList" data-testid="list-users"></div>
+    </div>
+    <div class="chat-area">
+      <div id="messages" data-testid="list-messages">
+        <div class="empty" id="emptyState">No messages yet</div>
+      </div>
+      <div class="input-bar">
+        <input type="text" id="msgInput" data-testid="input-message" placeholder="Type a message..." />
+        <button id="sendBtn" data-testid="button-send">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var ws = null;
+var myUsername = '';
+
+function escapeHtml(t) {
+  var d = document.createElement('div'); d.textContent = t; return d.innerHTML;
+}
+
+function addMessage(html) {
+  var m = document.getElementById('messages');
+  var e = document.getElementById('emptyState');
+  if (e) e.remove();
+  var div = document.createElement('div');
+  div.innerHTML = html;
+  m.appendChild(div);
+  m.scrollTop = m.scrollHeight;
+}
+
+function updateUsers(list) {
+  document.getElementById('userCount').textContent = list.length;
+  var ul = document.getElementById('userList');
+  ul.innerHTML = '';
+  list.forEach(function(name) {
+    var div = document.createElement('div');
+    div.className = 'user-item';
+    div.textContent = name + (name === myUsername ? ' (you)' : '');
+    ul.appendChild(div);
+  });
+}
+
+function connect(username) {
+  var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(protocol + '//' + location.host + '/ws');
+
+  ws.onopen = function() {
+    ws.send(JSON.stringify({ type: 'join', username: username }));
+  };
+
+  ws.onmessage = function(event) {
+    var data = JSON.parse(event.data);
+    if (data.type === 'chat') {
+      var cls = data.sender === 'Admin' ? 'admin-name' : '';
+      addMessage('<div class="msg"><span class="sender ' + cls + '">' + escapeHtml(data.sender) + '</span><span class="text">' + escapeHtml(data.text) + '</span></div>');
+    } else if (data.type === 'system') {
+      addMessage('<div class="msg system-msg">' + escapeHtml(data.text) + '</div>');
+    } else if (data.type === 'users') {
+      updateUsers(data.list);
+    } else if (data.type === 'error') {
+      if (!myUsername) {
+        var err = document.getElementById('joinError');
+        err.textContent = data.text;
+        err.style.display = 'block';
+      } else {
+        addMessage('<div class="msg error-msg">' + escapeHtml(data.text) + '</div>');
+      }
+    }
+  };
+
+  ws.onclose = function() {
+    if (myUsername) {
+      addMessage('<div class="msg error-msg">Disconnected from server.</div>');
+      document.getElementById('sendBtn').disabled = true;
+      document.getElementById('msgInput').disabled = true;
+    }
+  };
+}
+
+document.getElementById('joinBtn').addEventListener('click', function() {
+  var name = document.getElementById('usernameInput').value.trim();
+  if (!name) {
+    var err = document.getElementById('joinError');
+    err.textContent = 'Please enter a username.';
+    err.style.display = 'block';
+    return;
+  }
+  if (!/^[a-zA-Z0-9_-]{1,20}$/.test(name)) {
+    var err = document.getElementById('joinError');
+    err.textContent = 'Letters, numbers, _ and - only (1-20 chars).';
+    err.style.display = 'block';
+    return;
+  }
+  myUsername = name;
+  document.getElementById('joinScreen').style.display = 'none';
+  document.getElementById('chatScreen').style.display = 'flex';
+  connect(name);
+  document.getElementById('msgInput').focus();
+});
+
+document.getElementById('usernameInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('joinBtn').click();
+});
+
+document.getElementById('sendBtn').addEventListener('click', function() {
+  var input = document.getElementById('msgInput');
+  var text = input.value.trim();
+  if (text && ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'chat', text: text }));
+    input.value = '';
+  }
+  input.focus();
+});
+
+document.getElementById('msgInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('sendBtn').click();
+});
+</script>
+</body>
+</html>"""
+
+
 async def broadcast_to_clients(message):
     data = json.dumps(message)
     tasks = []
@@ -425,6 +677,10 @@ async def send_user_list():
     await broadcast_to_clients({"type": "users", "list": users})
     await send_to_admin({"type": "users", "list": users})
     await send_to_admin({"type": "banned_list", "list": list(banned_users)})
+
+
+async def handle_chat_page(request):
+    return web.Response(text=get_client_html(), content_type="text/html")
 
 
 async def handle_admin_page(request):
@@ -468,7 +724,7 @@ button:hover { background: #555; }
 <script>
 document.getElementById('loginBtn').addEventListener('click', function() {
   var token = document.getElementById('tokenInput').value.trim();
-  if (token) { window.location.href = '/?token=' + encodeURIComponent(token); }
+  if (token) { window.location.href = '/admin?token=' + encodeURIComponent(token); }
   else { var e = document.getElementById('errorMsg'); e.textContent = 'Please enter a token.'; e.style.display = 'block'; }
 });
 document.getElementById('tokenInput').addEventListener('keydown', function(e) {
@@ -632,7 +888,8 @@ async def handle_client_ws(request):
 
 async def main():
     app = web.Application()
-    app.router.add_get("/", handle_admin_page)
+    app.router.add_get("/", handle_chat_page)
+    app.router.add_get("/admin", handle_admin_page)
     app.router.add_get("/admin-ws", handle_admin_ws)
     app.router.add_get("/ws", handle_client_ws)
 
@@ -648,10 +905,10 @@ async def main():
     print("  Server running on port 5000")
     print()
     print("  ADMIN URL (keep this secret!):")
-    print(f"  /?token={ADMIN_TOKEN}")
+    print(f"  /admin?token={ADMIN_TOKEN}")
     print()
-    print("  Friends connect using client.py")
-    print("  and your Replit URL (no token needed).")
+    print("  Friends open your Replit URL to chat.")
+    print("  No token needed - just pick a username.")
     print()
     print("  Waiting for connections...")
     print("=" * 50)
