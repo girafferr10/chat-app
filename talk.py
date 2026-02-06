@@ -14,6 +14,7 @@ _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 ADMIN_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 USERNAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,20}$')
+RESERVED_RE = re.compile(r'admin|mod', re.IGNORECASE)
 
 
 def get_admin_html(token):
@@ -577,13 +578,31 @@ body.theme-midnight {
 </head>
 <body>
 <div class="join-screen" id="joinScreen">
-  <div class="join-box">
+  <div class="join-box" id="roleBox">
     <h2>Join Chat</h2>
+    <p>How would you like to join?</p>
+    <div style="display:flex;gap:8px;">
+      <button id="guestBtn" data-testid="button-guest" style="flex:1;">Guest</button>
+      <button id="adminBtn" data-testid="button-admin" style="flex:1;background:var(--admin-color);">Admin</button>
+    </div>
+  </div>
+  <div class="join-box" id="guestBox" style="display:none;">
+    <h2>Join as Guest</h2>
     <p>Pick a username to start chatting.</p>
     <div class="join-error" id="joinError"></div>
     <label for="usernameInput">Username</label>
-    <input type="text" id="usernameInput" data-testid="input-username" placeholder="Enter username..." maxlength="20" autofocus />
+    <input type="text" id="usernameInput" data-testid="input-username" placeholder="Enter username..." maxlength="20" />
     <button id="joinBtn" data-testid="button-join">Join</button>
+    <button id="backBtn1" data-testid="button-back-guest" style="margin-top:8px;background:var(--input-bg);color:var(--text-secondary);">Back</button>
+  </div>
+  <div class="join-box" id="adminBox" style="display:none;">
+    <h2>Join as Admin</h2>
+    <p>Enter the admin token to continue.</p>
+    <div class="join-error" id="adminError"></div>
+    <label for="adminTokenInput">Admin Token</label>
+    <input type="password" id="adminTokenInput" data-testid="input-token" placeholder="Paste token here..." />
+    <button id="adminLoginBtn" data-testid="button-admin-login">Login</button>
+    <button id="backBtn2" data-testid="button-back-admin" style="margin-top:8px;background:var(--input-bg);color:var(--text-secondary);">Back</button>
   </div>
 </div>
 
@@ -599,12 +618,17 @@ body.theme-midnight {
     <div class="sidebar">
       <div class="sidebar-header">Online <span class="count" id="userCount" data-testid="text-user-count">0</span></div>
       <div id="userList" data-testid="list-users"></div>
+      <div id="bannedSection" style="display:none;border-top:1px solid var(--bg-tertiary);padding:10px 16px;max-height:120px;overflow-y:auto;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Banned</div>
+        <div id="bannedList"></div>
+      </div>
     </div>
     <div class="chat-area">
       <div id="messages" data-testid="list-messages">
         <div class="empty" id="emptyState">No messages yet</div>
       </div>
       <div class="input-bar">
+        <input type="text" id="nameInput" data-testid="input-admin-name" placeholder="Your name" value="Admin" style="display:none;width:140px;flex:unset;" />
         <input type="text" id="msgInput" data-testid="input-message" placeholder="Type a message..." />
         <button id="sendBtn" data-testid="button-send">Send</button>
       </div>
@@ -615,6 +639,7 @@ body.theme-midnight {
 <script>
 var ws = null;
 var myUsername = '';
+var isAdmin = false;
 var themes = ['theme-dark', 'theme-light', 'theme-midnight'];
 var themeLabels = ['Dark', 'Light', 'Midnight'];
 var themeIdx = parseInt(localStorage.getItem('chat-theme') || '0');
@@ -631,6 +656,25 @@ document.getElementById('themeBtn').addEventListener('click', function() {
   applyTheme();
 });
 
+document.getElementById('guestBtn').addEventListener('click', function() {
+  document.getElementById('roleBox').style.display = 'none';
+  document.getElementById('guestBox').style.display = 'block';
+  document.getElementById('usernameInput').focus();
+});
+document.getElementById('adminBtn').addEventListener('click', function() {
+  document.getElementById('roleBox').style.display = 'none';
+  document.getElementById('adminBox').style.display = 'block';
+  document.getElementById('adminTokenInput').focus();
+});
+document.getElementById('backBtn1').addEventListener('click', function() {
+  document.getElementById('guestBox').style.display = 'none';
+  document.getElementById('roleBox').style.display = 'block';
+});
+document.getElementById('backBtn2').addEventListener('click', function() {
+  document.getElementById('adminBox').style.display = 'none';
+  document.getElementById('roleBox').style.display = 'block';
+});
+
 function addMsg(div) {
   var m = document.getElementById('messages');
   var e = document.getElementById('emptyState');
@@ -639,37 +683,31 @@ function addMsg(div) {
   m.scrollTop = m.scrollHeight;
 }
 
-function addChat(sender, text, isAdmin) {
+function addChat(sender, text, admin) {
   var div = document.createElement('div');
   div.className = 'msg msg-inline';
-
   var senderEl = document.createElement('span');
-  senderEl.className = 'msg-sender' + (isAdmin ? ' is-admin' : '');
+  senderEl.className = 'msg-sender' + (admin ? ' is-admin' : '');
   senderEl.textContent = sender;
   div.appendChild(senderEl);
-
-  if (isAdmin) {
+  if (admin) {
     var badge = document.createElement('span');
     badge.className = 'msg-badge';
     badge.textContent = 'ADMIN';
     div.appendChild(badge);
   }
-
   var colon = document.createElement('span');
   colon.className = 'msg-colon';
   colon.textContent = ': ';
   div.appendChild(colon);
-
   var textEl = document.createElement('span');
   textEl.className = 'msg-text';
   textEl.textContent = text;
   div.appendChild(textEl);
-
   var time = document.createElement('span');
   time.className = 'msg-time';
   time.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   div.appendChild(time);
-
   addMsg(div);
 }
 
@@ -682,7 +720,7 @@ function addSystem(text) {
   addMsg(div);
 }
 
-function updateUsers(list) {
+function renderUsers(list) {
   document.getElementById('userCount').textContent = list.length;
   var ul = document.getElementById('userList');
   ul.innerHTML = '';
@@ -697,27 +735,94 @@ function updateUsers(list) {
     nameEl.textContent = name + (name === myUsername ? ' (you)' : '');
     div.appendChild(avatar);
     div.appendChild(nameEl);
+    if (isAdmin) {
+      var actions = document.createElement('div');
+      actions.className = 'user-actions';
+      actions.style.cssText = 'display:flex;gap:4px;visibility:hidden;margin-left:auto;';
+      var kickBtn = document.createElement('button');
+      kickBtn.style.cssText = 'padding:4px 8px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:var(--bg-tertiary);color:var(--orange);';
+      kickBtn.textContent = 'Kick';
+      kickBtn.addEventListener('click', function() { ws.send(JSON.stringify({type:'kick',username:name})); });
+      var banBtn = document.createElement('button');
+      banBtn.style.cssText = 'padding:4px 8px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:var(--bg-tertiary);color:var(--red);';
+      banBtn.textContent = 'Ban';
+      banBtn.addEventListener('click', function() { ws.send(JSON.stringify({type:'ban',username:name})); });
+      actions.appendChild(kickBtn);
+      actions.appendChild(banBtn);
+      div.appendChild(actions);
+      div.addEventListener('mouseenter', function() { actions.style.visibility = 'visible'; });
+      div.addEventListener('mouseleave', function() { actions.style.visibility = 'hidden'; });
+    }
     ul.appendChild(div);
   });
 }
 
-function connect(username) {
+function renderBanned(list) {
+  var section = document.getElementById('bannedSection');
+  var el = document.getElementById('bannedList');
+  if (!list || list.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  el.innerHTML = '';
+  list.forEach(function(u) {
+    var item = document.createElement('div');
+    item.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:4px 0;';
+    var nm = document.createElement('span');
+    nm.style.cssText = 'font-size:13px;color:var(--text-muted);text-decoration:line-through;';
+    nm.textContent = u;
+    var unbanBtn = document.createElement('button');
+    unbanBtn.style.cssText = 'padding:4px 8px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:var(--bg-tertiary);color:var(--green);';
+    unbanBtn.textContent = 'Unban';
+    unbanBtn.addEventListener('click', function() { ws.send(JSON.stringify({type:'unban',username:u})); });
+    item.appendChild(nm);
+    item.appendChild(unbanBtn);
+    el.appendChild(item);
+  });
+}
+
+function connectAdmin(token) {
+  var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(protocol + '//' + location.host + '/admin-ws?token=' + token);
+  ws.onopen = function() {
+    isAdmin = true;
+    document.getElementById('nameInput').style.display = 'block';
+    document.getElementById('joinScreen').style.display = 'none';
+    document.getElementById('chatScreen').style.display = 'flex';
+    document.getElementById('msgInput').focus();
+  };
+  ws.onclose = function() {
+    var div = document.createElement('div');
+    div.className = 'msg-error';
+    div.textContent = 'Disconnected from server.';
+    addMsg(div);
+    document.getElementById('sendBtn').disabled = true;
+    document.getElementById('msgInput').disabled = true;
+  };
+  ws.onerror = function() {
+    var err = document.getElementById('adminError');
+    err.textContent = 'Invalid token or connection failed.';
+    err.style.display = 'block';
+  };
+  ws.onmessage = function(event) {
+    var data = JSON.parse(event.data);
+    if (data.type === 'chat') { addChat(data.sender, data.text, data.admin || false); }
+    else if (data.type === 'system') { addSystem(data.text); }
+    else if (data.type === 'users') { renderUsers(data.list); }
+    else if (data.type === 'banned_list') { renderBanned(data.list); }
+  };
+}
+
+function connectGuest(username) {
   var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(protocol + '//' + location.host + '/ws');
-
   ws.onopen = function() {
     ws.send(JSON.stringify({ type: 'join', username: username }));
   };
-
   ws.onmessage = function(event) {
     var data = JSON.parse(event.data);
-    if (data.type === 'chat') {
-      addChat(data.sender, data.text, data.admin || false);
-    } else if (data.type === 'system') {
-      addSystem(data.text);
-    } else if (data.type === 'users') {
-      updateUsers(data.list);
-    } else if (data.type === 'error') {
+    if (data.type === 'chat') { addChat(data.sender, data.text, data.admin || false); }
+    else if (data.type === 'system') { addSystem(data.text); }
+    else if (data.type === 'users') { renderUsers(data.list); }
+    else if (data.type === 'error') {
       if (!myUsername) {
         var err = document.getElementById('joinError');
         err.textContent = data.text;
@@ -730,7 +835,6 @@ function connect(username) {
       }
     }
   };
-
   ws.onclose = function() {
     if (myUsername) {
       var div = document.createElement('div');
@@ -743,24 +847,18 @@ function connect(username) {
   };
 }
 
+var RESERVED = /admin|mod/i;
+
 document.getElementById('joinBtn').addEventListener('click', function() {
   var name = document.getElementById('usernameInput').value.trim();
-  if (!name) {
-    var err = document.getElementById('joinError');
-    err.textContent = 'Please enter a username.';
-    err.style.display = 'block';
-    return;
-  }
-  if (!/^[a-zA-Z0-9_-]{1,20}$/.test(name)) {
-    var err = document.getElementById('joinError');
-    err.textContent = 'Letters, numbers, _ and - only (1-20 chars).';
-    err.style.display = 'block';
-    return;
-  }
+  var err = document.getElementById('joinError');
+  if (!name) { err.textContent = 'Please enter a username.'; err.style.display = 'block'; return; }
+  if (!/^[a-zA-Z0-9_-]{1,20}$/.test(name)) { err.textContent = 'Letters, numbers, _ and - only (1-20 chars).'; err.style.display = 'block'; return; }
+  if (RESERVED.test(name)) { err.textContent = 'Username cannot contain "admin" or "mod".'; err.style.display = 'block'; return; }
   myUsername = name;
   document.getElementById('joinScreen').style.display = 'none';
   document.getElementById('chatScreen').style.display = 'flex';
-  connect(name);
+  connectGuest(name);
   document.getElementById('msgInput').focus();
 });
 
@@ -768,13 +866,28 @@ document.getElementById('usernameInput').addEventListener('keydown', function(e)
   if (e.key === 'Enter') document.getElementById('joinBtn').click();
 });
 
+document.getElementById('adminLoginBtn').addEventListener('click', function() {
+  var token = document.getElementById('adminTokenInput').value.trim();
+  var err = document.getElementById('adminError');
+  if (!token) { err.textContent = 'Please enter the admin token.'; err.style.display = 'block'; return; }
+  connectAdmin(token);
+});
+
+document.getElementById('adminTokenInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('adminLoginBtn').click();
+});
+
 document.getElementById('sendBtn').addEventListener('click', function() {
   var input = document.getElementById('msgInput');
   var text = input.value.trim();
-  if (text && ws && ws.readyState === WebSocket.OPEN) {
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  if (isAdmin) {
+    var name = document.getElementById('nameInput').value.trim() || 'Admin';
+    ws.send(JSON.stringify({ type: 'chat', text: text, name: name }));
+  } else {
     ws.send(JSON.stringify({ type: 'chat', text: text }));
-    input.value = '';
   }
+  input.value = '';
   input.focus();
 });
 
@@ -982,10 +1095,10 @@ async def handle_client_ws(request):
                         }))
                         continue
 
-                    if name.lower() == "admin":
+                    if RESERVED_RE.search(name):
                         await ws.send_str(json.dumps({
                             "type": "error",
-                            "text": "The name 'Admin' is reserved."
+                            "text": "Username cannot contain 'admin' or 'mod'."
                         }))
                         continue
 
