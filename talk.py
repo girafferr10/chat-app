@@ -552,10 +552,61 @@ header h1 { font-size: 16px; font-weight: 600; }
 .msg-colon { color: var(--text-tertiary); margin-right: 6px; }
 .msg-time { font-size: 11px; color: var(--text-muted); margin-left: 6px; }
 .msg-text { font-size: 14px; color: var(--text-secondary); word-break: break-word; }
+.msg-text a { color: var(--accent); text-decoration: none; }
+.msg-text a:hover { text-decoration: underline; }
+.msg-text .inline-img {
+  display: block; max-width: 400px; max-height: 300px;
+  border-radius: 8px; margin-top: 4px; cursor: pointer;
+}
+.msg-text .inline-img:hover { opacity: 0.9; }
 .msg-system { text-align: center; padding: 4px 8px; margin-bottom: 2px; }
 .msg-system span { font-size: 12px; color: var(--text-muted); background: var(--bg-secondary);
   padding: 2px 10px; border-radius: 10px; }
 .msg-error { padding: 4px 8px; color: var(--red); font-size: 13px; font-weight: 500; }
+
+.emoji-picker-btn {
+  background: var(--input-bg); color: var(--text-secondary); border: none;
+  padding: 10px 12px; border-radius: 8px; font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.emoji-picker-btn:hover { background: var(--border); color: var(--text-primary); }
+.emoji-picker-container {
+  position: relative;
+}
+.emoji-panel {
+  position: absolute; bottom: 100%; right: 0; margin-bottom: 8px;
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px; width: 320px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3); display: none; z-index: 100;
+}
+.emoji-panel.open { display: block; }
+.emoji-panel-header {
+  display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap;
+}
+.emoji-cat-btn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 16px; cursor: pointer; padding: 4px 6px; border-radius: 4px;
+  width: auto;
+}
+.emoji-cat-btn:hover { background: var(--bg-message-hover); }
+.emoji-cat-btn.active { background: var(--bg-tertiary); color: var(--text-primary); }
+.emoji-search {
+  width: 100%; padding: 6px 8px; border: none; border-radius: 4px;
+  font-size: 13px; background: var(--bg-tertiary); color: var(--text-primary);
+  outline: none; margin-bottom: 6px;
+}
+.emoji-search:focus { outline: 1px solid var(--accent); }
+.emoji-grid {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
+  max-height: 200px; overflow-y: auto;
+}
+.emoji-grid::-webkit-scrollbar { width: 6px; }
+.emoji-grid::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 3px; }
+.emoji-item {
+  font-size: 20px; padding: 4px; text-align: center; cursor: pointer;
+  border-radius: 4px; border: none; background: none; width: auto;
+}
+.emoji-item:hover { background: var(--bg-message-hover); }
 
 .input-bar {
   padding: 12px 16px; display: flex; gap: 8px;
@@ -710,6 +761,14 @@ body.theme-midnight {
       <div class="input-bar">
         <input type="text" id="nameInput" data-testid="input-admin-name" placeholder="Your name" value="Admin" style="display:none;width:140px;flex:unset;" />
         <input type="text" id="msgInput" data-testid="input-message" placeholder="Type a message..." />
+        <div class="emoji-picker-container">
+          <button class="emoji-picker-btn" id="emojiBtn" data-testid="button-emoji" type="button" title="Emoji picker">&#x1F600;</button>
+          <div class="emoji-panel" id="emojiPanel">
+            <input type="text" class="emoji-search" id="emojiSearch" data-testid="input-emoji-search" placeholder="Search emojis..." />
+            <div class="emoji-panel-header" id="emojiCatBar"></div>
+            <div class="emoji-grid" id="emojiGrid" data-testid="grid-emoji"></div>
+          </div>
+        </div>
         <button id="sendBtn" data-testid="button-send">Send</button>
       </div>
     </div>
@@ -789,6 +848,62 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
+var IMAGE_EXTS = /\.(png|jpg|jpeg|gif|webp|svg|bmp|apng)(\?.*)?$/i;
+var GIF_HOSTS = /tenor\.com|giphy\.com|gfycat\.com|imgur\.com/i;
+var URL_RE = /(https?:\/\/[^\s<>"']+)/g;
+
+function isImageUrl(url) {
+  if (IMAGE_EXTS.test(url)) return true;
+  if (GIF_HOSTS.test(url) && /\.(gif|webp|mp4)(\?.*)?$/i.test(url)) return true;
+  if (/media\d*\.giphy\.com/i.test(url)) return true;
+  if (/i\.imgur\.com/i.test(url)) return true;
+  if (/tenor\.com.*\.gif/i.test(url)) return true;
+  return false;
+}
+
+function renderRichText(text) {
+  var container = document.createElement('span');
+  container.className = 'msg-text';
+  var parts = text.split(URL_RE);
+  var hasImage = false;
+  for (var i = 0; i < parts.length; i++) {
+    var part = parts[i];
+    if (!part) continue;
+    if (/^https?:\/\//i.test(part)) {
+      if (isImageUrl(part)) {
+        hasImage = true;
+        var img = document.createElement('img');
+        img.className = 'inline-img';
+        img.src = part;
+        img.alt = 'Image';
+        img.loading = 'lazy';
+        img.addEventListener('click', function() { window.open(this.src, '_blank'); });
+        img.addEventListener('error', function() {
+          var link = document.createElement('a');
+          link.href = this.src;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = this.src;
+          this.parentNode.replaceChild(link, this);
+        });
+        container.appendChild(img);
+      } else {
+        var link = document.createElement('a');
+        link.href = part;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = part;
+        container.appendChild(link);
+      }
+    } else {
+      var span = document.createElement('span');
+      span.textContent = part;
+      container.appendChild(span);
+    }
+  }
+  return container;
+}
+
 function makeMessageDiv(sender, text, admin, isDm, time) {
   var div = document.createElement('div');
   div.className = 'msg msg-inline';
@@ -812,9 +927,7 @@ function makeMessageDiv(sender, text, admin, isDm, time) {
   colon.className = 'msg-colon';
   colon.textContent = ': ';
   div.appendChild(colon);
-  var textEl = document.createElement('span');
-  textEl.className = 'msg-text';
-  textEl.textContent = text;
+  var textEl = renderRichText(text);
   div.appendChild(textEl);
   var timeEl = document.createElement('span');
   timeEl.className = 'msg-time';
@@ -1188,6 +1301,108 @@ document.getElementById('sendBtn').addEventListener('click', function() {
 
 document.getElementById('msgInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') document.getElementById('sendBtn').click();
+});
+
+var _e = function(cp) { return String.fromCodePoint(cp); };
+var emojiCodes = {
+  'Smileys': [0x1F600,0x1F603,0x1F604,0x1F601,0x1F606,0x1F605,0x1F602,0x1F923,0x1F60A,0x1F607,0x1F642,0x1F643,0x1F609,0x1F60C,0x1F60D,0x1F970,0x1F618,0x1F617,0x1F619,0x1F61A,0x1F60B,0x1F61B,0x1F61C,0x1F92A,0x1F61D,0x1F911,0x1F917,0x1F92D,0x1F92B,0x1F914,0x1F910,0x1F928,0x1F610,0x1F611,0x1F636,0x1F60F,0x1F612,0x1F644,0x1F62C,0x1F925,0x1F60E,0x1F913,0x1F615,0x1F61F,0x1F641,0x1F62E,0x1F62F,0x1F632,0x1F633,0x1F97A,0x1F628,0x1F630,0x1F625,0x1F622,0x1F62D,0x1F631,0x1F616,0x1F623,0x1F61E,0x1F613,0x1F629,0x1F624,0x1F620,0x1F621,0x1F92C,0x1F608,0x1F47F,0x1F480,0x1F4A9,0x1F921,0x1F47B,0x1F47D,0x1F47E,0x1F916],
+  'Gestures': [0x1F44D,0x1F44E,0x1F44A,0x270A,0x1F91B,0x1F91C,0x1F44F,0x1F64C,0x1F450,0x1F932,0x1F91D,0x1F64F,0x270D,0x1F4AA,0x1F448,0x1F449,0x261D,0x1F446,0x1F447,0x270C,0x1F91E,0x1F596,0x1F918,0x1F919,0x1F590,0x270B,0x1F44B,0x1F44C,0x2764,0x1F9E1,0x1F49B,0x1F49A,0x1F499,0x1F49C,0x1F5A4,0x1F494,0x1F495,0x1F496,0x1F497,0x1F498,0x1F49D,0x1F49E,0x1F49F,0x1F48B],
+  'Animals': [0x1F436,0x1F431,0x1F42D,0x1F439,0x1F430,0x1F98A,0x1F43B,0x1F43C,0x1F428,0x1F42F,0x1F981,0x1F42E,0x1F437,0x1F438,0x1F435,0x1F648,0x1F649,0x1F64A,0x1F412,0x1F414,0x1F427,0x1F426,0x1F985,0x1F986,0x1F989,0x1F987,0x1F40A,0x1F422,0x1F40D,0x1F432,0x1F409,0x1F433,0x1F42C,0x1F41F,0x1F419,0x1F41A,0x1F40C,0x1F98B,0x1F41B,0x1F41C,0x1F41D,0x1F41E,0x1F577,0x1F982],
+  'Food': [0x1F34E,0x1F34F,0x1F350,0x1F34A,0x1F34B,0x1F34C,0x1F349,0x1F347,0x1F353,0x1F348,0x1F352,0x1F351,0x1F34D,0x1F965,0x1F95D,0x1F345,0x1F346,0x1F951,0x1F955,0x1F33D,0x1F336,0x1F344,0x1F35E,0x1F950,0x1F956,0x1F9C0,0x1F354,0x1F355,0x1F32D,0x1F32E,0x1F32F,0x1F959,0x1F373,0x1F958,0x1F372,0x1F35C,0x1F363,0x1F371,0x1F35F,0x1F370,0x1F382,0x1F366,0x1F367,0x1F368,0x1F369,0x1F36A,0x1F36B,0x1F36C,0x1F36D,0x2615,0x1F375,0x1F37A,0x1F37B,0x1F377,0x1F378,0x1F379],
+  'Activities': [0x26BD,0x1F3C0,0x1F3C8,0x26BE,0x1F3BE,0x1F3B1,0x1F3D3,0x1F3AF,0x1F3A3,0x1F3BF,0x1F3AE,0x1F3B2,0x1F9E9,0x2660,0x2665,0x2666,0x2663,0x1F3AD,0x1F3A8,0x1F3B5,0x1F3B6,0x1F3B9,0x1F3B7,0x1F3BA,0x1F3B8],
+  'Objects': [0x1F4F1,0x1F4BB,0x1F4F7,0x1F4F9,0x1F4FA,0x1F4A1,0x1F526,0x1F4B0,0x1F4B3,0x1F48E,0x1F527,0x1F528,0x2699,0x1F52B,0x1F52A,0x1F52E,0x1F52D,0x1F52C,0x1F48A,0x1F489,0x1F511,0x1F6AA,0x1F6CF],
+  'Symbols': [0x2764,0x1F525,0x2B50,0x1F31F,0x26A1,0x2728,0x1F386,0x1F387,0x1F388,0x1F389,0x1F38A,0x2714,0x274C,0x2753,0x2757,0x1F4AF,0x26D4,0x1F6AB,0x1F6D1,0x267B,0x2705,0x2795,0x2796,0x1F4B2,0x1F440]
+};
+var emojiData = {};
+var emojiNameMap = {};
+(function() {
+  var names = {0x1F600:'grinning',0x1F603:'smiley',0x1F604:'smile',0x1F601:'grin',0x1F606:'laughing',0x1F605:'sweat smile',0x1F602:'joy',0x1F923:'rofl',0x1F60A:'blush',0x1F607:'innocent',0x1F642:'slight smile',0x1F643:'upside down',0x1F609:'wink',0x1F60C:'relieved',0x1F60D:'heart eyes',0x1F970:'hearts',0x1F618:'kissing heart',0x1F60B:'yum',0x1F61B:'tongue',0x1F61C:'wink tongue',0x1F92A:'zany',0x1F914:'thinking',0x1F910:'zipper mouth',0x1F60F:'smirk',0x1F612:'unamused',0x1F644:'eye roll',0x1F60E:'sunglasses',0x1F913:'nerd',0x1F641:'frown',0x1F622:'cry',0x1F62D:'sob',0x1F631:'scream',0x1F620:'angry',0x1F621:'rage',0x1F92C:'cursing',0x1F608:'devil',0x1F47F:'imp',0x1F480:'skull',0x1F4A9:'poop',0x1F921:'clown',0x1F47B:'ghost',0x1F47D:'alien',0x1F916:'robot',0x1F44D:'thumbs up',0x1F44E:'thumbs down',0x1F44A:'fist',0x1F44F:'clap',0x1F64C:'raised hands',0x1F64F:'pray',0x1F4AA:'muscle',0x270C:'peace',0x1F918:'rock',0x1F44C:'ok',0x1F44B:'wave',0x2764:'heart',0x1F525:'fire',0x2B50:'star',0x1F4AF:'100',0x1F389:'party',0x2714:'check',0x274C:'x',0x1F440:'eyes',0x1F436:'dog',0x1F431:'cat',0x1F42D:'mouse',0x1F430:'rabbit',0x1F98A:'fox',0x1F43C:'panda',0x1F981:'lion',0x1F34E:'apple',0x1F354:'burger',0x1F355:'pizza',0x1F382:'cake',0x2615:'coffee',0x1F37A:'beer',0x26BD:'soccer',0x1F3C0:'basketball',0x1F3AE:'game',0x1F3B5:'music',0x1F3A8:'art',0x1F4F1:'phone',0x1F4BB:'laptop',0x1F4A1:'bulb',0x1F511:'key',0x2728:'sparkles',0x1F388:'balloon',0x2705:'green check',0x26A1:'lightning',0x1F48E:'gem',0x1F527:'wrench',0x2699:'gear'};
+  Object.keys(emojiCodes).forEach(function(cat) {
+    emojiData[cat] = emojiCodes[cat].map(function(cp) { return _e(cp); });
+  });
+  Object.keys(names).forEach(function(cp) {
+    emojiNameMap[_e(parseInt(cp))] = names[cp];
+  });
+})();
+
+var currentEmojiCat = 'Smileys';
+
+function renderEmojiPicker(filter) {
+  var grid = document.getElementById('emojiGrid');
+  grid.innerHTML = '';
+  var cats = filter ? Object.keys(emojiData) : [currentEmojiCat];
+  cats.forEach(function(cat) {
+    emojiData[cat].forEach(function(em) {
+      if (filter) {
+        var name = emojiNameMap[em] || '';
+        if (name.indexOf(filter.toLowerCase()) === -1) return;
+      }
+      var btn = document.createElement('button');
+      btn.className = 'emoji-item';
+      btn.textContent = em;
+      btn.title = emojiNameMap[em] || '';
+      btn.type = 'button';
+      btn.addEventListener('click', function() {
+        var input = document.getElementById('msgInput');
+        var pos = input.selectionStart || input.value.length;
+        input.value = input.value.substring(0, pos) + em + input.value.substring(pos);
+        input.focus();
+        input.selectionStart = input.selectionEnd = pos + em.length;
+      });
+      grid.appendChild(btn);
+    });
+  });
+}
+
+function renderEmojiCatBar() {
+  var bar = document.getElementById('emojiCatBar');
+  bar.innerHTML = '';
+  var catIcons = {'Smileys':0x1F600,'Gestures':0x1F44D,'Animals':0x1F436,'Food':0x1F34E,'Activities':0x26BD,'Objects':0x1F4F1,'Symbols':0x2764};
+  Object.keys(emojiData).forEach(function(cat) {
+    var btn = document.createElement('button');
+    btn.className = 'emoji-cat-btn' + (cat === currentEmojiCat ? ' active' : '');
+    btn.type = 'button';
+    btn.textContent = catIcons[cat] ? _e(catIcons[cat]) : cat.charAt(0);
+    btn.title = cat;
+    btn.addEventListener('click', function() {
+      currentEmojiCat = cat;
+      document.getElementById('emojiSearch').value = '';
+      renderEmojiCatBar();
+      renderEmojiPicker('');
+    });
+    bar.appendChild(btn);
+  });
+}
+
+document.getElementById('emojiBtn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  var panel = document.getElementById('emojiPanel');
+  var isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+  } else {
+    renderEmojiCatBar();
+    renderEmojiPicker('');
+    panel.classList.add('open');
+    document.getElementById('emojiSearch').focus();
+  }
+});
+
+document.getElementById('emojiSearch').addEventListener('input', function() {
+  var q = this.value.trim();
+  renderEmojiPicker(q);
+});
+
+document.getElementById('emojiSearch').addEventListener('keydown', function(e) {
+  e.stopPropagation();
+});
+
+document.addEventListener('click', function(e) {
+  var panel = document.getElementById('emojiPanel');
+  var btn = document.getElementById('emojiBtn');
+  if (!panel.contains(e.target) && e.target !== btn) {
+    panel.classList.remove('open');
+  }
 });
 </script>
 </body>
