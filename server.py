@@ -4,14 +4,20 @@ import json
 import os
 import secrets
 import re
+import random
+import string
 import aiohttp
 from aiohttp import web
+import time as _time
+
+from games import tictactoe, snake, memory, blackjack, blackjack_multi, minesweeper
 
 connected = {}       # ws -> {"username": str, "ws": ws}
 banned_users = set() # set of banned usernames
 admin_ws = None      # admin websocket connection
 dm_store = {}        # (sorted_user_a, sorted_user_b) -> [{"sender":..., "recipient":..., "text":..., "ts":...}]
-import time as _time
+
+bj_rooms = {}        # room_id -> { players: [...], deck: [...], dealer_hand: [...], phase: str, host: str, current_turn_idx: int }
 
 def dm_key(a, b):
     return tuple(sorted([a, b]))
@@ -538,7 +544,7 @@ header h1 { font-size: 16px; font-weight: 600; }
 .main-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .tab-bar {
   display: flex; align-items: center; background: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border); height: 36px; flex-shrink: 0;
+  border-top: 1px solid var(--border); height: 36px; flex-shrink: 0;
   overflow-x: auto; overflow-y: hidden;
 }
 .tab-bar::-webkit-scrollbar { height: 0; }
@@ -560,7 +566,7 @@ header h1 { font-size: 16px; font-weight: 600; }
   border-radius: 3px; color: var(--text-muted); margin-left: 2px;
   background: none; border: none; cursor: pointer; padding: 0;
 }
-.tab-item:hover .tab-close { opacity: 1; }
+.tab-item:hover .tab-close { visibility: visible; opacity: 1; }
 .tab-item .tab-close:hover { background: var(--bg-message-hover); color: var(--text-primary); }
 .new-tab-btn {
   width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
@@ -572,47 +578,79 @@ header h1 { font-size: 16px; font-weight: 600; }
 .tab-content.active { display: flex; }
 
 .newtab-page {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  background: var(--bg-primary);
+  flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); overflow-y: auto;
 }
-.newtab-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
-  max-width: 500px; width: 90%; padding: 20px;
+.newtab-search {
+  padding: 12px 16px 0; flex-shrink: 0;
 }
-.newtab-card {
-  background: var(--bg-secondary); border: 1px solid var(--border);
-  border-radius: 8px; padding: 24px 20px; text-align: center;
-  cursor: pointer; transition: border-color 0.15s;
+.newtab-search input {
+  width: 100%; padding: 8px 12px; border-radius: 4px; border: 1px solid var(--border);
+  background: var(--input-bg); color: var(--text-primary); font-size: 13px; outline: none;
 }
-.newtab-card:hover { border-color: var(--accent); background: var(--bg-message-hover); }
-.newtab-card .newtab-icon { font-size: 32px; margin-bottom: 10px; }
-.newtab-card .newtab-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
-.newtab-card .newtab-desc { font-size: 12px; color: var(--text-muted); }
+.newtab-search input:focus { border-color: var(--accent); }
+.newtab-search input::placeholder { color: var(--text-muted); }
+.newtab-list {
+  flex: 1; overflow-y: auto; padding: 8px 0;
+}
+.newtab-item {
+  display: flex; align-items: center; padding: 10px 16px; cursor: pointer;
+  gap: 12px; transition: background 0.1s;
+}
+.newtab-item:hover { background: var(--bg-message-hover); }
+.newtab-item-info { flex: 1; min-width: 0; }
+.newtab-item-name { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.newtab-item-desc { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.newtab-item-badge {
+  font-size: 10px; padding: 2px 6px; border-radius: 3px;
+  background: var(--bg-tertiary); color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; flex-shrink: 0;
+}
+.newtab-section-label {
+  font-size: 11px; font-weight: 700; color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 12px 16px 4px;
+}
+.newtab-empty {
+  padding: 20px 16px; text-align: center; color: var(--text-muted); font-size: 13px;
+}
 
 .games-hub {
   flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); overflow: hidden;
 }
 .games-header {
-  padding: 12px 16px; border-bottom: 1px solid var(--bg-tertiary);
-  font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-bottom: 1px solid var(--bg-tertiary);
+  font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px;
 }
 .games-header .back-btn {
   background: var(--input-bg); border: none; color: var(--text-secondary);
   padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;
 }
 .games-header .back-btn:hover { background: var(--border); color: var(--text-primary); }
+.games-search {
+  padding: 8px 16px; flex-shrink: 0;
+}
+.games-search input {
+  width: 100%; padding: 7px 10px; border-radius: 4px; border: 1px solid var(--border);
+  background: var(--input-bg); color: var(--text-primary); font-size: 13px; outline: none;
+}
+.games-search input:focus { border-color: var(--accent); }
+.games-search input::placeholder { color: var(--text-muted); }
 .games-list {
-  flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px; padding: 16px; align-content: start; overflow-y: auto;
+  flex: 1; overflow-y: auto; padding: 0;
 }
-.game-card {
-  background: var(--bg-secondary); border: 1px solid var(--border);
-  border-radius: 8px; padding: 20px 16px; text-align: center; cursor: pointer;
+.game-item {
+  display: flex; align-items: center; padding: 10px 16px; cursor: pointer;
+  gap: 12px; transition: background 0.1s;
 }
-.game-card:hover { border-color: var(--accent); background: var(--bg-message-hover); }
-.game-card .game-icon { font-size: 28px; margin-bottom: 8px; display: block; color: var(--text-secondary); }
-.game-card .game-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.game-card .game-desc { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.game-item:hover { background: var(--bg-message-hover); }
+.game-item-info { flex: 1; min-width: 0; }
+.game-item-name { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.game-item-desc { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.game-item-badge {
+  font-size: 10px; padding: 2px 6px; border-radius: 3px;
+  background: var(--bg-tertiary); color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; flex-shrink: 0;
+}
 .game-play-area {
   flex: 1; display: flex; flex-direction: column; align-items: center;
   justify-content: center; padding: 16px; overflow-y: auto;
@@ -815,6 +853,7 @@ body.theme-midnight {
 @media (max-width: 600px) {
   .sidebar { display: none; }
 }
+""" + tictactoe.get_css() + snake.get_css() + memory.get_css() + blackjack.get_css() + blackjack_multi.get_css() + minesweeper.get_css() + """
 </style>
 </head>
 <body>
@@ -881,10 +920,6 @@ body.theme-midnight {
       </div>
     </div>
     <div class="main-panel">
-      <div class="tab-bar">
-        <div class="tab-items" id="tabItems" data-testid="tab-bar"></div>
-        <button class="new-tab-btn" id="newTabBtn" data-testid="button-new-tab" title="New Tab">+</button>
-      </div>
       <div id="tabContents">
         <div class="tab-content active" id="tabContent-chat">
           <div class="chat-area">
@@ -909,6 +944,10 @@ body.theme-midnight {
             </div>
           </div>
         </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-items" id="tabItems" data-testid="tab-bar"></div>
+        <button class="new-tab-btn" id="newTabBtn" data-testid="button-new-tab" title="New Tab">+</button>
       </div>
     </div>
   </div>
@@ -1334,6 +1373,8 @@ function handleMessage(data) {
       err.textContent = data.text;
       err.style.display = 'block';
     }
+  } else if (data.type === 'bj_room_created' || data.type === 'bj_joined' || data.type === 'bj_state' || data.type === 'bj_error') {
+    if (window._bjMultiHandler) window._bjMultiHandler(data);
   }
 }
 
@@ -1568,7 +1609,7 @@ function renderTabBar() {
     var icon = document.createElement('span');
     icon.className = 'tab-icon';
     if (tab.type === 'chat') icon.textContent = '#';
-    else if (tab.type === 'games') icon.textContent = String.fromCodePoint(0x1F3AE);
+    else if (tab.type === 'games') icon.textContent = 'G';
     else icon.textContent = '+';
     item.appendChild(icon);
 
@@ -1623,6 +1664,11 @@ function closeTab(id) {
   }
 }
 
+var allNewTabItems = [
+  { id: 'chat', type: 'chat', name: 'Chat', desc: 'Group chat and direct messages', badge: '' },
+  { id: 'games', type: 'games', name: 'Games', desc: 'Browse and play mini-games', badge: '' },
+];
+
 function openNewTab() {
   var existing = findTabByType('newtab');
   if (existing) { switchTab(existing.id); return; }
@@ -1635,40 +1681,72 @@ function openNewTab() {
 
   var page = document.createElement('div');
   page.className = 'newtab-page';
-  var grid = document.createElement('div');
-  grid.className = 'newtab-grid';
 
-  var chatCard = document.createElement('div');
-  chatCard.className = 'newtab-card';
-  chatCard.setAttribute('data-testid', 'newtab-option-chat');
-  chatCard.innerHTML = '<div class="newtab-icon">#</div><div class="newtab-title">Chat</div><div class="newtab-desc">Open the group chat</div>';
-  chatCard.addEventListener('click', function() {
-    var chatTab = findTabByType('chat');
-    if (chatTab) {
-      closeTab(id);
-      switchTab(chatTab.id);
-    } else {
-      convertTabToChat(id);
+  var searchDiv = document.createElement('div');
+  searchDiv.className = 'newtab-search';
+  var searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.placeholder = 'Search...';
+  searchInput.setAttribute('data-testid', 'input-newtab-search');
+  searchDiv.appendChild(searchInput);
+  page.appendChild(searchDiv);
+
+  var listDiv = document.createElement('div');
+  listDiv.className = 'newtab-list';
+  page.appendChild(listDiv);
+
+  function renderList(filter) {
+    listDiv.innerHTML = '';
+    var q = (filter || '').toLowerCase();
+    var found = false;
+    allNewTabItems.forEach(function(item) {
+      if (q && item.name.toLowerCase().indexOf(q) === -1 && item.desc.toLowerCase().indexOf(q) === -1) return;
+      found = true;
+      var row = document.createElement('div');
+      row.className = 'newtab-item';
+      row.setAttribute('data-testid', 'newtab-option-' + item.id);
+      var info = document.createElement('div');
+      info.className = 'newtab-item-info';
+      var nameEl = document.createElement('div');
+      nameEl.className = 'newtab-item-name';
+      nameEl.textContent = item.name;
+      info.appendChild(nameEl);
+      var descEl = document.createElement('div');
+      descEl.className = 'newtab-item-desc';
+      descEl.textContent = item.desc;
+      info.appendChild(descEl);
+      row.appendChild(info);
+      if (item.badge) {
+        var badge = document.createElement('span');
+        badge.className = 'newtab-item-badge';
+        badge.textContent = item.badge;
+        row.appendChild(badge);
+      }
+      row.addEventListener('click', function() {
+        if (item.type === 'chat') {
+          var chatTab = findTabByType('chat');
+          if (chatTab) { closeTab(id); switchTab(chatTab.id); }
+          else { convertTabToChat(id); }
+        } else if (item.type === 'games') {
+          var gamesTab = findTabByType('games');
+          if (gamesTab) { closeTab(id); switchTab(gamesTab.id); }
+          else { convertTabToGames(id); }
+        }
+      });
+      listDiv.appendChild(row);
+    });
+    if (!found) {
+      var empty = document.createElement('div');
+      empty.className = 'newtab-empty';
+      empty.textContent = 'No results found';
+      listDiv.appendChild(empty);
     }
-  });
+  }
 
-  var gamesCard = document.createElement('div');
-  gamesCard.className = 'newtab-card';
-  gamesCard.setAttribute('data-testid', 'newtab-option-games');
-  gamesCard.innerHTML = '<div class="newtab-icon">' + String.fromCodePoint(0x1F3AE) + '</div><div class="newtab-title">Games</div><div class="newtab-desc">Play mini-games</div>';
-  gamesCard.addEventListener('click', function() {
-    var gamesTab = findTabByType('games');
-    if (gamesTab) {
-      closeTab(id);
-      switchTab(gamesTab.id);
-    } else {
-      convertTabToGames(id);
-    }
-  });
+  searchInput.addEventListener('input', function() { renderList(this.value); });
+  searchInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
+  renderList('');
 
-  grid.appendChild(chatCard);
-  grid.appendChild(gamesCard);
-  page.appendChild(grid);
   content.appendChild(page);
   document.getElementById('tabContents').appendChild(content);
   switchTab(id);
@@ -1730,7 +1808,7 @@ function convertTabToChat(tabId) {
   emojiBtn.setAttribute('data-testid', 'button-emoji');
   emojiBtn.type = 'button';
   emojiBtn.title = 'Emoji picker';
-  emojiBtn.textContent = String.fromCodePoint(0x1F600);
+  emojiBtn.textContent = ':)';
   var emojiPanel = document.createElement('div');
   emojiPanel.className = 'emoji-panel';
   emojiPanel.id = 'emojiPanel';
@@ -1820,6 +1898,15 @@ function convertTabToGames(tabId) {
   renderTabBar();
 }
 
+var allGames = [
+  { id: 'tictactoe', name: 'Tic-Tac-Toe', desc: 'Classic strategy game, play X vs O against the computer', badge: 'single' },
+  { id: 'snake', name: 'Snake', desc: 'Navigate the snake to eat food and grow without hitting walls', badge: 'single' },
+  { id: 'memory', name: 'Memory Match', desc: 'Flip cards and find all matching pairs with fewest moves', badge: 'single' },
+  { id: 'blackjack', name: 'Blackjack', desc: 'Beat the dealer by getting as close to 21 as possible', badge: 'single' },
+  { id: 'blackjack_multi', name: 'Blackjack Multiplayer', desc: 'Play blackjack with friends in real-time rooms', badge: 'multi' },
+  { id: 'minesweeper', name: 'Minesweeper', desc: 'Clear the minefield without detonating any hidden mines', badge: 'single' },
+];
+
 function buildGamesHub(container) {
   var hub = document.createElement('div');
   hub.className = 'games-hub';
@@ -1829,41 +1916,70 @@ function buildGamesHub(container) {
   header.textContent = 'Games';
   hub.appendChild(header);
 
-  var list = document.createElement('div');
-  list.className = 'games-list';
-  list.id = 'gamesList-' + container.id;
+  var searchDiv = document.createElement('div');
+  searchDiv.className = 'games-search';
+  var searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.placeholder = 'Search games...';
+  searchInput.setAttribute('data-testid', 'input-games-search');
+  searchDiv.appendChild(searchInput);
+  hub.appendChild(searchDiv);
 
-  var games = [
-    { id: 'tictactoe', icon: '#', title: 'Tic-Tac-Toe', desc: 'Classic X vs O' },
-    { id: 'snake', icon: String.fromCodePoint(0x2B1B), title: 'Snake', desc: 'Eat and grow' },
-    { id: 'memory', icon: String.fromCodePoint(0x1F0CF), title: 'Memory Match', desc: 'Find the pairs' }
-  ];
+  var listDiv = document.createElement('div');
+  listDiv.className = 'games-list';
+  hub.appendChild(listDiv);
 
-  games.forEach(function(g) {
-    var card = document.createElement('div');
-    card.className = 'game-card';
-    card.setAttribute('data-testid', 'game-card-' + g.id);
-    var iconEl = document.createElement('span');
-    iconEl.className = 'game-icon';
-    iconEl.textContent = g.icon;
-    card.appendChild(iconEl);
-    var titleEl = document.createElement('div');
-    titleEl.className = 'game-title';
-    titleEl.textContent = g.title;
-    card.appendChild(titleEl);
-    var descEl = document.createElement('div');
-    descEl.className = 'game-desc';
-    descEl.textContent = g.desc;
-    card.appendChild(descEl);
-    card.addEventListener('click', function() {
-      showGame(container, g.id);
+  function renderGames(filter) {
+    listDiv.innerHTML = '';
+    var q = (filter || '').toLowerCase();
+    var found = false;
+    allGames.forEach(function(g) {
+      if (q && g.name.toLowerCase().indexOf(q) === -1 && g.desc.toLowerCase().indexOf(q) === -1) return;
+      found = true;
+      var row = document.createElement('div');
+      row.className = 'game-item';
+      row.setAttribute('data-testid', 'game-card-' + g.id);
+      var info = document.createElement('div');
+      info.className = 'game-item-info';
+      var nameEl = document.createElement('div');
+      nameEl.className = 'game-item-name';
+      nameEl.textContent = g.name;
+      info.appendChild(nameEl);
+      var descEl = document.createElement('div');
+      descEl.className = 'game-item-desc';
+      descEl.textContent = g.desc;
+      info.appendChild(descEl);
+      row.appendChild(info);
+      if (g.badge) {
+        var badge = document.createElement('span');
+        badge.className = 'game-item-badge';
+        badge.textContent = g.badge;
+        row.appendChild(badge);
+      }
+      row.addEventListener('click', function() {
+        showGame(container, g.id);
+      });
+      listDiv.appendChild(row);
     });
-    list.appendChild(card);
-  });
+    if (!found) {
+      var empty = document.createElement('div');
+      empty.className = 'newtab-empty';
+      empty.textContent = 'No games found';
+      listDiv.appendChild(empty);
+    }
+  }
 
-  hub.appendChild(list);
+  searchInput.addEventListener('input', function() { renderGames(this.value); });
+  searchInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
+  renderGames('');
+
   container.appendChild(hub);
 }
+
+var gameNames = {
+  tictactoe: 'Tic-Tac-Toe', snake: 'Snake', memory: 'Memory Match',
+  blackjack: 'Blackjack', blackjack_multi: 'Blackjack Multiplayer', minesweeper: 'Minesweeper'
+};
 
 function showGame(container, gameId) {
   container.innerHTML = '';
@@ -1882,9 +1998,7 @@ function showGame(container, gameId) {
   });
   header.appendChild(backBtn);
   var titleSpan = document.createElement('span');
-  if (gameId === 'tictactoe') titleSpan.textContent = 'Tic-Tac-Toe';
-  else if (gameId === 'snake') titleSpan.textContent = 'Snake';
-  else if (gameId === 'memory') titleSpan.textContent = 'Memory Match';
+  titleSpan.textContent = gameNames[gameId] || gameId;
   header.appendChild(titleSpan);
   hub.appendChild(header);
 
@@ -1896,307 +2010,12 @@ function showGame(container, gameId) {
   if (gameId === 'tictactoe') initTicTacToe(playArea);
   else if (gameId === 'snake') initSnake(playArea);
   else if (gameId === 'memory') initMemory(playArea);
+  else if (gameId === 'blackjack') initBlackjack(playArea);
+  else if (gameId === 'blackjack_multi') initBlackjackMulti(playArea);
+  else if (gameId === 'minesweeper') initMinesweeper(playArea);
 }
 
-function initTicTacToe(area) {
-  var board = [0,0,0,0,0,0,0,0,0];
-  var xTurn = true;
-  var gameOver = false;
-
-  var status = document.createElement('div');
-  status.className = 'game-status';
-  status.textContent = 'Your turn (X)';
-  area.appendChild(status);
-
-  var boardEl = document.createElement('div');
-  boardEl.className = 'ttt-board';
-  var cells = [];
-  for (var i = 0; i < 9; i++) {
-    var cell = document.createElement('button');
-    cell.className = 'ttt-cell';
-    cell.setAttribute('data-testid', 'ttt-cell-' + i);
-    (function(idx) {
-      cell.addEventListener('click', function() {
-        if (gameOver || board[idx] !== 0 || !xTurn) return;
-        board[idx] = 1;
-        this.textContent = 'X';
-        this.classList.add('x');
-        var w = checkWin(board);
-        if (w) { status.textContent = 'You win!'; gameOver = true; return; }
-        if (board.indexOf(0) === -1) { status.textContent = "It's a draw!"; gameOver = true; return; }
-        xTurn = false;
-        status.textContent = 'Computer thinking...';
-        setTimeout(function() { aiMove(); }, 300);
-      });
-    })(i);
-    cells.push(cell);
-    boardEl.appendChild(cell);
-  }
-  area.appendChild(boardEl);
-
-  var resetBtn = document.createElement('button');
-  resetBtn.className = 'game-reset-btn';
-  resetBtn.textContent = 'Reset';
-  resetBtn.setAttribute('data-testid', 'button-reset-ttt');
-  resetBtn.addEventListener('click', function() {
-    board = [0,0,0,0,0,0,0,0,0];
-    xTurn = true;
-    gameOver = false;
-    status.textContent = 'Your turn (X)';
-    cells.forEach(function(c) { c.textContent = ''; c.className = 'ttt-cell'; });
-  });
-  area.appendChild(resetBtn);
-
-  function aiMove() {
-    var best = -1, bestScore = -Infinity;
-    for (var i = 0; i < 9; i++) {
-      if (board[i] === 0) {
-        board[i] = 2;
-        var score = minimax(board, false);
-        board[i] = 0;
-        if (score > bestScore) { bestScore = score; best = i; }
-      }
-    }
-    if (best !== -1) {
-      board[best] = 2;
-      cells[best].textContent = 'O';
-      cells[best].classList.add('o');
-      var w = checkWin(board);
-      if (w) { status.textContent = 'Computer wins!'; gameOver = true; return; }
-      if (board.indexOf(0) === -1) { status.textContent = "It's a draw!"; gameOver = true; return; }
-    }
-    xTurn = true;
-    status.textContent = 'Your turn (X)';
-  }
-
-  function minimax(b, isMax) {
-    var w = checkWinner(b);
-    if (w === 2) return 1;
-    if (w === 1) return -1;
-    if (b.indexOf(0) === -1) return 0;
-    if (isMax) {
-      var best = -Infinity;
-      for (var i = 0; i < 9; i++) {
-        if (b[i] === 0) { b[i] = 2; best = Math.max(best, minimax(b, false)); b[i] = 0; }
-      }
-      return best;
-    } else {
-      var best = Infinity;
-      for (var i = 0; i < 9; i++) {
-        if (b[i] === 0) { b[i] = 1; best = Math.min(best, minimax(b, true)); b[i] = 0; }
-      }
-      return best;
-    }
-  }
-
-  function checkWinner(b) {
-    var lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-    for (var i = 0; i < lines.length; i++) {
-      var a = lines[i][0], bb = lines[i][1], c = lines[i][2];
-      if (b[a] && b[a] === b[bb] && b[a] === b[c]) return b[a];
-    }
-    return 0;
-  }
-
-  function checkWin(b) { return checkWinner(b) !== 0; }
-}
-
-function initSnake(area) {
-  var gridSize = 20;
-  var cellSize = 18;
-  var canvasSize = gridSize * cellSize;
-
-  var scoreEl = document.createElement('div');
-  scoreEl.className = 'snake-score';
-  scoreEl.setAttribute('data-testid', 'text-snake-score');
-  scoreEl.textContent = 'Score: 0';
-  area.appendChild(scoreEl);
-
-  var canvas = document.createElement('canvas');
-  canvas.className = 'snake-canvas';
-  canvas.width = canvasSize;
-  canvas.height = canvasSize;
-  canvas.setAttribute('data-testid', 'canvas-snake');
-  canvas.tabIndex = 0;
-  area.appendChild(canvas);
-
-  var hint = document.createElement('div');
-  hint.className = 'snake-hint';
-  hint.textContent = 'Use arrow keys or WASD to move. Click canvas to focus.';
-  area.appendChild(hint);
-
-  var resetBtn = document.createElement('button');
-  resetBtn.className = 'game-reset-btn';
-  resetBtn.textContent = 'Restart';
-  resetBtn.setAttribute('data-testid', 'button-reset-snake');
-  area.appendChild(resetBtn);
-
-  var ctx = canvas.getContext('2d');
-  var snake, food, dir, score, running, interval;
-  var rootStyle = getComputedStyle(document.documentElement);
-
-  function reset() {
-    snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
-    dir = {x:1,y:0};
-    score = 0;
-    scoreEl.textContent = 'Score: 0';
-    placeFood();
-    running = true;
-    if (interval) clearInterval(interval);
-    interval = setInterval(tick, 120);
-    canvas.focus();
-  }
-
-  function placeFood() {
-    do {
-      food = {x: Math.floor(Math.random()*gridSize), y: Math.floor(Math.random()*gridSize)};
-    } while (snake.some(function(s) { return s.x === food.x && s.y === food.y; }));
-  }
-
-  function tick() {
-    if (!running) return;
-    var head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
-    if (head.x < 0 || head.x >= gridSize || head.y < 0 || head.y >= gridSize) { endGame(); return; }
-    for (var i = 0; i < snake.length; i++) {
-      if (snake[i].x === head.x && snake[i].y === head.y) { endGame(); return; }
-    }
-    snake.unshift(head);
-    if (head.x === food.x && head.y === food.y) {
-      score++;
-      scoreEl.textContent = 'Score: ' + score;
-      placeFood();
-    } else {
-      snake.pop();
-    }
-    draw();
-  }
-
-  function endGame() {
-    running = false;
-    clearInterval(interval);
-    scoreEl.textContent = 'Game Over! Score: ' + score;
-  }
-
-  function draw() {
-    var bgColor = rootStyle.getPropertyValue('--bg-secondary').trim() || '#2b2d31';
-    var borderColor = rootStyle.getPropertyValue('--border').trim() || '#3f4147';
-    var accentColor = rootStyle.getPropertyValue('--accent').trim() || '#5865f2';
-    var greenColor = rootStyle.getPropertyValue('--green').trim() || '#23a559';
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, canvasSize, canvasSize);
-    ctx.fillStyle = greenColor;
-    ctx.fillRect(food.x*cellSize+1, food.y*cellSize+1, cellSize-2, cellSize-2);
-    snake.forEach(function(s, i) {
-      ctx.fillStyle = i === 0 ? accentColor : accentColor + 'cc';
-      ctx.fillRect(s.x*cellSize+1, s.y*cellSize+1, cellSize-2, cellSize-2);
-    });
-  }
-
-  canvas.addEventListener('keydown', function(e) {
-    var key = e.key.toLowerCase();
-    if ((key === 'arrowup' || key === 'w') && dir.y !== 1) dir = {x:0,y:-1};
-    else if ((key === 'arrowdown' || key === 's') && dir.y !== -1) dir = {x:0,y:1};
-    else if ((key === 'arrowleft' || key === 'a') && dir.x !== 1) dir = {x:-1,y:0};
-    else if ((key === 'arrowright' || key === 'd') && dir.x !== -1) dir = {x:1,y:0};
-    if (['arrowup','arrowdown','arrowleft','arrowright'].indexOf(key) !== -1) e.preventDefault();
-  });
-  canvas.addEventListener('click', function() { canvas.focus(); });
-  resetBtn.addEventListener('click', reset);
-  reset();
-}
-
-function initMemory(area) {
-  var symbols = ['A','B','C','D','E','F','G','H'];
-  var cards = symbols.concat(symbols);
-  var statsEl = document.createElement('div');
-  statsEl.className = 'memory-stats';
-  statsEl.setAttribute('data-testid', 'text-memory-stats');
-  area.appendChild(statsEl);
-
-  var boardEl = document.createElement('div');
-  boardEl.className = 'memory-board';
-  area.appendChild(boardEl);
-
-  var resetBtn = document.createElement('button');
-  resetBtn.className = 'game-reset-btn';
-  resetBtn.textContent = 'New Game';
-  resetBtn.setAttribute('data-testid', 'button-reset-memory');
-  area.appendChild(resetBtn);
-
-  var flipped = [];
-  var matched = 0;
-  var moves = 0;
-  var lockBoard = false;
-  var cardEls = [];
-  var shuffled = [];
-
-  function shuffle(arr) {
-    var a = arr.slice();
-    for (var i = a.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
-    }
-    return a;
-  }
-
-  var symbolDisplay = {
-    'A': String.fromCodePoint(0x2660), 'B': String.fromCodePoint(0x2665),
-    'C': String.fromCodePoint(0x2666), 'D': String.fromCodePoint(0x2663),
-    'E': String.fromCodePoint(0x2605), 'F': String.fromCodePoint(0x25CF),
-    'G': String.fromCodePoint(0x25B2), 'H': String.fromCodePoint(0x25A0)
-  };
-
-  function reset() {
-    shuffled = shuffle(cards);
-    matched = 0;
-    moves = 0;
-    flipped = [];
-    lockBoard = false;
-    boardEl.innerHTML = '';
-    cardEls = [];
-    statsEl.textContent = 'Moves: 0 | Pairs: 0/8';
-    shuffled.forEach(function(sym, idx) {
-      var card = document.createElement('button');
-      card.className = 'memory-card';
-      card.setAttribute('data-testid', 'memory-card-' + idx);
-      card.textContent = symbolDisplay[sym] || sym;
-      card.addEventListener('click', function() {
-        if (lockBoard || card.classList.contains('flipped') || card.classList.contains('matched')) return;
-        card.classList.add('flipped');
-        flipped.push({idx: idx, sym: sym, el: card});
-        if (flipped.length === 2) {
-          moves++;
-          statsEl.textContent = 'Moves: ' + moves + ' | Pairs: ' + matched + '/8';
-          if (flipped[0].sym === flipped[1].sym) {
-            flipped[0].el.classList.add('matched');
-            flipped[1].el.classList.add('matched');
-            flipped[0].el.classList.remove('flipped');
-            flipped[1].el.classList.remove('flipped');
-            matched++;
-            statsEl.textContent = 'Moves: ' + moves + ' | Pairs: ' + matched + '/8';
-            flipped = [];
-            if (matched === 8) {
-              statsEl.textContent = 'You won in ' + moves + ' moves!';
-            }
-          } else {
-            lockBoard = true;
-            setTimeout(function() {
-              flipped[0].el.classList.remove('flipped');
-              flipped[1].el.classList.remove('flipped');
-              flipped = [];
-              lockBoard = false;
-            }, 800);
-          }
-        }
-      });
-      cardEls.push(card);
-      boardEl.appendChild(card);
-    });
-  }
-
-  resetBtn.addEventListener('click', reset);
-  reset();
-}
+""" + tictactoe.get_js() + snake.get_js() + memory.get_js() + blackjack.get_js() + blackjack_multi.get_js() + minesweeper.get_js() + r"""
 
 tabs.push({ id: 'chat', type: 'chat', label: 'Chat' });
 renderTabBar();
@@ -2450,6 +2269,226 @@ async def handle_admin_ws(request):
     return ws
 
 
+def bj_make_deck():
+    suits = ['S', 'H', 'D', 'C']
+    ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
+    deck = [{"suit": s, "rank": r} for s in suits for r in ranks]
+    random.shuffle(deck)
+    return deck
+
+
+def bj_card_value(hand):
+    total = 0
+    aces = 0
+    for c in hand:
+        r = c["rank"]
+        if r == 'A':
+            total += 11
+            aces += 1
+        elif r in ('J', 'Q', 'K'):
+            total += 10
+        else:
+            total += int(r)
+    while total > 21 and aces > 0:
+        total -= 10
+        aces -= 1
+    return total
+
+
+def bj_room_state(room, reveal_dealer=False):
+    dealer_hand = []
+    for i, c in enumerate(room["dealer_hand"]):
+        if i == 1 and not reveal_dealer:
+            dealer_hand.append({"suit": "?", "rank": "?", "hidden": True})
+        else:
+            dealer_hand.append(c)
+    players_data = []
+    for p in room["players"]:
+        pd = {"id": p["id"], "name": p["name"], "hand": p["hand"], "value": bj_card_value(p["hand"]) if p["hand"] else 0}
+        if p.get("result"):
+            pd["result"] = p["result"]
+        players_data.append(pd)
+    current_turn = None
+    if room["phase"] == "playing" and 0 <= room["current_turn_idx"] < len(room["players"]):
+        current_turn = room["players"][room["current_turn_idx"]]["id"]
+    return {
+        "room_id": room["room_id"],
+        "phase": room["phase"],
+        "host": room["host"],
+        "players": players_data,
+        "dealer_hand": dealer_hand,
+        "dealer_value": bj_card_value(room["dealer_hand"]) if reveal_dealer else None,
+        "current_turn": current_turn,
+    }
+
+
+async def bj_broadcast_state(room, reveal=False):
+    state = bj_room_state(room, reveal)
+    for p in room["players"]:
+        ws_conn = p.get("ws")
+        if ws_conn:
+            try:
+                await ws_conn.send_str(json.dumps({"type": "bj_state", "state": state}))
+            except Exception:
+                pass
+
+
+async def handle_bj_action(ws, username, data):
+    action = data.get("action", "")
+
+    if action == "create":
+        room_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+        room = {
+            "room_id": room_id,
+            "players": [{"id": username, "name": username, "ws": ws, "hand": [], "result": None}],
+            "deck": [],
+            "dealer_hand": [],
+            "phase": "waiting",
+            "host": username,
+            "current_turn_idx": 0,
+        }
+        bj_rooms[room_id] = room
+        state = bj_room_state(room)
+        await ws.send_str(json.dumps({"type": "bj_room_created", "room_id": room_id, "player_id": username, "state": state}))
+
+    elif action == "join":
+        room_id = data.get("room_id", "").strip().upper()
+        room = bj_rooms.get(room_id)
+        if not room:
+            await ws.send_str(json.dumps({"type": "bj_error", "text": "Room not found."}))
+            return
+        if len(room["players"]) >= 4:
+            await ws.send_str(json.dumps({"type": "bj_error", "text": "Room is full."}))
+            return
+        if any(p["id"] == username for p in room["players"]):
+            await ws.send_str(json.dumps({"type": "bj_error", "text": "Already in this room."}))
+            return
+        if room["phase"] != "waiting":
+            await ws.send_str(json.dumps({"type": "bj_error", "text": "Game already in progress."}))
+            return
+        room["players"].append({"id": username, "name": username, "ws": ws, "hand": [], "result": None})
+        state = bj_room_state(room)
+        await ws.send_str(json.dumps({"type": "bj_joined", "room_id": room_id, "player_id": username, "state": state}))
+        await bj_broadcast_state(room)
+
+    elif action == "start":
+        room_id = data.get("room_id", "")
+        room = bj_rooms.get(room_id)
+        if not room:
+            return
+        room["deck"] = bj_make_deck()
+        room["dealer_hand"] = [room["deck"].pop(), room["deck"].pop()]
+        for p in room["players"]:
+            p["hand"] = [room["deck"].pop(), room["deck"].pop()]
+            p["result"] = None
+        room["phase"] = "playing"
+        room["current_turn_idx"] = 0
+        await bj_broadcast_state(room)
+
+    elif action == "hit":
+        room_id = data.get("room_id", "")
+        room = bj_rooms.get(room_id)
+        if not room or room["phase"] != "playing":
+            return
+        idx = room["current_turn_idx"]
+        if idx >= len(room["players"]):
+            return
+        player = room["players"][idx]
+        if player["id"] != username:
+            return
+        player["hand"].append(room["deck"].pop())
+        if bj_card_value(player["hand"]) > 21:
+            player["result"] = "Bust"
+            room["current_turn_idx"] += 1
+            if room["current_turn_idx"] >= len(room["players"]):
+                await bj_dealer_play(room)
+            else:
+                await bj_broadcast_state(room)
+        else:
+            await bj_broadcast_state(room)
+
+    elif action == "stand":
+        room_id = data.get("room_id", "")
+        room = bj_rooms.get(room_id)
+        if not room or room["phase"] != "playing":
+            return
+        idx = room["current_turn_idx"]
+        if idx >= len(room["players"]):
+            return
+        player = room["players"][idx]
+        if player["id"] != username:
+            return
+        room["current_turn_idx"] += 1
+        if room["current_turn_idx"] >= len(room["players"]):
+            await bj_dealer_play(room)
+        else:
+            await bj_broadcast_state(room)
+
+    elif action == "leave":
+        room_id = data.get("room_id", "")
+        room = bj_rooms.get(room_id)
+        if not room:
+            return
+        room["players"] = [p for p in room["players"] if p["id"] != username]
+        if not room["players"]:
+            del bj_rooms[room_id]
+        else:
+            if room["host"] == username:
+                room["host"] = room["players"][0]["id"]
+            await bj_broadcast_state(room)
+
+
+async def bj_dealer_play(room):
+    room["phase"] = "dealer"
+    while bj_card_value(room["dealer_hand"]) < 17:
+        room["dealer_hand"].append(room["deck"].pop())
+    dv = bj_card_value(room["dealer_hand"])
+    for p in room["players"]:
+        if p["result"] == "Bust":
+            p["result"] = "Lose"
+            continue
+        pv = bj_card_value(p["hand"])
+        if dv > 21:
+            p["result"] = "Win"
+        elif pv > dv:
+            p["result"] = "Win"
+        elif pv < dv:
+            p["result"] = "Lose"
+        else:
+            p["result"] = "Push"
+    room["phase"] = "done"
+    await bj_broadcast_state(room, reveal=True)
+
+
+async def bj_handle_disconnect(username):
+    rooms_to_delete = []
+    for room_id, room in bj_rooms.items():
+        player_idx = None
+        for i, p in enumerate(room["players"]):
+            if p["id"] == username:
+                player_idx = i
+                break
+        if player_idx is None:
+            continue
+        was_current_turn = (room["phase"] == "playing" and room["current_turn_idx"] == player_idx)
+        room["players"].pop(player_idx)
+        if not room["players"]:
+            rooms_to_delete.append(room_id)
+            continue
+        if room["host"] == username:
+            room["host"] = room["players"][0]["id"]
+        if room["phase"] == "playing":
+            if player_idx < room["current_turn_idx"]:
+                room["current_turn_idx"] -= 1
+            if was_current_turn or room["current_turn_idx"] >= len(room["players"]):
+                if room["current_turn_idx"] >= len(room["players"]):
+                    await bj_dealer_play(room)
+                    continue
+        await bj_broadcast_state(room)
+    for rid in rooms_to_delete:
+        del bj_rooms[rid]
+
+
 async def handle_client_ws(request):
     ws = web.WebSocketResponse()
     await ws.prepare(request)
@@ -2553,6 +2592,9 @@ async def handle_client_ws(request):
                         "messages": history
                     }))
 
+                elif data.get("type") == "bj_action":
+                    await handle_bj_action(ws, username, data)
+
             except Exception as e:
                 print(f"[!] Error: {e}")
 
@@ -2562,6 +2604,8 @@ async def handle_client_ws(request):
     if ws in connected:
         left = connected.pop(ws)["username"]
         print(f"[-] {left} left  ({len(connected)} online)")
+
+        await bj_handle_disconnect(left)
 
         keys_to_remove = [k for k in dm_store if left in k]
         for k in keys_to_remove:

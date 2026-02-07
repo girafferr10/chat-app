@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a real-time chat application built as a single Python file (`talk.py`) using aiohttp for WebSocket-based communication. Features a Discord-like dark theme with Light and Midnight alternatives. Users join as Guest or Admin from a unified page at `/`. The app supports group chat (#General channel) and direct messaging (DMs) between users. Admins can view all DMs via a spy feature, change their display name anytime, and kick/ban users.
+This is a real-time chat application built with Python using aiohttp for WebSocket-based communication. Features a Discord-like dark theme with Light and Midnight alternatives. Users join as Guest or Admin from a unified page at `/`. The app supports group chat (#General channel), direct messaging (DMs), a tabbed interface with games, and admin controls.
 
 ## User Preferences
 
@@ -10,11 +10,20 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Single-file Python Application
-- **File**: `talk.py` - Contains all server logic and embedded HTML/CSS/JS for the client
+### Python Application
+- **File**: `server.py` - Contains all server logic and embedded HTML/CSS/JS for the client
+- **Games**: `games/` directory - Each game in its own `.py` file returning JS via `get_js()` and optional CSS via `get_css()`
 - **Framework**: aiohttp (Python async web framework with WebSocket support)
-- **Server**: Node.js `server/index.ts` spawns the Python process and proxies requests
+- **Server**: Node.js `server/index.ts` spawns the Python process
 - **Port**: 5000
+
+### Games Directory
+- `games/tictactoe.py` - Tic-Tac-Toe (singleplayer vs AI)
+- `games/snake.py` - Snake game (singleplayer)
+- `games/memory.py` - Memory Match card game (singleplayer)
+- `games/blackjack.py` - Blackjack (singleplayer vs dealer)
+- `games/blackjack_multi.py` - Multiplayer Blackjack (WebSocket rooms)
+- `games/minesweeper.py` - Minesweeper (singleplayer)
 
 ### Routes
 - `GET /` - Main page with unified Guest/Admin join flow
@@ -37,6 +46,8 @@ Preferred communication style: Simple, everyday language.
 - `system` - System messages (join/leave)
 - `banned_list` - Banned user list (admin only)
 - `kick` / `ban` / `unban` - Admin moderation actions
+- `bj_action` - Multiplayer blackjack actions (create/join/hit/stand/leave/start)
+- `bj_room_created` / `bj_joined` / `bj_state` / `bj_error` - Server responses for multiplayer blackjack
 
 ### Key Design Decisions
 1. **Unified join page**: Single page at `/` offers Guest or Admin choice
@@ -44,6 +55,8 @@ Preferred communication style: Simple, everyday language.
 3. **In-memory storage**: All messages and DM history stored in Python dicts (not persistent)
 4. **Three theme system**: Dark (default), Light, Midnight - stored in localStorage
 5. **Username restrictions**: Guest usernames cannot contain "admin" or "mod" (case-insensitive)
+6. **Tabbed interface**: Bottom tab bar with singleton tabs (one Chat, one Games allowed). New Tab picker for adding tabs.
+7. **Game modules**: Each game in its own Python file returning JS code strings, injected into the HTML at render time
 
 ### Admin Features
 - **Admin Token**: Derived from SESSION_SECRET environment variable via SHA-256 hash
@@ -51,6 +64,13 @@ Preferred communication style: Simple, everyday language.
 - **Kick/Ban**: Hover over users in sidebar to see kick/ban buttons
 - **DM Spy**: View all active DM conversations between users
 - **Banned List**: See and unban banned users
+
+### Tabbed Interface
+- **Tab bar**: At the bottom of the main panel
+- **Chat tab**: Singleton - contains the chat area with messages, emoji picker, send button
+- **Games tab**: Singleton - minimalistic list of games with search, each game opens in play area
+- **New Tab**: Opens a picker with Chat and Games options, searchable
+- **Auto-open**: When all tabs closed, auto-opens a new picker tab
 
 ### External Dependencies
 - **aiohttp**: Python async web framework
