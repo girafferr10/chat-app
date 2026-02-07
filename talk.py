@@ -868,10 +868,10 @@ function renderSidebar() {
 function renderDmChannels() {
   var section = document.getElementById('dmChannelsSection');
   var list = document.getElementById('dmChannelsList');
+  list.innerHTML = '';
   var dmKeys = Object.keys(dmMessages).filter(function(k) { return !k.startsWith('spy:'); });
   if (dmKeys.length === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
-  list.innerHTML = '';
   dmKeys.forEach(function(target) {
     var item = document.createElement('div');
     item.className = 'channel-item' + (currentChannel === 'dm:' + target ? ' active' : '');
@@ -979,9 +979,9 @@ function renderDmSpy(pairs) {
   activeDmPairs = pairs;
   var section = document.getElementById('dmSpySection');
   var list = document.getElementById('dmSpyList');
+  list.innerHTML = '';
   if (!isAdmin || !pairs || pairs.length === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
-  list.innerHTML = '';
   pairs.forEach(function(pair) {
     var item = document.createElement('div');
     item.className = 'dm-spy-item' + (currentChannel === 'spy:' + pair ? ' active' : '');
@@ -1057,6 +1057,23 @@ function handleMessage(data) {
     if (!dmMessages['spy:' + pair]) dmMessages['spy:' + pair] = [];
     dmMessages['spy:' + pair].push({sender: data.sender, text: data.text, admin: data.admin || false, isDm: true, time: time});
     if (currentChannel === 'spy:' + pair) renderMessages();
+  } else if (data.type === 'dm_cleanup') {
+    var gone = data.username;
+    if (dmMessages[gone]) {
+      delete dmMessages[gone];
+    }
+    if (dmUnread[gone]) {
+      delete dmUnread[gone];
+    }
+    Object.keys(dmMessages).forEach(function(k) {
+      if (k.startsWith('spy:') && k.indexOf(gone) !== -1) {
+        delete dmMessages[k];
+      }
+    });
+    if (currentChannel === 'dm:' + gone || (currentChannel.startsWith('spy:') && currentChannel.indexOf(gone) !== -1)) {
+      switchChannel('general');
+    }
+    renderDmChannels();
   } else if (data.type === 'dm_pairs') {
     renderDmSpy(data.pairs);
   } else if (data.type === 'error') {
@@ -1519,8 +1536,16 @@ async def handle_client_ws(request):
     if ws in connected:
         left = connected.pop(ws)["username"]
         print(f"[-] {left} left  ({len(connected)} online)")
+
+        keys_to_remove = [k for k in dm_store if left in k]
+        for k in keys_to_remove:
+            del dm_store[k]
+
         await broadcast_all({"type": "system", "text": f"{left} left the chat"})
+        await broadcast_all({"type": "dm_cleanup", "username": left})
+        await send_to_admin({"type": "dm_cleanup", "username": left})
         await send_user_list()
+        await send_dm_pairs_to_admin()
 
     return ws
 
