@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import path from "path";
 
-const pythonProcess = spawn("python", [path.resolve("talk.py")], {
+const pythonProcess = spawn("python", [path.resolve("server.py")], {
   stdio: "inherit",
   env: { ...process.env },
 });
