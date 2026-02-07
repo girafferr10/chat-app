@@ -535,6 +535,134 @@ header h1 { font-size: 16px; font-weight: 600; }
 
 .chat-area { flex: 1; display: flex; flex-direction: column; }
 
+.main-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.tab-bar {
+  display: flex; align-items: center; background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border); height: 36px; flex-shrink: 0;
+  overflow-x: auto; overflow-y: hidden;
+}
+.tab-bar::-webkit-scrollbar { height: 0; }
+.tab-items { display: flex; flex: 1; min-width: 0; overflow-x: auto; }
+.tab-items::-webkit-scrollbar { height: 0; }
+.tab-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 12px; height: 36px; font-size: 13px; font-weight: 500;
+  color: var(--text-secondary); cursor: pointer; white-space: nowrap;
+  border-right: 1px solid var(--border); background: var(--bg-tertiary);
+  flex-shrink: 0; min-width: 0;
+}
+.tab-item:hover { background: var(--bg-secondary); }
+.tab-item.active { background: var(--bg-primary); color: var(--text-primary); }
+.tab-item .tab-icon { font-size: 14px; opacity: 0.7; }
+.tab-item .tab-close {
+  font-size: 14px; opacity: 0; width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 3px; color: var(--text-muted); margin-left: 2px;
+  background: none; border: none; cursor: pointer; padding: 0;
+}
+.tab-item:hover .tab-close { opacity: 1; }
+.tab-item .tab-close:hover { background: var(--bg-message-hover); color: var(--text-primary); }
+.new-tab-btn {
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  background: none; border: none; color: var(--text-muted); font-size: 18px;
+  cursor: pointer; flex-shrink: 0;
+}
+.new-tab-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+.tab-content { flex: 1; display: none; flex-direction: column; overflow: hidden; }
+.tab-content.active { display: flex; }
+
+.newtab-page {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-primary);
+}
+.newtab-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+  max-width: 500px; width: 90%; padding: 20px;
+}
+.newtab-card {
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 8px; padding: 24px 20px; text-align: center;
+  cursor: pointer; transition: border-color 0.15s;
+}
+.newtab-card:hover { border-color: var(--accent); background: var(--bg-message-hover); }
+.newtab-card .newtab-icon { font-size: 32px; margin-bottom: 10px; }
+.newtab-card .newtab-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+.newtab-card .newtab-desc { font-size: 12px; color: var(--text-muted); }
+
+.games-hub {
+  flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); overflow: hidden;
+}
+.games-header {
+  padding: 12px 16px; border-bottom: 1px solid var(--bg-tertiary);
+  font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+}
+.games-header .back-btn {
+  background: var(--input-bg); border: none; color: var(--text-secondary);
+  padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;
+}
+.games-header .back-btn:hover { background: var(--border); color: var(--text-primary); }
+.games-list {
+  flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px; padding: 16px; align-content: start; overflow-y: auto;
+}
+.game-card {
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 8px; padding: 20px 16px; text-align: center; cursor: pointer;
+}
+.game-card:hover { border-color: var(--accent); background: var(--bg-message-hover); }
+.game-card .game-icon { font-size: 28px; margin-bottom: 8px; display: block; color: var(--text-secondary); }
+.game-card .game-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.game-card .game-desc { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.game-play-area {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 16px; overflow-y: auto;
+}
+
+.ttt-board {
+  display: grid; grid-template-columns: repeat(3, 80px); grid-template-rows: repeat(3, 80px); gap: 4px;
+}
+.ttt-cell {
+  width: 80px; height: 80px; background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 4px; font-size: 32px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-primary);
+}
+.ttt-cell:hover { background: var(--bg-message-hover); }
+.ttt-cell.x { color: var(--accent); }
+.ttt-cell.o { color: var(--red); }
+.game-status {
+  font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);
+  min-height: 24px;
+}
+.game-reset-btn {
+  margin-top: 12px; padding: 8px 20px; background: var(--accent); color: #fff;
+  border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.game-reset-btn:hover { background: var(--accent-hover); }
+
+.snake-canvas {
+  border: 2px solid var(--border); border-radius: 4px; background: var(--bg-secondary);
+}
+.snake-score { font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; }
+.snake-hint { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
+.memory-board {
+  display: grid; grid-template-columns: repeat(4, 70px); gap: 6px;
+}
+.memory-card {
+  width: 70px; height: 70px; background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 6px; font-size: 24px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: transparent; user-select: none;
+}
+.memory-card:hover { background: var(--bg-message-hover); }
+.memory-card.flipped, .memory-card.matched {
+  color: var(--text-primary); background: var(--bg-message-hover);
+  border-color: var(--accent);
+}
+.memory-card.matched { border-color: var(--green); cursor: default; }
+.memory-stats { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+
 .channel-header {
   padding: 10px 16px; border-bottom: 1px solid var(--bg-tertiary);
   font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;
@@ -752,25 +880,35 @@ body.theme-midnight {
         <div id="bannedList"></div>
       </div>
     </div>
-    <div class="chat-area">
-      <div class="channel-header" id="channelHeaderBar">
-        <span class="channel-icon">#</span> <span id="channelName" data-testid="text-channel-name">General</span>
+    <div class="main-panel">
+      <div class="tab-bar">
+        <div class="tab-items" id="tabItems" data-testid="tab-bar"></div>
+        <button class="new-tab-btn" id="newTabBtn" data-testid="button-new-tab" title="New Tab">+</button>
       </div>
-      <div id="messages" data-testid="list-messages">
-        <div class="empty" id="emptyState">No messages yet</div>
-      </div>
-      <div class="input-bar">
-        <input type="text" id="nameInput" data-testid="input-admin-name" placeholder="Your name" value="Admin" style="display:none;width:140px;flex:unset;" />
-        <input type="text" id="msgInput" data-testid="input-message" placeholder="Type a message..." />
-        <div class="emoji-picker-container">
-          <button class="emoji-picker-btn" id="emojiBtn" data-testid="button-emoji" type="button" title="Emoji picker">&#x1F600;</button>
-          <div class="emoji-panel" id="emojiPanel">
-            <input type="text" class="emoji-search" id="emojiSearch" data-testid="input-emoji-search" placeholder="Search emojis..." />
-            <div class="emoji-panel-header" id="emojiCatBar"></div>
-            <div class="emoji-grid" id="emojiGrid" data-testid="grid-emoji"></div>
+      <div id="tabContents">
+        <div class="tab-content active" id="tabContent-chat">
+          <div class="chat-area">
+            <div class="channel-header" id="channelHeaderBar">
+              <span class="channel-icon">#</span> <span id="channelName" data-testid="text-channel-name">General</span>
+            </div>
+            <div id="messages" data-testid="list-messages">
+              <div class="empty" id="emptyState">No messages yet</div>
+            </div>
+            <div class="input-bar">
+              <input type="text" id="nameInput" data-testid="input-admin-name" placeholder="Your name" value="Admin" style="display:none;width:140px;flex:unset;" />
+              <input type="text" id="msgInput" data-testid="input-message" placeholder="Type a message..." />
+              <div class="emoji-picker-container">
+                <button class="emoji-picker-btn" id="emojiBtn" data-testid="button-emoji" type="button" title="Emoji picker">&#x1F600;</button>
+                <div class="emoji-panel" id="emojiPanel">
+                  <input type="text" class="emoji-search" id="emojiSearch" data-testid="input-emoji-search" placeholder="Search emojis..." />
+                  <div class="emoji-panel-header" id="emojiCatBar"></div>
+                  <div class="emoji-grid" id="emojiGrid" data-testid="grid-emoji"></div>
+                </div>
+              </div>
+              <button id="sendBtn" data-testid="button-send">Send</button>
+            </div>
           </div>
         </div>
-        <button id="sendBtn" data-testid="button-send">Send</button>
       </div>
     </div>
   </div>
@@ -1404,6 +1542,668 @@ document.addEventListener('click', function(e) {
   if (!panel.contains(e.target) && e.target !== btn) {
     panel.classList.remove('open');
   }
+});
+
+var tabs = [];
+var activeTabId = 'chat';
+var tabIdCounter = 0;
+
+function createTabId() { return 'tab-' + (++tabIdCounter); }
+
+function findTabByType(type) {
+  for (var i = 0; i < tabs.length; i++) {
+    if (tabs[i].type === type) return tabs[i];
+  }
+  return null;
+}
+
+function renderTabBar() {
+  var bar = document.getElementById('tabItems');
+  bar.innerHTML = '';
+  tabs.forEach(function(tab) {
+    var item = document.createElement('div');
+    item.className = 'tab-item' + (tab.id === activeTabId ? ' active' : '');
+    item.setAttribute('data-testid', 'tab-' + tab.id);
+
+    var icon = document.createElement('span');
+    icon.className = 'tab-icon';
+    if (tab.type === 'chat') icon.textContent = '#';
+    else if (tab.type === 'games') icon.textContent = String.fromCodePoint(0x1F3AE);
+    else icon.textContent = '+';
+    item.appendChild(icon);
+
+    var label = document.createElement('span');
+    label.textContent = tab.label;
+    item.appendChild(label);
+
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'tab-close';
+    closeBtn.textContent = '\u00D7';
+    closeBtn.setAttribute('data-testid', 'button-close-tab-' + tab.id);
+    closeBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      closeTab(tab.id);
+    });
+    item.appendChild(closeBtn);
+
+    item.addEventListener('click', function() { switchTab(tab.id); });
+    bar.appendChild(item);
+  });
+}
+
+function switchTab(id) {
+  activeTabId = id;
+  var contents = document.getElementById('tabContents').children;
+  for (var i = 0; i < contents.length; i++) {
+    contents[i].classList.remove('active');
+  }
+  var el = document.getElementById('tabContent-' + id);
+  if (el) el.classList.add('active');
+  renderTabBar();
+}
+
+function closeTab(id) {
+  var idx = -1;
+  for (var i = 0; i < tabs.length; i++) {
+    if (tabs[i].id === id) { idx = i; break; }
+  }
+  if (idx === -1) return;
+  tabs.splice(idx, 1);
+  var el = document.getElementById('tabContent-' + id);
+  if (el) el.remove();
+  if (tabs.length === 0) {
+    openNewTab();
+    return;
+  }
+  if (activeTabId === id) {
+    var newIdx = Math.min(idx, tabs.length - 1);
+    switchTab(tabs[newIdx].id);
+  } else {
+    renderTabBar();
+  }
+}
+
+function openNewTab() {
+  var existing = findTabByType('newtab');
+  if (existing) { switchTab(existing.id); return; }
+  var id = createTabId();
+  tabs.push({ id: id, type: 'newtab', label: 'New Tab' });
+
+  var content = document.createElement('div');
+  content.className = 'tab-content';
+  content.id = 'tabContent-' + id;
+
+  var page = document.createElement('div');
+  page.className = 'newtab-page';
+  var grid = document.createElement('div');
+  grid.className = 'newtab-grid';
+
+  var chatCard = document.createElement('div');
+  chatCard.className = 'newtab-card';
+  chatCard.setAttribute('data-testid', 'newtab-option-chat');
+  chatCard.innerHTML = '<div class="newtab-icon">#</div><div class="newtab-title">Chat</div><div class="newtab-desc">Open the group chat</div>';
+  chatCard.addEventListener('click', function() {
+    var chatTab = findTabByType('chat');
+    if (chatTab) {
+      closeTab(id);
+      switchTab(chatTab.id);
+    } else {
+      convertTabToChat(id);
+    }
+  });
+
+  var gamesCard = document.createElement('div');
+  gamesCard.className = 'newtab-card';
+  gamesCard.setAttribute('data-testid', 'newtab-option-games');
+  gamesCard.innerHTML = '<div class="newtab-icon">' + String.fromCodePoint(0x1F3AE) + '</div><div class="newtab-title">Games</div><div class="newtab-desc">Play mini-games</div>';
+  gamesCard.addEventListener('click', function() {
+    var gamesTab = findTabByType('games');
+    if (gamesTab) {
+      closeTab(id);
+      switchTab(gamesTab.id);
+    } else {
+      convertTabToGames(id);
+    }
+  });
+
+  grid.appendChild(chatCard);
+  grid.appendChild(gamesCard);
+  page.appendChild(grid);
+  content.appendChild(page);
+  document.getElementById('tabContents').appendChild(content);
+  switchTab(id);
+}
+
+function convertTabToChat(tabId) {
+  for (var i = 0; i < tabs.length; i++) {
+    if (tabs[i].id === tabId) {
+      tabs[i].type = 'chat';
+      tabs[i].label = 'Chat';
+      break;
+    }
+  }
+  var el = document.getElementById('tabContent-' + tabId);
+  el.innerHTML = '';
+
+  var chatArea = document.createElement('div');
+  chatArea.className = 'chat-area';
+
+  var channelHeader = document.createElement('div');
+  channelHeader.className = 'channel-header';
+  channelHeader.id = 'channelHeaderBar';
+  channelHeader.innerHTML = '<span class="channel-icon">#</span> <span id="channelName" data-testid="text-channel-name">General</span>';
+  chatArea.appendChild(channelHeader);
+
+  var messagesDiv = document.createElement('div');
+  messagesDiv.id = 'messages';
+  messagesDiv.setAttribute('data-testid', 'list-messages');
+  chatArea.appendChild(messagesDiv);
+
+  var inputBar = document.createElement('div');
+  inputBar.className = 'input-bar';
+
+  var nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.id = 'nameInput';
+  nameInput.setAttribute('data-testid', 'input-admin-name');
+  nameInput.placeholder = 'Your name';
+  nameInput.value = 'Admin';
+  nameInput.style.cssText = 'display:none;width:140px;flex:unset;';
+  if (isAdmin) nameInput.style.display = 'block';
+  inputBar.appendChild(nameInput);
+
+  var msgInput = document.createElement('input');
+  msgInput.type = 'text';
+  msgInput.id = 'msgInput';
+  msgInput.setAttribute('data-testid', 'input-message');
+  msgInput.placeholder = 'Type a message...';
+  msgInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('sendBtn').click();
+  });
+  inputBar.appendChild(msgInput);
+
+  var emojiContainer = document.createElement('div');
+  emojiContainer.className = 'emoji-picker-container';
+  var emojiBtn = document.createElement('button');
+  emojiBtn.className = 'emoji-picker-btn';
+  emojiBtn.id = 'emojiBtn';
+  emojiBtn.setAttribute('data-testid', 'button-emoji');
+  emojiBtn.type = 'button';
+  emojiBtn.title = 'Emoji picker';
+  emojiBtn.textContent = String.fromCodePoint(0x1F600);
+  var emojiPanel = document.createElement('div');
+  emojiPanel.className = 'emoji-panel';
+  emojiPanel.id = 'emojiPanel';
+  var emojiSearchInput = document.createElement('input');
+  emojiSearchInput.type = 'text';
+  emojiSearchInput.className = 'emoji-search';
+  emojiSearchInput.id = 'emojiSearch';
+  emojiSearchInput.setAttribute('data-testid', 'input-emoji-search');
+  emojiSearchInput.placeholder = 'Search emojis...';
+  emojiPanel.appendChild(emojiSearchInput);
+  var catBar = document.createElement('div');
+  catBar.className = 'emoji-panel-header';
+  catBar.id = 'emojiCatBar';
+  emojiPanel.appendChild(catBar);
+  var emojiGridEl = document.createElement('div');
+  emojiGridEl.className = 'emoji-grid';
+  emojiGridEl.id = 'emojiGrid';
+  emojiGridEl.setAttribute('data-testid', 'grid-emoji');
+  emojiPanel.appendChild(emojiGridEl);
+  emojiContainer.appendChild(emojiBtn);
+  emojiContainer.appendChild(emojiPanel);
+  inputBar.appendChild(emojiContainer);
+
+  var sendBtn = document.createElement('button');
+  sendBtn.id = 'sendBtn';
+  sendBtn.setAttribute('data-testid', 'button-send');
+  sendBtn.textContent = 'Send';
+  sendBtn.addEventListener('click', function() {
+    var input = document.getElementById('msgInput');
+    var text = input.value.trim();
+    if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+    if (currentChannel === 'general') {
+      if (isAdmin) {
+        var name = document.getElementById('nameInput').value.trim() || 'Admin';
+        ws.send(JSON.stringify({ type: 'chat', text: text, name: name }));
+      } else {
+        ws.send(JSON.stringify({ type: 'chat', text: text }));
+      }
+    } else if (currentChannel.startsWith('dm:')) {
+      var target = currentChannel.substring(3);
+      if (isAdmin) {
+        var name = document.getElementById('nameInput').value.trim() || 'Admin';
+        ws.send(JSON.stringify({ type: 'dm_message', target: target, text: text, name: name }));
+      } else {
+        ws.send(JSON.stringify({ type: 'dm_message', target: target, text: text }));
+      }
+    }
+    input.value = '';
+    input.focus();
+  });
+  inputBar.appendChild(sendBtn);
+  chatArea.appendChild(inputBar);
+  el.appendChild(chatArea);
+
+  bindEmojiPicker();
+  renderMessages();
+  switchChannel(currentChannel);
+  renderTabBar();
+}
+
+function bindEmojiPicker() {
+  var emojiBtn = document.getElementById('emojiBtn');
+  var emojiPanel = document.getElementById('emojiPanel');
+  var emojiSearch = document.getElementById('emojiSearch');
+  if (!emojiBtn) return;
+  emojiBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var isOpen = emojiPanel.classList.contains('open');
+    if (isOpen) { emojiPanel.classList.remove('open'); }
+    else { renderEmojiCatBar(); renderEmojiPicker(''); emojiPanel.classList.add('open'); emojiSearch.focus(); }
+  });
+  emojiSearch.addEventListener('input', function() { renderEmojiPicker(this.value.trim()); });
+  emojiSearch.addEventListener('keydown', function(e) { e.stopPropagation(); });
+}
+
+function convertTabToGames(tabId) {
+  for (var i = 0; i < tabs.length; i++) {
+    if (tabs[i].id === tabId) {
+      tabs[i].type = 'games';
+      tabs[i].label = 'Games';
+      break;
+    }
+  }
+  var el = document.getElementById('tabContent-' + tabId);
+  el.innerHTML = '';
+  buildGamesHub(el);
+  renderTabBar();
+}
+
+function buildGamesHub(container) {
+  var hub = document.createElement('div');
+  hub.className = 'games-hub';
+
+  var header = document.createElement('div');
+  header.className = 'games-header';
+  header.textContent = 'Games';
+  hub.appendChild(header);
+
+  var list = document.createElement('div');
+  list.className = 'games-list';
+  list.id = 'gamesList-' + container.id;
+
+  var games = [
+    { id: 'tictactoe', icon: '#', title: 'Tic-Tac-Toe', desc: 'Classic X vs O' },
+    { id: 'snake', icon: String.fromCodePoint(0x2B1B), title: 'Snake', desc: 'Eat and grow' },
+    { id: 'memory', icon: String.fromCodePoint(0x1F0CF), title: 'Memory Match', desc: 'Find the pairs' }
+  ];
+
+  games.forEach(function(g) {
+    var card = document.createElement('div');
+    card.className = 'game-card';
+    card.setAttribute('data-testid', 'game-card-' + g.id);
+    var iconEl = document.createElement('span');
+    iconEl.className = 'game-icon';
+    iconEl.textContent = g.icon;
+    card.appendChild(iconEl);
+    var titleEl = document.createElement('div');
+    titleEl.className = 'game-title';
+    titleEl.textContent = g.title;
+    card.appendChild(titleEl);
+    var descEl = document.createElement('div');
+    descEl.className = 'game-desc';
+    descEl.textContent = g.desc;
+    card.appendChild(descEl);
+    card.addEventListener('click', function() {
+      showGame(container, g.id);
+    });
+    list.appendChild(card);
+  });
+
+  hub.appendChild(list);
+  container.appendChild(hub);
+}
+
+function showGame(container, gameId) {
+  container.innerHTML = '';
+  var hub = document.createElement('div');
+  hub.className = 'games-hub';
+
+  var header = document.createElement('div');
+  header.className = 'games-header';
+  var backBtn = document.createElement('button');
+  backBtn.className = 'back-btn';
+  backBtn.textContent = 'Back';
+  backBtn.setAttribute('data-testid', 'button-back-games');
+  backBtn.addEventListener('click', function() {
+    container.innerHTML = '';
+    buildGamesHub(container);
+  });
+  header.appendChild(backBtn);
+  var titleSpan = document.createElement('span');
+  if (gameId === 'tictactoe') titleSpan.textContent = 'Tic-Tac-Toe';
+  else if (gameId === 'snake') titleSpan.textContent = 'Snake';
+  else if (gameId === 'memory') titleSpan.textContent = 'Memory Match';
+  header.appendChild(titleSpan);
+  hub.appendChild(header);
+
+  var playArea = document.createElement('div');
+  playArea.className = 'game-play-area';
+  hub.appendChild(playArea);
+  container.appendChild(hub);
+
+  if (gameId === 'tictactoe') initTicTacToe(playArea);
+  else if (gameId === 'snake') initSnake(playArea);
+  else if (gameId === 'memory') initMemory(playArea);
+}
+
+function initTicTacToe(area) {
+  var board = [0,0,0,0,0,0,0,0,0];
+  var xTurn = true;
+  var gameOver = false;
+
+  var status = document.createElement('div');
+  status.className = 'game-status';
+  status.textContent = 'Your turn (X)';
+  area.appendChild(status);
+
+  var boardEl = document.createElement('div');
+  boardEl.className = 'ttt-board';
+  var cells = [];
+  for (var i = 0; i < 9; i++) {
+    var cell = document.createElement('button');
+    cell.className = 'ttt-cell';
+    cell.setAttribute('data-testid', 'ttt-cell-' + i);
+    (function(idx) {
+      cell.addEventListener('click', function() {
+        if (gameOver || board[idx] !== 0 || !xTurn) return;
+        board[idx] = 1;
+        this.textContent = 'X';
+        this.classList.add('x');
+        var w = checkWin(board);
+        if (w) { status.textContent = 'You win!'; gameOver = true; return; }
+        if (board.indexOf(0) === -1) { status.textContent = "It's a draw!"; gameOver = true; return; }
+        xTurn = false;
+        status.textContent = 'Computer thinking...';
+        setTimeout(function() { aiMove(); }, 300);
+      });
+    })(i);
+    cells.push(cell);
+    boardEl.appendChild(cell);
+  }
+  area.appendChild(boardEl);
+
+  var resetBtn = document.createElement('button');
+  resetBtn.className = 'game-reset-btn';
+  resetBtn.textContent = 'Reset';
+  resetBtn.setAttribute('data-testid', 'button-reset-ttt');
+  resetBtn.addEventListener('click', function() {
+    board = [0,0,0,0,0,0,0,0,0];
+    xTurn = true;
+    gameOver = false;
+    status.textContent = 'Your turn (X)';
+    cells.forEach(function(c) { c.textContent = ''; c.className = 'ttt-cell'; });
+  });
+  area.appendChild(resetBtn);
+
+  function aiMove() {
+    var best = -1, bestScore = -Infinity;
+    for (var i = 0; i < 9; i++) {
+      if (board[i] === 0) {
+        board[i] = 2;
+        var score = minimax(board, false);
+        board[i] = 0;
+        if (score > bestScore) { bestScore = score; best = i; }
+      }
+    }
+    if (best !== -1) {
+      board[best] = 2;
+      cells[best].textContent = 'O';
+      cells[best].classList.add('o');
+      var w = checkWin(board);
+      if (w) { status.textContent = 'Computer wins!'; gameOver = true; return; }
+      if (board.indexOf(0) === -1) { status.textContent = "It's a draw!"; gameOver = true; return; }
+    }
+    xTurn = true;
+    status.textContent = 'Your turn (X)';
+  }
+
+  function minimax(b, isMax) {
+    var w = checkWinner(b);
+    if (w === 2) return 1;
+    if (w === 1) return -1;
+    if (b.indexOf(0) === -1) return 0;
+    if (isMax) {
+      var best = -Infinity;
+      for (var i = 0; i < 9; i++) {
+        if (b[i] === 0) { b[i] = 2; best = Math.max(best, minimax(b, false)); b[i] = 0; }
+      }
+      return best;
+    } else {
+      var best = Infinity;
+      for (var i = 0; i < 9; i++) {
+        if (b[i] === 0) { b[i] = 1; best = Math.min(best, minimax(b, true)); b[i] = 0; }
+      }
+      return best;
+    }
+  }
+
+  function checkWinner(b) {
+    var lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    for (var i = 0; i < lines.length; i++) {
+      var a = lines[i][0], bb = lines[i][1], c = lines[i][2];
+      if (b[a] && b[a] === b[bb] && b[a] === b[c]) return b[a];
+    }
+    return 0;
+  }
+
+  function checkWin(b) { return checkWinner(b) !== 0; }
+}
+
+function initSnake(area) {
+  var gridSize = 20;
+  var cellSize = 18;
+  var canvasSize = gridSize * cellSize;
+
+  var scoreEl = document.createElement('div');
+  scoreEl.className = 'snake-score';
+  scoreEl.setAttribute('data-testid', 'text-snake-score');
+  scoreEl.textContent = 'Score: 0';
+  area.appendChild(scoreEl);
+
+  var canvas = document.createElement('canvas');
+  canvas.className = 'snake-canvas';
+  canvas.width = canvasSize;
+  canvas.height = canvasSize;
+  canvas.setAttribute('data-testid', 'canvas-snake');
+  canvas.tabIndex = 0;
+  area.appendChild(canvas);
+
+  var hint = document.createElement('div');
+  hint.className = 'snake-hint';
+  hint.textContent = 'Use arrow keys or WASD to move. Click canvas to focus.';
+  area.appendChild(hint);
+
+  var resetBtn = document.createElement('button');
+  resetBtn.className = 'game-reset-btn';
+  resetBtn.textContent = 'Restart';
+  resetBtn.setAttribute('data-testid', 'button-reset-snake');
+  area.appendChild(resetBtn);
+
+  var ctx = canvas.getContext('2d');
+  var snake, food, dir, score, running, interval;
+  var rootStyle = getComputedStyle(document.documentElement);
+
+  function reset() {
+    snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+    dir = {x:1,y:0};
+    score = 0;
+    scoreEl.textContent = 'Score: 0';
+    placeFood();
+    running = true;
+    if (interval) clearInterval(interval);
+    interval = setInterval(tick, 120);
+    canvas.focus();
+  }
+
+  function placeFood() {
+    do {
+      food = {x: Math.floor(Math.random()*gridSize), y: Math.floor(Math.random()*gridSize)};
+    } while (snake.some(function(s) { return s.x === food.x && s.y === food.y; }));
+  }
+
+  function tick() {
+    if (!running) return;
+    var head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+    if (head.x < 0 || head.x >= gridSize || head.y < 0 || head.y >= gridSize) { endGame(); return; }
+    for (var i = 0; i < snake.length; i++) {
+      if (snake[i].x === head.x && snake[i].y === head.y) { endGame(); return; }
+    }
+    snake.unshift(head);
+    if (head.x === food.x && head.y === food.y) {
+      score++;
+      scoreEl.textContent = 'Score: ' + score;
+      placeFood();
+    } else {
+      snake.pop();
+    }
+    draw();
+  }
+
+  function endGame() {
+    running = false;
+    clearInterval(interval);
+    scoreEl.textContent = 'Game Over! Score: ' + score;
+  }
+
+  function draw() {
+    var bgColor = rootStyle.getPropertyValue('--bg-secondary').trim() || '#2b2d31';
+    var borderColor = rootStyle.getPropertyValue('--border').trim() || '#3f4147';
+    var accentColor = rootStyle.getPropertyValue('--accent').trim() || '#5865f2';
+    var greenColor = rootStyle.getPropertyValue('--green').trim() || '#23a559';
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvasSize, canvasSize);
+    ctx.fillStyle = greenColor;
+    ctx.fillRect(food.x*cellSize+1, food.y*cellSize+1, cellSize-2, cellSize-2);
+    snake.forEach(function(s, i) {
+      ctx.fillStyle = i === 0 ? accentColor : accentColor + 'cc';
+      ctx.fillRect(s.x*cellSize+1, s.y*cellSize+1, cellSize-2, cellSize-2);
+    });
+  }
+
+  canvas.addEventListener('keydown', function(e) {
+    var key = e.key.toLowerCase();
+    if ((key === 'arrowup' || key === 'w') && dir.y !== 1) dir = {x:0,y:-1};
+    else if ((key === 'arrowdown' || key === 's') && dir.y !== -1) dir = {x:0,y:1};
+    else if ((key === 'arrowleft' || key === 'a') && dir.x !== 1) dir = {x:-1,y:0};
+    else if ((key === 'arrowright' || key === 'd') && dir.x !== -1) dir = {x:1,y:0};
+    if (['arrowup','arrowdown','arrowleft','arrowright'].indexOf(key) !== -1) e.preventDefault();
+  });
+  canvas.addEventListener('click', function() { canvas.focus(); });
+  resetBtn.addEventListener('click', reset);
+  reset();
+}
+
+function initMemory(area) {
+  var symbols = ['A','B','C','D','E','F','G','H'];
+  var cards = symbols.concat(symbols);
+  var statsEl = document.createElement('div');
+  statsEl.className = 'memory-stats';
+  statsEl.setAttribute('data-testid', 'text-memory-stats');
+  area.appendChild(statsEl);
+
+  var boardEl = document.createElement('div');
+  boardEl.className = 'memory-board';
+  area.appendChild(boardEl);
+
+  var resetBtn = document.createElement('button');
+  resetBtn.className = 'game-reset-btn';
+  resetBtn.textContent = 'New Game';
+  resetBtn.setAttribute('data-testid', 'button-reset-memory');
+  area.appendChild(resetBtn);
+
+  var flipped = [];
+  var matched = 0;
+  var moves = 0;
+  var lockBoard = false;
+  var cardEls = [];
+  var shuffled = [];
+
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  var symbolDisplay = {
+    'A': String.fromCodePoint(0x2660), 'B': String.fromCodePoint(0x2665),
+    'C': String.fromCodePoint(0x2666), 'D': String.fromCodePoint(0x2663),
+    'E': String.fromCodePoint(0x2605), 'F': String.fromCodePoint(0x25CF),
+    'G': String.fromCodePoint(0x25B2), 'H': String.fromCodePoint(0x25A0)
+  };
+
+  function reset() {
+    shuffled = shuffle(cards);
+    matched = 0;
+    moves = 0;
+    flipped = [];
+    lockBoard = false;
+    boardEl.innerHTML = '';
+    cardEls = [];
+    statsEl.textContent = 'Moves: 0 | Pairs: 0/8';
+    shuffled.forEach(function(sym, idx) {
+      var card = document.createElement('button');
+      card.className = 'memory-card';
+      card.setAttribute('data-testid', 'memory-card-' + idx);
+      card.textContent = symbolDisplay[sym] || sym;
+      card.addEventListener('click', function() {
+        if (lockBoard || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+        card.classList.add('flipped');
+        flipped.push({idx: idx, sym: sym, el: card});
+        if (flipped.length === 2) {
+          moves++;
+          statsEl.textContent = 'Moves: ' + moves + ' | Pairs: ' + matched + '/8';
+          if (flipped[0].sym === flipped[1].sym) {
+            flipped[0].el.classList.add('matched');
+            flipped[1].el.classList.add('matched');
+            flipped[0].el.classList.remove('flipped');
+            flipped[1].el.classList.remove('flipped');
+            matched++;
+            statsEl.textContent = 'Moves: ' + moves + ' | Pairs: ' + matched + '/8';
+            flipped = [];
+            if (matched === 8) {
+              statsEl.textContent = 'You won in ' + moves + ' moves!';
+            }
+          } else {
+            lockBoard = true;
+            setTimeout(function() {
+              flipped[0].el.classList.remove('flipped');
+              flipped[1].el.classList.remove('flipped');
+              flipped = [];
+              lockBoard = false;
+            }, 800);
+          }
+        }
+      });
+      cardEls.push(card);
+      boardEl.appendChild(card);
+    });
+  }
+
+  resetBtn.addEventListener('click', reset);
+  reset();
+}
+
+tabs.push({ id: 'chat', type: 'chat', label: 'Chat' });
+renderTabBar();
+bindEmojiPicker();
+
+document.getElementById('newTabBtn').addEventListener('click', function() {
+  openNewTab();
 });
 </script>
 </body>
