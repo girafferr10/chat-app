@@ -16,7 +16,7 @@ function initBlackjackMulti(area) {
 
   var lobbyInfo = document.createElement('div');
   lobbyInfo.className = 'bj-lobby-info';
-  lobbyInfo.textContent = 'Play blackjack against other players. The dealer is automatic.';
+  lobbyInfo.textContent = 'Play blackjack against other players. The dealer is automatic. 30s turn timer.';
   lobbyDiv.appendChild(lobbyInfo);
 
   var createBtn = document.createElement('button');
@@ -60,36 +60,67 @@ function initBlackjackMulti(area) {
     return el;
   }
 
+  function renderHandSection(player, isMe) {
+    var section = document.createElement('div');
+    section.className = 'bjm-hand' + (isMe ? ' bjm-hand-me' : '');
+    var nameRow = document.createElement('div');
+    nameRow.className = 'bjm-hand-name';
+    nameRow.textContent = player.name + (isMe ? ' (You)' : '');
+    section.appendChild(nameRow);
+    var scoreRow = document.createElement('div');
+    scoreRow.className = 'bjm-hand-score';
+    scoreRow.textContent = 'Score: ' + (player.score || 0);
+    section.appendChild(scoreRow);
+    var cards = document.createElement('div');
+    cards.className = 'bj-cards';
+    if (player.hand) {
+      for (var i = 0; i < player.hand.length; i++) {
+        cards.appendChild(renderCard(player.hand[i], false));
+      }
+    }
+    section.appendChild(cards);
+    var valueRow = document.createElement('div');
+    valueRow.className = 'bjm-hand-value';
+    valueRow.textContent = 'Value: ' + (player.value || 0);
+    if (player.result) {
+      var resultSpan = document.createElement('span');
+      resultSpan.className = 'bjm-result bjm-result-' + player.result.toLowerCase();
+      resultSpan.textContent = ' ' + player.result;
+      valueRow.appendChild(resultSpan);
+    }
+    section.appendChild(valueRow);
+    return section;
+  }
+
   function renderGameState(state) {
     gameDiv.innerHTML = '';
-    gameDiv.style.display = 'block';
+    gameDiv.style.display = 'flex';
     lobbyDiv.style.display = 'none';
 
-    var roomInfo = document.createElement('div');
+    var topBar = document.createElement('div');
+    topBar.className = 'bjm-topbar';
+    var roomInfo = document.createElement('span');
     roomInfo.className = 'bj-room-info';
-    roomInfo.textContent = 'Room: ' + state.room_id + ' | Players: ' + state.players.length;
-    gameDiv.appendChild(roomInfo);
-
-    var statusEl = document.createElement('div');
-    statusEl.className = 'game-status';
+    roomInfo.textContent = 'Room: ' + state.room_id;
+    topBar.appendChild(roomInfo);
+    var statusEl = document.createElement('span');
+    statusEl.className = 'bjm-status';
     if (state.phase === 'waiting') {
-      statusEl.textContent = 'Waiting for players... (' + state.players.length + '/4)';
+      statusEl.textContent = 'Waiting... (' + state.players.length + '/4)';
     } else if (state.phase === 'playing') {
       if (state.current_turn === myId) {
-        statusEl.textContent = 'Your turn! Hit or Stand?';
+        statusEl.textContent = 'Your turn! (30s)';
       } else {
-        var turnName = state.current_turn || '...';
-        statusEl.textContent = turnName + "'s turn...";
+        statusEl.textContent = (state.current_turn || '...') + "'s turn";
       }
-    } else if (state.phase === 'dealer') {
-      statusEl.textContent = 'Dealer is playing...';
     } else if (state.phase === 'done') {
       statusEl.textContent = 'Round over!';
     }
-    gameDiv.appendChild(statusEl);
+    topBar.appendChild(statusEl);
+    gameDiv.appendChild(topBar);
 
     var dealerSection = document.createElement('div');
-    dealerSection.className = 'bj-section';
+    dealerSection.className = 'bjm-dealer';
     var dLabel = document.createElement('div');
     dLabel.className = 'bj-label';
     dLabel.textContent = 'Dealer' + (state.dealer_value ? ' (' + state.dealer_value + ')' : '');
@@ -98,35 +129,29 @@ function initBlackjackMulti(area) {
     dCards.className = 'bj-cards';
     if (state.dealer_hand) {
       for (var i = 0; i < state.dealer_hand.length; i++) {
-        var c = state.dealer_hand[i];
-        dCards.appendChild(renderCard(c, c.hidden));
+        dCards.appendChild(renderCard(state.dealer_hand[i], state.dealer_hand[i].hidden));
       }
     }
     dealerSection.appendChild(dCards);
     gameDiv.appendChild(dealerSection);
 
-    var divider = document.createElement('div');
-    divider.className = 'bj-divider';
-    gameDiv.appendChild(divider);
+    var handsRow = document.createElement('div');
+    handsRow.className = 'bjm-hands-row';
 
+    var myPlayer = null;
+    var others = [];
     for (var p = 0; p < state.players.length; p++) {
-      var pl = state.players[p];
-      var pSection = document.createElement('div');
-      pSection.className = 'bj-section' + (pl.id === myId ? ' bj-section-me' : '');
-      var pLabel = document.createElement('div');
-      pLabel.className = 'bj-label';
-      pLabel.textContent = pl.name + (pl.id === myId ? ' (You)' : '') + (pl.value ? ' - ' + pl.value : '') + (pl.result ? ' | ' + pl.result : '');
-      pSection.appendChild(pLabel);
-      var pCards = document.createElement('div');
-      pCards.className = 'bj-cards';
-      if (pl.hand) {
-        for (var ci = 0; ci < pl.hand.length; ci++) {
-          pCards.appendChild(renderCard(pl.hand[ci], false));
-        }
-      }
-      pSection.appendChild(pCards);
-      gameDiv.appendChild(pSection);
+      if (state.players[p].id === myId) myPlayer = state.players[p];
+      else others.push(state.players[p]);
     }
+
+    if (myPlayer) {
+      handsRow.appendChild(renderHandSection(myPlayer, true));
+    }
+    for (var o = 0; o < others.length; o++) {
+      handsRow.appendChild(renderHandSection(others[o], false));
+    }
+    gameDiv.appendChild(handsRow);
 
     var controls = document.createElement('div');
     controls.className = 'bj-controls';
@@ -174,6 +199,7 @@ function initBlackjackMulti(area) {
 
     var leaveBtn = document.createElement('button');
     leaveBtn.className = 'game-reset-btn';
+    leaveBtn.style.background = 'var(--red)';
     leaveBtn.textContent = 'Leave';
     leaveBtn.setAttribute('data-testid', 'button-bjm-leave');
     leaveBtn.addEventListener('click', function() {
@@ -181,7 +207,7 @@ function initBlackjackMulti(area) {
       roomId = null;
       gameDiv.style.display = 'none';
       gameDiv.innerHTML = '';
-      lobbyDiv.style.display = 'block';
+      lobbyDiv.style.display = 'flex';
     });
     controls.appendChild(leaveBtn);
     gameDiv.appendChild(controls);
@@ -196,6 +222,11 @@ function initBlackjackMulti(area) {
     var code = joinInput.value.trim().toUpperCase();
     if (!code || !ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(JSON.stringify({ type: 'bj_action', action: 'join', room_id: code }));
+  });
+
+  joinInput.addEventListener('keydown', function(e) {
+    e.stopPropagation();
+    if (e.key === 'Enter') joinBtn.click();
   });
 
   window._bjMultiHandler = function(data) {
@@ -228,7 +259,32 @@ def get_css():
   width: 140px; outline: none;
 }
 .bj-join-input:focus { border-color: var(--accent); }
-.bj-room-info { font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 4px; }
-.bj-game-area { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; overflow-y: auto; }
-.bj-section-me { background: var(--bg-secondary); border-radius: 8px; padding: 8px 12px; }
+.bj-room-info { font-size: 12px; color: var(--text-muted); }
+.bj-game-area {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 12px; overflow-y: auto; width: 100%;
+}
+.bjm-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; max-width: 700px; gap: 12px;
+}
+.bjm-status { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.bjm-dealer { text-align: center; }
+.bjm-hands-row {
+  display: flex; gap: 16px; width: 100%; max-width: 700px;
+  justify-content: center; flex-wrap: wrap;
+}
+.bjm-hand {
+  background: var(--bg-secondary); border-radius: 8px; padding: 10px 14px;
+  min-width: 140px; flex: 1; max-width: 200px;
+}
+.bjm-hand-me { border: 2px solid var(--accent); }
+.bjm-hand-name { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+.bjm-hand-score { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+.bjm-hand-value { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+.bjm-result { font-weight: 600; }
+.bjm-result-win { color: var(--green); }
+.bjm-result-lose, .bjm-result-bust { color: var(--red); }
+.bjm-result-push { color: var(--orange); }
+.bj-controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 """
