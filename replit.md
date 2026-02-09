@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a real-time chat application built with Python using aiohttp for WebSocket-based communication. Features a Discord-like dark theme with Light and Midnight alternatives. Users join as Guest or Admin from a unified page at `/`. The app supports group chat (#General channel), direct messaging (DMs), a tabbed interface with games, and admin controls.
+This is a real-time chat application built with Python using aiohttp for WebSocket-based communication. Features a Discord-like dark theme with Light and Midnight alternatives. Users join as Guest or Admin from a unified page at `/`. The app supports group chat (#General channel), direct messaging (DMs), group chats (GCs), a tabbed interface with games, admin controls, JSON logging, and user customization.
 
 ## User Preferences
 
@@ -22,7 +22,7 @@ Preferred communication style: Simple, everyday language.
 - `games/snake.py` - Snake game (singleplayer)
 - `games/memory.py` - Memory Match card game (singleplayer)
 - `games/blackjack.py` - Blackjack (singleplayer vs dealer)
-- `games/blackjack_multi.py` - Multiplayer Blackjack (WebSocket rooms)
+- `games/blackjack_multi.py` - Multiplayer Blackjack (WebSocket rooms, scoring, 30s turn timeout)
 - `games/minesweeper.py` - Minesweeper (singleplayer)
 
 ### Routes
@@ -42,6 +42,15 @@ Preferred communication style: Simple, everyday language.
 - `dm_spy_open` - Admin requests to view a specific DM pair
 - `dm_spy` - Server sends full DM conversation for spy viewing
 - `dm_spy_update` - Real-time DM update sent to admin
+- `gc_create` - Create a group chat (name + members, 2+ others required)
+- `gc_created` - Server confirms GC creation to creator
+- `gc_invited` - Server notifies other members of new GC
+- `gc_message` - Send a message to a group chat
+- `gc_open` - Request GC history
+- `gc_history` - Server sends GC message history
+- `get_logs` - Admin requests chat logs (JSON)
+- `logs_data` - Server sends log entries to admin
+- `clear_logs` - Admin clears all logs
 - `users` - Online user list broadcast
 - `system` - System messages (join/leave)
 - `banned_list` - Banned user list (admin only)
@@ -55,8 +64,11 @@ Preferred communication style: Simple, everyday language.
 3. **In-memory storage**: All messages and DM history stored in Python dicts (not persistent)
 4. **Three theme system**: Dark (default), Light, Midnight - stored in localStorage
 5. **Username restrictions**: Guest usernames cannot contain "admin" or "mod" (case-insensitive)
-6. **Tabbed interface**: Bottom tab bar with singleton tabs (one Chat, one Games allowed). New Tab picker for adding tabs.
+6. **Tabbed interface**: Tab bar at TOP of main panel with singleton tabs. New Tab picker for adding tabs.
 7. **Game modules**: Each game in its own Python file returning JS code strings, injected into the HTML at render time
+8. **Games split**: Games hub shows "Single Player" and "Multiplayer" sections with filtered search
+9. **JSON logging**: All chat/DM/GC messages logged to `chat_logs.json`, auto-cleared at midnight
+10. **User customization**: Background image URL, accent color, text color saved to localStorage
 
 ### Admin Features
 - **Admin Token**: Derived from SESSION_SECRET environment variable via SHA-256 hash
@@ -64,13 +76,41 @@ Preferred communication style: Simple, everyday language.
 - **Kick/Ban**: Hover over users in sidebar to see kick/ban buttons
 - **DM Spy**: View all active DM conversations between users
 - **Banned List**: See and unban banned users
+- **Log Viewer**: View all chat/DM/GC logs in a modal, with clear option
 
 ### Tabbed Interface
-- **Tab bar**: At the bottom of the main panel
+- **Tab bar**: At the TOP of the main panel (border-bottom style)
 - **Chat tab**: Singleton - contains the chat area with messages, emoji picker, send button
-- **Games tab**: Singleton - minimalistic list of games with search, each game opens in play area
+- **Games tab**: Singleton - games split into Single Player and Multiplayer sections with search
 - **New Tab**: Opens a picker with Chat and Games options, searchable
 - **Auto-open**: When all tabs closed, auto-opens a new picker tab
+
+### Group Chats
+- **Creation**: Click "+" in Group Chats sidebar section, name the group, select 2+ online members
+- **Messaging**: Members can send messages visible to all group members
+- **Sidebar**: GC channels listed in sidebar with unread badges
+- **In-memory**: GC data stored in `gc_store` dict, not persistent across restarts
+
+### Multiplayer Blackjack
+- **Full 52-card deck**: No duplicate cards
+- **Scoring**: +1 for win, -1 for loss, displayed per player
+- **30s turn timeout**: Auto-stands if player doesn't act within 30 seconds
+- **UI layout**: Your hand on the left, other players on the right
+- **Room system**: Create/join rooms with 5-char alphanumeric codes
+
+### Logging System
+- **File**: `chat_logs.json` - JSON array of log entries
+- **Types**: chat, dm, gc - each with timestamp, sender, text, and type-specific fields
+- **Auto-clear**: Midnight clear via asyncio background task
+- **Admin viewer**: Modal showing all log entries with timestamps, clear button
+
+### User Customization
+- **Settings modal**: Accessible via gear icon in header
+- **Background image**: URL-based, applied to main container
+- **Accent color**: Color picker, overrides --accent CSS variable
+- **Text color**: Color picker, overrides --text-primary CSS variable
+- **Persistence**: All settings saved to localStorage
+- **Reset**: Button to clear all customizations
 
 ### External Dependencies
 - **aiohttp**: Python async web framework

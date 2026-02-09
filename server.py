@@ -9,6 +9,7 @@ import string
 import aiohttp
 from aiohttp import web
 import time as _time
+from datetime import datetime, timedelta
 
 from games import tictactoe, snake, memory, blackjack, blackjack_multi, minesweeper
 
@@ -18,6 +19,55 @@ admin_ws = None      # admin websocket connection
 dm_store = {}        # (sorted_user_a, sorted_user_b) -> [{"sender":..., "recipient":..., "text":..., "ts":...}]
 
 bj_rooms = {}        # room_id -> { players: [...], deck: [...], dealer_hand: [...], phase: str, host: str, current_turn_idx: int }
+gc_store = {}        # gc_id -> {"id": str, "name": str, "members": [str], "creator": str, "messages": []}
+gc_counter = 0
+
+LOG_FILE = "chat_logs.json"
+chat_logs = []
+
+
+def load_logs():
+    global chat_logs
+    try:
+        if os.path.exists(LOG_FILE):
+            with open(LOG_FILE, "r") as f:
+                chat_logs = json.load(f)
+    except Exception:
+        chat_logs = []
+
+
+def save_logs():
+    try:
+        with open(LOG_FILE, "w") as f:
+            json.dump(chat_logs, f)
+    except Exception as e:
+        print(f"[LOG] Error saving logs: {e}")
+
+
+def add_log(log_type, **kwargs):
+    entry = {
+        "type": log_type,
+        "timestamp": datetime.now().isoformat(),
+        **kwargs
+    }
+    chat_logs.append(entry)
+    save_logs()
+
+
+def clear_logs():
+    global chat_logs
+    chat_logs = []
+    save_logs()
+    print("[LOG] Logs cleared at midnight")
+
+
+async def midnight_log_clear():
+    while True:
+        now = datetime.now()
+        midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        wait_secs = (midnight - now).total_seconds()
+        await asyncio.sleep(wait_secs)
+        clear_logs()
 
 def dm_key(a, b):
     return tuple(sorted([a, b]))
@@ -539,12 +589,12 @@ header h1 { font-size: 16px; font-weight: 600; }
 .user-actions { display: flex; gap: 4px; visibility: hidden; }
 .user-item:hover .user-actions { visibility: visible; }
 
-.chat-area { flex: 1; display: flex; flex-direction: column; }
+.chat-area { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 
-.main-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.main-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .tab-bar {
   display: flex; align-items: center; background: var(--bg-tertiary);
-  border-top: 1px solid var(--border); height: 36px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border); height: 36px; flex-shrink: 0;
   overflow-x: auto; overflow-y: hidden;
 }
 .tab-bar::-webkit-scrollbar { height: 0; }
@@ -574,7 +624,8 @@ header h1 { font-size: 16px; font-weight: 600; }
   cursor: pointer; flex-shrink: 0;
 }
 .new-tab-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
-.tab-content { flex: 1; display: none; flex-direction: column; overflow: hidden; }
+#tabContents { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.tab-content { flex: 1; display: none; flex-direction: column; min-height: 0; overflow: hidden; }
 .tab-content.active { display: flex; }
 
 .newtab-page {
@@ -707,7 +758,7 @@ header h1 { font-size: 16px; font-weight: 600; }
 }
 .channel-header .dm-label { color: var(--dm-color); }
 
-#messages { flex: 1; overflow-y: auto; padding: 16px 16px; }
+#messages { flex: 1; overflow-y: auto; padding: 16px 16px; min-height: 0; }
 .msg { padding: 2px 8px; border-radius: 4px; line-height: 1.4; }
 .msg:hover { background: var(--bg-message-hover); }
 .msg-inline { padding: 4px 8px; display: flex; align-items: baseline; gap: 0; flex-wrap: wrap; }
@@ -776,7 +827,7 @@ header h1 { font-size: 16px; font-weight: 600; }
 .emoji-item:hover { background: var(--bg-message-hover); }
 
 .input-bar {
-  padding: 12px 16px; display: flex; gap: 8px;
+  padding: 12px 16px; display: flex; gap: 8px; flex-shrink: 0;
 }
 .input-bar input {
   flex: 1; padding: 10px 14px; border: none; border-radius: 8px;
@@ -820,6 +871,66 @@ header h1 { font-size: 16px; font-weight: 600; }
 .dm-spy-item:hover { background: var(--bg-message-hover); }
 .dm-spy-item.active { background: var(--bg-message-hover); color: var(--text-primary); }
 .dm-spy-icon { color: var(--dm-color); font-size: 14px; }
+
+.gc-create-btn {
+  background: var(--accent); color: #fff; border: none; border-radius: 4px;
+  width: 20px; height: 20px; font-size: 14px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+}
+.gc-create-btn:hover { opacity: 0.8; }
+.gc-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+}
+.gc-modal {
+  background: var(--bg-secondary); border-radius: 8px; padding: 20px;
+  width: 320px; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+.gc-modal-title { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
+.gc-modal-input {
+  width: 100%; padding: 8px 10px; border-radius: 4px; border: 1px solid var(--border);
+  background: var(--input-bg); color: var(--text-primary); font-size: 13px;
+  outline: none; margin-bottom: 10px; box-sizing: border-box;
+}
+.gc-modal-input:focus { border-color: var(--accent); }
+.gc-member-list { max-height: 200px; overflow-y: auto; margin-bottom: 12px; }
+.gc-member-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+  border-radius: 4px; cursor: pointer; font-size: 13px; color: var(--text-secondary);
+}
+.gc-member-item:hover { background: var(--bg-message-hover); }
+.gc-member-item.selected { background: var(--accent); color: #fff; }
+.gc-member-item .gc-check {
+  width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 3px;
+  display: flex; align-items: center; justify-content: center; font-size: 11px;
+  flex-shrink: 0;
+}
+.gc-member-item.selected .gc-check { background: #fff; border-color: #fff; color: var(--accent); }
+.gc-modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.gc-modal-btns button {
+  padding: 6px 16px; border-radius: 4px; border: none; font-size: 13px;
+  font-weight: 600; cursor: pointer;
+}
+.gc-modal-btns .gc-cancel { background: var(--bg-tertiary); color: var(--text-secondary); }
+.gc-modal-btns .gc-confirm { background: var(--accent); color: #fff; }
+.gc-modal-btns .gc-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+.gc-badge { font-size: 10px; font-weight: 600; color: var(--green); margin-left: auto; }
+
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; gap: 8px;
+}
+.settings-label { font-size: 13px; color: var(--text-secondary); flex-shrink: 0; }
+.settings-row input[type="text"] {
+  flex: 1; padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border);
+  background: var(--input-bg); color: var(--text-primary); font-size: 12px; outline: none;
+}
+.settings-row input[type="text"]:focus { border-color: var(--accent); }
+.settings-row input[type="color"] {
+  width: 36px; height: 28px; border: 1px solid var(--border); border-radius: 4px;
+  padding: 0; cursor: pointer; background: transparent;
+}
 
 body.theme-light {
   --bg-primary: #ffffff;
@@ -891,6 +1002,7 @@ body.theme-midnight {
     <h1 data-testid="text-header">Chat</h1>
     <div class="header-right">
       <div class="status"><div class="dot"></div> Connected</div>
+      <button class="theme-btn" id="settingsBtn" data-testid="button-settings" title="Settings" style="font-size:16px;padding:4px 8px;">&#x2699;</button>
       <button class="theme-btn" id="themeBtn" data-testid="button-theme">Dark</button>
     </div>
   </header>
@@ -906,6 +1018,10 @@ body.theme-midnight {
         <div class="sidebar-label">Direct Messages</div>
         <div id="dmChannelsList"></div>
       </div>
+      <div class="sidebar-section" id="gcChannelsSection" style="display:none;">
+        <div class="sidebar-label" style="display:flex;align-items:center;justify-content:space-between;">Group Chats <button class="gc-create-btn" id="gcCreateBtn" data-testid="button-gc-create" title="Create Group Chat">+</button></div>
+        <div id="gcChannelsList"></div>
+      </div>
       <div class="sidebar-section">
         <div class="sidebar-label">Online <span class="count" id="userCount" data-testid="text-user-count">0</span></div>
       </div>
@@ -918,8 +1034,15 @@ body.theme-midnight {
         <div class="banned-header">Banned</div>
         <div id="bannedList"></div>
       </div>
+      <div id="logsSection" class="dm-spy-section" style="display:none;">
+        <div class="dm-spy-label" style="display:flex;align-items:center;justify-content:space-between;">Logs <button class="gc-create-btn" id="viewLogsBtn" data-testid="button-view-logs" title="View Logs" style="font-size:11px;width:auto;padding:0 6px;">View</button></div>
+      </div>
     </div>
     <div class="main-panel">
+      <div class="tab-bar">
+        <div class="tab-items" id="tabItems" data-testid="tab-bar"></div>
+        <button class="new-tab-btn" id="newTabBtn" data-testid="button-new-tab" title="New Tab">+</button>
+      </div>
       <div id="tabContents">
         <div class="tab-content active" id="tabContent-chat">
           <div class="chat-area">
@@ -945,10 +1068,6 @@ body.theme-midnight {
           </div>
         </div>
       </div>
-      <div class="tab-bar">
-        <div class="tab-items" id="tabItems" data-testid="tab-bar"></div>
-        <button class="new-tab-btn" id="newTabBtn" data-testid="button-new-tab" title="New Tab">+</button>
-      </div>
     </div>
   </div>
 </div>
@@ -963,6 +1082,9 @@ var dmMessages = {};
 var dmUnread = {};
 var onlineUsers = [];
 var activeDmPairs = [];
+var gcList = {};
+var gcMessages = {};
+var gcUnread = {};
 var themes = ['theme-dark', 'theme-light', 'theme-midnight'];
 var themeLabels = ['Dark', 'Light', 'Midnight'];
 var themeIdx = parseInt(localStorage.getItem('chat-theme') || '0');
@@ -1012,6 +1134,13 @@ function switchChannel(channel) {
     headerBar.innerHTML = '<span class="channel-icon" style="color:var(--dm-color);">@</span> <span id="channelName" data-testid="text-channel-name" class="dm-label">' + escapeHtml(target) + '</span>';
     document.getElementById('msgInput').placeholder = 'Message @' + target;
     if (dmUnread[target]) { dmUnread[target] = 0; renderDmChannels(); }
+  } else if (channel.startsWith('gc:')) {
+    var gcId = channel.substring(3);
+    var gc = gcList[gcId];
+    var gcName = gc ? gc.name : 'Group';
+    headerBar.innerHTML = '<span class="channel-icon" style="color:var(--green);">#</span> <span id="channelName" data-testid="text-channel-name">' + escapeHtml(gcName) + '</span>';
+    document.getElementById('msgInput').placeholder = 'Message #' + gcName;
+    if (gcUnread[gcId]) { gcUnread[gcId] = 0; renderGcChannels(); }
   } else if (channel.startsWith('spy:')) {
     var parts = channel.substring(4);
     headerBar.innerHTML = '<span class="dm-spy-icon">SPY</span> <span id="channelName" data-testid="text-channel-name" style="color:var(--dm-color);">DM Spy: ' + escapeHtml(parts) + '</span>';
@@ -1123,6 +1252,9 @@ function renderMessages() {
   } else if (currentChannel.startsWith('dm:')) {
     var target = currentChannel.substring(3);
     msgs = dmMessages[target] || [];
+  } else if (currentChannel.startsWith('gc:')) {
+    var gcId = currentChannel.substring(3);
+    msgs = gcMessages[gcId] || [];
   } else if (currentChannel.startsWith('spy:')) {
     var pair = currentChannel.substring(4);
     msgs = dmMessages['spy:' + pair] || [];
@@ -1152,6 +1284,7 @@ function renderMessages() {
 
 function renderSidebar() {
   renderDmChannels();
+  renderGcChannels();
   var generalEl = document.getElementById('channelGeneral');
   generalEl.className = 'channel-item' + (currentChannel === 'general' ? ' active' : '');
 }
@@ -1184,6 +1317,298 @@ function renderDmChannels() {
     item.addEventListener('click', function() { switchChannel('dm:' + target); });
     list.appendChild(item);
   });
+}
+
+function renderGcChannels() {
+  var section = document.getElementById('gcChannelsSection');
+  var list = document.getElementById('gcChannelsList');
+  list.innerHTML = '';
+  var gcIds = Object.keys(gcList);
+  if (gcIds.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  gcIds.forEach(function(gcId) {
+    var gc = gcList[gcId];
+    var item = document.createElement('div');
+    item.className = 'channel-item' + (currentChannel === 'gc:' + gcId ? ' active' : '');
+    item.setAttribute('data-testid', 'gc-channel-' + gcId);
+    var icon = document.createElement('span');
+    icon.className = 'channel-icon';
+    icon.style.color = 'var(--green)';
+    icon.textContent = '#';
+    item.appendChild(icon);
+    var nameSpan = document.createElement('span');
+    nameSpan.textContent = ' ' + gc.name;
+    item.appendChild(nameSpan);
+    if (gcUnread[gcId] && gcUnread[gcId] > 0 && currentChannel !== 'gc:' + gcId) {
+      var badge = document.createElement('span');
+      badge.className = 'dm-badge';
+      badge.textContent = gcUnread[gcId];
+      item.appendChild(badge);
+    }
+    item.addEventListener('click', function() {
+      switchChannel('gc:' + gcId);
+      gcUnread[gcId] = 0;
+      ws.send(JSON.stringify({type: 'gc_open', gc_id: gcId}));
+    });
+    list.appendChild(item);
+  });
+}
+
+function showGcCreateModal() {
+  var overlay = document.createElement('div');
+  overlay.className = 'gc-overlay';
+  overlay.setAttribute('data-testid', 'gc-create-modal');
+  var modal = document.createElement('div');
+  modal.className = 'gc-modal';
+  var title = document.createElement('div');
+  title.className = 'gc-modal-title';
+  title.textContent = 'Create Group Chat';
+  modal.appendChild(title);
+  var nameInput = document.createElement('input');
+  nameInput.className = 'gc-modal-input';
+  nameInput.placeholder = 'Group name...';
+  nameInput.setAttribute('data-testid', 'input-gc-name');
+  modal.appendChild(nameInput);
+  var memberLabel = document.createElement('div');
+  memberLabel.style.cssText = 'font-size:12px;color:var(--text-muted);margin-bottom:6px;';
+  memberLabel.textContent = 'Select members (2+ required):';
+  modal.appendChild(memberLabel);
+  var memberList = document.createElement('div');
+  memberList.className = 'gc-member-list';
+  var selected = {};
+  onlineUsers.forEach(function(name) {
+    if (name === myUsername) return;
+    var item = document.createElement('div');
+    item.className = 'gc-member-item';
+    item.setAttribute('data-testid', 'gc-member-' + name);
+    var check = document.createElement('div');
+    check.className = 'gc-check';
+    item.appendChild(check);
+    var nm = document.createElement('span');
+    nm.textContent = name;
+    item.appendChild(nm);
+    item.addEventListener('click', function() {
+      if (selected[name]) {
+        delete selected[name];
+        item.className = 'gc-member-item';
+        check.textContent = '';
+      } else {
+        selected[name] = true;
+        item.className = 'gc-member-item selected';
+        check.textContent = 'X';
+      }
+      confirmBtn.disabled = Object.keys(selected).length < 2;
+    });
+    memberList.appendChild(item);
+  });
+  modal.appendChild(memberList);
+  var btns = document.createElement('div');
+  btns.className = 'gc-modal-btns';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'gc-cancel';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.setAttribute('data-testid', 'button-gc-cancel');
+  cancelBtn.addEventListener('click', function() { overlay.remove(); });
+  btns.appendChild(cancelBtn);
+  var confirmBtn = document.createElement('button');
+  confirmBtn.className = 'gc-confirm';
+  confirmBtn.textContent = 'Create';
+  confirmBtn.disabled = true;
+  confirmBtn.setAttribute('data-testid', 'button-gc-confirm');
+  confirmBtn.addEventListener('click', function() {
+    var gcName = nameInput.value.trim() || 'Group';
+    var members = Object.keys(selected);
+    if (members.length < 2) return;
+    ws.send(JSON.stringify({type: 'gc_create', name: gcName, members: members}));
+    overlay.remove();
+  });
+  btns.appendChild(confirmBtn);
+  modal.appendChild(btns);
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  nameInput.focus();
+  nameInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
+}
+
+function loadUserSettings() {
+  var bgUrl = localStorage.getItem('chat-bg-url') || '';
+  var accentColor = localStorage.getItem('chat-accent-color') || '';
+  var textColor = localStorage.getItem('chat-text-color') || '';
+  if (bgUrl) {
+    document.querySelector('.container').style.backgroundImage = 'url(' + bgUrl + ')';
+    document.querySelector('.container').style.backgroundSize = 'cover';
+    document.querySelector('.container').style.backgroundPosition = 'center';
+  }
+  if (accentColor) {
+    document.documentElement.style.setProperty('--accent', accentColor);
+  }
+  if (textColor) {
+    document.documentElement.style.setProperty('--text-primary', textColor);
+  }
+}
+
+function showSettingsModal() {
+  var overlay = document.createElement('div');
+  overlay.className = 'gc-overlay';
+  overlay.setAttribute('data-testid', 'settings-modal');
+  var modal = document.createElement('div');
+  modal.className = 'gc-modal';
+  var title = document.createElement('div');
+  title.className = 'gc-modal-title';
+  title.textContent = 'User Settings';
+  modal.appendChild(title);
+
+  var row1 = document.createElement('div');
+  row1.className = 'settings-row';
+  var label1 = document.createElement('span');
+  label1.className = 'settings-label';
+  label1.textContent = 'Background Image URL';
+  row1.appendChild(label1);
+  var bgInput = document.createElement('input');
+  bgInput.type = 'text';
+  bgInput.placeholder = 'https://...';
+  bgInput.value = localStorage.getItem('chat-bg-url') || '';
+  bgInput.setAttribute('data-testid', 'input-settings-bg');
+  bgInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
+  row1.appendChild(bgInput);
+  modal.appendChild(row1);
+
+  var row2 = document.createElement('div');
+  row2.className = 'settings-row';
+  var label2 = document.createElement('span');
+  label2.className = 'settings-label';
+  label2.textContent = 'Accent Color';
+  row2.appendChild(label2);
+  var accentInput = document.createElement('input');
+  accentInput.type = 'color';
+  accentInput.value = localStorage.getItem('chat-accent-color') || '#5865f2';
+  accentInput.setAttribute('data-testid', 'input-settings-accent');
+  row2.appendChild(accentInput);
+  modal.appendChild(row2);
+
+  var row3 = document.createElement('div');
+  row3.className = 'settings-row';
+  var label3 = document.createElement('span');
+  label3.className = 'settings-label';
+  label3.textContent = 'Text Color';
+  row3.appendChild(label3);
+  var textInput = document.createElement('input');
+  textInput.type = 'color';
+  textInput.value = localStorage.getItem('chat-text-color') || '#ffffff';
+  textInput.setAttribute('data-testid', 'input-settings-text');
+  row3.appendChild(textInput);
+  modal.appendChild(row3);
+
+  var btns = document.createElement('div');
+  btns.className = 'gc-modal-btns';
+  var resetBtn = document.createElement('button');
+  resetBtn.className = 'gc-cancel';
+  resetBtn.textContent = 'Reset';
+  resetBtn.setAttribute('data-testid', 'button-settings-reset');
+  resetBtn.addEventListener('click', function() {
+    localStorage.removeItem('chat-bg-url');
+    localStorage.removeItem('chat-accent-color');
+    localStorage.removeItem('chat-text-color');
+    document.querySelector('.container').style.backgroundImage = '';
+    document.documentElement.style.removeProperty('--accent');
+    document.documentElement.style.removeProperty('--text-primary');
+    overlay.remove();
+  });
+  btns.appendChild(resetBtn);
+  var saveBtn = document.createElement('button');
+  saveBtn.className = 'gc-confirm';
+  saveBtn.textContent = 'Save';
+  saveBtn.setAttribute('data-testid', 'button-settings-save');
+  saveBtn.addEventListener('click', function() {
+    var bgUrl = bgInput.value.trim();
+    var accent = accentInput.value;
+    var textClr = textInput.value;
+    if (bgUrl) {
+      localStorage.setItem('chat-bg-url', bgUrl);
+      document.querySelector('.container').style.backgroundImage = 'url(' + bgUrl + ')';
+      document.querySelector('.container').style.backgroundSize = 'cover';
+      document.querySelector('.container').style.backgroundPosition = 'center';
+    } else {
+      localStorage.removeItem('chat-bg-url');
+      document.querySelector('.container').style.backgroundImage = '';
+    }
+    if (accent) {
+      localStorage.setItem('chat-accent-color', accent);
+      document.documentElement.style.setProperty('--accent', accent);
+    }
+    if (textClr) {
+      localStorage.setItem('chat-text-color', textClr);
+      document.documentElement.style.setProperty('--text-primary', textClr);
+    }
+    overlay.remove();
+  });
+  btns.appendChild(saveBtn);
+  modal.appendChild(btns);
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function showLogsModal(logs) {
+  var overlay = document.createElement('div');
+  overlay.className = 'gc-overlay';
+  overlay.setAttribute('data-testid', 'logs-modal');
+  var modal = document.createElement('div');
+  modal.className = 'gc-modal';
+  modal.style.width = '500px';
+  modal.style.maxHeight = '80vh';
+  var title = document.createElement('div');
+  title.className = 'gc-modal-title';
+  title.textContent = 'Chat Logs (' + logs.length + ' entries)';
+  modal.appendChild(title);
+  var logList = document.createElement('div');
+  logList.style.cssText = 'max-height:50vh;overflow-y:auto;font-size:12px;font-family:monospace;';
+  if (logs.length === 0) {
+    logList.textContent = 'No logs recorded.';
+    logList.style.color = 'var(--text-muted)';
+  } else {
+    logs.forEach(function(entry) {
+      var row = document.createElement('div');
+      row.style.cssText = 'padding:3px 0;border-bottom:1px solid var(--border);color:var(--text-secondary);';
+      var ts = entry.timestamp ? entry.timestamp.substring(11, 19) : '';
+      var label = '[' + ts + '] ';
+      if (entry.type === 'chat') {
+        label += '[CHAT] ' + (entry.sender || '') + ': ' + (entry.text || '');
+      } else if (entry.type === 'dm') {
+        label += '[DM] ' + (entry.sender || '') + ' -> ' + (entry.recipient || '') + ': ' + (entry.text || '');
+      } else if (entry.type === 'gc') {
+        label += '[GC:' + (entry.gc_name || '') + '] ' + (entry.sender || '') + ': ' + (entry.text || '');
+      } else {
+        label += JSON.stringify(entry);
+      }
+      row.textContent = label;
+      logList.appendChild(row);
+    });
+  }
+  modal.appendChild(logList);
+  var btns = document.createElement('div');
+  btns.className = 'gc-modal-btns';
+  btns.style.marginTop = '12px';
+  var clearBtn = document.createElement('button');
+  clearBtn.className = 'gc-cancel';
+  clearBtn.textContent = 'Clear Logs';
+  clearBtn.style.color = 'var(--red)';
+  clearBtn.setAttribute('data-testid', 'button-clear-logs');
+  clearBtn.addEventListener('click', function() {
+    ws.send(JSON.stringify({type: 'clear_logs'}));
+    overlay.remove();
+  });
+  btns.appendChild(clearBtn);
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'gc-confirm';
+  closeBtn.textContent = 'Close';
+  closeBtn.addEventListener('click', function() { overlay.remove(); });
+  btns.appendChild(closeBtn);
+  modal.appendChild(btns);
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 function renderUsers(list) {
@@ -1367,6 +1792,35 @@ function handleMessage(data) {
     renderDmChannels();
   } else if (data.type === 'dm_pairs') {
     renderDmSpy(data.pairs);
+  } else if (data.type === 'logs_data') {
+    showLogsModal(data.logs || []);
+  } else if (data.type === 'gc_created') {
+    gcList[data.gc.id] = data.gc;
+    gcMessages[data.gc.id] = [];
+    renderGcChannels();
+    switchChannel('gc:' + data.gc.id);
+  } else if (data.type === 'gc_invited') {
+    gcList[data.gc.id] = data.gc;
+    gcMessages[data.gc.id] = [];
+    renderGcChannels();
+  } else if (data.type === 'gc_message') {
+    var gcId = data.gc_id;
+    if (!gcMessages[gcId]) gcMessages[gcId] = [];
+    var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    gcMessages[gcId].push({sender: data.sender, text: data.text, admin: data.admin || false, time: time});
+    if (currentChannel === 'gc:' + gcId) {
+      renderMessages();
+    } else {
+      gcUnread[gcId] = (gcUnread[gcId] || 0) + 1;
+      renderGcChannels();
+    }
+  } else if (data.type === 'gc_history') {
+    var gcId = data.gc_id;
+    gcMessages[gcId] = [];
+    (data.messages || []).forEach(function(m) {
+      gcMessages[gcId].push({sender: m.sender, text: m.text, admin: m.admin || false, time: m.time || ''});
+    });
+    if (currentChannel === 'gc:' + gcId) renderMessages();
   } else if (data.type === 'error') {
     if (!myUsername && !isAdmin) {
       var err = document.getElementById('joinError');
@@ -1389,6 +1843,7 @@ function connectAdmin(token) {
     document.getElementById('nameInput').style.display = 'block';
     document.getElementById('joinScreen').style.display = 'none';
     document.getElementById('chatScreen').style.display = 'flex';
+    document.getElementById('logsSection').style.display = 'block';
     document.getElementById('msgInput').focus();
   };
   ws.onclose = function() {
@@ -1426,6 +1881,20 @@ var RESERVED = /admin|mod/i;
 document.getElementById('channelGeneral').addEventListener('click', function() {
   switchChannel('general');
 });
+
+document.getElementById('gcCreateBtn').addEventListener('click', function() {
+  showGcCreateModal();
+});
+
+document.getElementById('viewLogsBtn').addEventListener('click', function() {
+  ws.send(JSON.stringify({type: 'get_logs'}));
+});
+
+document.getElementById('settingsBtn').addEventListener('click', function() {
+  showSettingsModal();
+});
+
+loadUserSettings();
 
 document.getElementById('joinBtn').addEventListener('click', function() {
   var name = document.getElementById('usernameInput').value.trim();
@@ -1473,6 +1942,14 @@ document.getElementById('sendBtn').addEventListener('click', function() {
       ws.send(JSON.stringify({ type: 'dm_message', target: target, text: text, name: name }));
     } else {
       ws.send(JSON.stringify({ type: 'dm_message', target: target, text: text }));
+    }
+  } else if (currentChannel.startsWith('gc:')) {
+    var gcId = currentChannel.substring(3);
+    if (isAdmin) {
+      var name = document.getElementById('nameInput').value.trim() || 'Admin';
+      ws.send(JSON.stringify({ type: 'gc_message', gc_id: gcId, text: text, name: name }));
+    } else {
+      ws.send(JSON.stringify({ type: 'gc_message', gc_id: gcId, text: text }));
     }
   }
   input.value = '';
@@ -1903,7 +2380,7 @@ var allGames = [
   { id: 'snake', name: 'Snake', desc: 'Navigate the snake to eat food and grow without hitting walls', badge: 'single' },
   { id: 'memory', name: 'Memory Match', desc: 'Flip cards and find all matching pairs with fewest moves', badge: 'single' },
   { id: 'blackjack', name: 'Blackjack', desc: 'Beat the dealer by getting as close to 21 as possible', badge: 'single' },
-  { id: 'blackjack_multi', name: 'Blackjack Multiplayer', desc: 'Play blackjack with friends in real-time rooms', badge: 'multi' },
+  { id: 'blackjack_multi', name: 'Blackjack (Multiplayer)', desc: 'Play blackjack with friends in real-time rooms', badge: 'multi' },
   { id: 'minesweeper', name: 'Minesweeper', desc: 'Clear the minefield without detonating any hidden mines', badge: 'single' },
 ];
 
@@ -1929,43 +2406,60 @@ function buildGamesHub(container) {
   listDiv.className = 'games-list';
   hub.appendChild(listDiv);
 
+  function makeGameRow(g) {
+    var row = document.createElement('div');
+    row.className = 'game-item';
+    row.setAttribute('data-testid', 'game-card-' + g.id);
+    var info = document.createElement('div');
+    info.className = 'game-item-info';
+    var nameEl = document.createElement('div');
+    nameEl.className = 'game-item-name';
+    nameEl.textContent = g.name;
+    info.appendChild(nameEl);
+    var descEl = document.createElement('div');
+    descEl.className = 'game-item-desc';
+    descEl.textContent = g.desc;
+    info.appendChild(descEl);
+    row.appendChild(info);
+    row.addEventListener('click', function() {
+      showGame(container, g.id);
+    });
+    return row;
+  }
+
   function renderGames(filter) {
     listDiv.innerHTML = '';
     var q = (filter || '').toLowerCase();
-    var found = false;
-    allGames.forEach(function(g) {
-      if (q && g.name.toLowerCase().indexOf(q) === -1 && g.desc.toLowerCase().indexOf(q) === -1) return;
-      found = true;
-      var row = document.createElement('div');
-      row.className = 'game-item';
-      row.setAttribute('data-testid', 'game-card-' + g.id);
-      var info = document.createElement('div');
-      info.className = 'game-item-info';
-      var nameEl = document.createElement('div');
-      nameEl.className = 'game-item-name';
-      nameEl.textContent = g.name;
-      info.appendChild(nameEl);
-      var descEl = document.createElement('div');
-      descEl.className = 'game-item-desc';
-      descEl.textContent = g.desc;
-      info.appendChild(descEl);
-      row.appendChild(info);
-      if (g.badge) {
-        var badge = document.createElement('span');
-        badge.className = 'game-item-badge';
-        badge.textContent = g.badge;
-        row.appendChild(badge);
-      }
-      row.addEventListener('click', function() {
-        showGame(container, g.id);
-      });
-      listDiv.appendChild(row);
+    var singles = allGames.filter(function(g) {
+      if (g.badge !== 'single') return false;
+      if (q && g.name.toLowerCase().indexOf(q) === -1 && g.desc.toLowerCase().indexOf(q) === -1) return false;
+      return true;
     });
-    if (!found) {
+    var multis = allGames.filter(function(g) {
+      if (g.badge !== 'multi') return false;
+      if (q && g.name.toLowerCase().indexOf(q) === -1 && g.desc.toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+    if (singles.length === 0 && multis.length === 0) {
       var empty = document.createElement('div');
       empty.className = 'newtab-empty';
       empty.textContent = 'No games found';
       listDiv.appendChild(empty);
+      return;
+    }
+    if (singles.length > 0) {
+      var sLabel = document.createElement('div');
+      sLabel.className = 'newtab-section-label';
+      sLabel.textContent = 'Single Player';
+      listDiv.appendChild(sLabel);
+      singles.forEach(function(g) { listDiv.appendChild(makeGameRow(g)); });
+    }
+    if (multis.length > 0) {
+      var mLabel = document.createElement('div');
+      mLabel.className = 'newtab-section-label';
+      mLabel.textContent = 'Multiplayer';
+      listDiv.appendChild(mLabel);
+      multis.forEach(function(g) { listDiv.appendChild(makeGameRow(g)); });
     }
   }
 
@@ -1978,7 +2472,7 @@ function buildGamesHub(container) {
 
 var gameNames = {
   tictactoe: 'Tic-Tac-Toe', snake: 'Snake', memory: 'Memory Match',
-  blackjack: 'Blackjack', blackjack_multi: 'Blackjack Multiplayer', minesweeper: 'Minesweeper'
+  blackjack: 'Blackjack', blackjack_multi: 'Blackjack (Multiplayer)', minesweeper: 'Minesweeper'
 };
 
 function showGame(container, gameId) {
@@ -2147,6 +2641,57 @@ def get_dm_pairs():
     return pairs
 
 
+async def handle_gc_create(ws, creator, data):
+    global gc_counter
+    gc_counter += 1
+    gc_id = f"gc_{gc_counter}"
+    name = data.get("name", "Group").strip() or "Group"
+    members = data.get("members", [])
+    if len(members) < 2:
+        await ws.send_str(json.dumps({"type": "error", "text": "Need at least 2 other members."}))
+        return
+    all_members = [creator] + members
+    gc = {"id": gc_id, "name": name, "members": all_members, "creator": creator, "messages": []}
+    gc_store[gc_id] = gc
+    gc_info = {"id": gc_id, "name": name, "members": all_members}
+    await ws.send_str(json.dumps({"type": "gc_created", "gc": gc_info}))
+    for m in members:
+        for client_ws, info in connected.items():
+            if info["username"] == m:
+                try:
+                    await client_ws.send_str(json.dumps({"type": "gc_invited", "gc": gc_info}))
+                except Exception:
+                    pass
+                break
+    print(f"[GC] {creator} created group '{name}' with {all_members}")
+
+
+async def handle_gc_message(ws, sender, data):
+    gc_id = data.get("gc_id", "")
+    text = data.get("text", "").strip()
+    gc = gc_store.get(gc_id)
+    if not gc or sender not in gc["members"] or not text:
+        return
+    ts = _time.strftime("%H:%M")
+    admin = data.get("admin", False)
+    display_name = data.get("name", sender)
+    gc["messages"].append({"sender": display_name, "text": text, "time": ts, "admin": admin})
+    add_log("gc", gc_id=gc_id, gc_name=gc["name"], sender=display_name, text=text, admin=admin)
+    msg = {"type": "gc_message", "gc_id": gc_id, "sender": display_name, "text": text, "admin": admin}
+    for m in gc["members"]:
+        if m == sender:
+            continue
+        for client_ws, info in connected.items():
+            if info["username"] == m:
+                try:
+                    await client_ws.send_str(json.dumps(msg))
+                except Exception:
+                    pass
+                break
+    await ws.send_str(json.dumps(msg))
+    print(f"[GC:{gc['name']}] {display_name}: {text}")
+
+
 async def send_dm_pairs_to_admin():
     pairs = get_dm_pairs()
     await send_to_admin({"type": "dm_pairs", "pairs": pairs})
@@ -2209,6 +2754,7 @@ async def handle_admin_ws(request):
                     name = data.get("name", "").strip() or "Admin"
                     if text:
                         await broadcast_all({"type": "chat", "sender": name, "text": text, "admin": True})
+                        add_log("chat", sender=name, text=text, admin=True)
                         print(f"[{name} (Admin)] {text}")
 
                 elif data["type"] == "dm_message":
@@ -2232,6 +2778,7 @@ async def handle_admin_ws(request):
                                 break
                         await ws.send_str(json.dumps(dm_msg_to_admin))
                         await send_dm_pairs_to_admin()
+                        add_log("dm", sender=name, recipient=target, text=text, admin=True)
                         print(f"[DM] {name} (Admin) -> {target}: {text}")
 
                 elif data["type"] == "dm_open":
@@ -2256,6 +2803,30 @@ async def handle_admin_ws(request):
                             "type": "dm_spy",
                             "pair": pair_str,
                             "messages": history
+                        }))
+
+                elif data.get("type") == "get_logs":
+                    await ws.send_str(json.dumps({"type": "logs_data", "logs": chat_logs}))
+
+                elif data.get("type") == "clear_logs":
+                    clear_logs()
+                    await ws.send_str(json.dumps({"type": "logs_data", "logs": []}))
+
+                elif data.get("type") == "gc_create":
+                    admin_name = data.get("name", "Admin").strip() or "Admin"
+                    await handle_gc_create(ws, "~admin~", data)
+
+                elif data.get("type") == "gc_message":
+                    await handle_gc_message(ws, "~admin~", data)
+
+                elif data.get("type") == "gc_open":
+                    gc_id = data.get("gc_id", "")
+                    gc = gc_store.get(gc_id)
+                    if gc and "~admin~" in gc["members"]:
+                        await ws.send_str(json.dumps({
+                            "type": "gc_history",
+                            "gc_id": gc_id,
+                            "messages": gc["messages"]
                         }))
 
             except Exception as e:
@@ -2304,7 +2875,7 @@ def bj_room_state(room, reveal_dealer=False):
             dealer_hand.append(c)
     players_data = []
     for p in room["players"]:
-        pd = {"id": p["id"], "name": p["name"], "hand": p["hand"], "value": bj_card_value(p["hand"]) if p["hand"] else 0}
+        pd = {"id": p["id"], "name": p["name"], "hand": p["hand"], "value": bj_card_value(p["hand"]) if p["hand"] else 0, "score": p.get("score", 0)}
         if p.get("result"):
             pd["result"] = p["result"]
         players_data.append(pd)
@@ -2333,6 +2904,21 @@ async def bj_broadcast_state(room, reveal=False):
                 pass
 
 
+async def bj_turn_timeout(room_id, turn_idx):
+    await asyncio.sleep(30)
+    room = bj_rooms.get(room_id)
+    if not room or room["phase"] != "playing":
+        return
+    if room["current_turn_idx"] != turn_idx:
+        return
+    room["current_turn_idx"] += 1
+    if room["current_turn_idx"] >= len(room["players"]):
+        await bj_dealer_play(room)
+    else:
+        asyncio.create_task(bj_turn_timeout(room_id, room["current_turn_idx"]))
+        await bj_broadcast_state(room)
+
+
 async def handle_bj_action(ws, username, data):
     action = data.get("action", "")
 
@@ -2340,7 +2926,7 @@ async def handle_bj_action(ws, username, data):
         room_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
         room = {
             "room_id": room_id,
-            "players": [{"id": username, "name": username, "ws": ws, "hand": [], "result": None}],
+            "players": [{"id": username, "name": username, "ws": ws, "hand": [], "result": None, "score": 0}],
             "deck": [],
             "dealer_hand": [],
             "phase": "waiting",
@@ -2366,7 +2952,7 @@ async def handle_bj_action(ws, username, data):
         if room["phase"] != "waiting":
             await ws.send_str(json.dumps({"type": "bj_error", "text": "Game already in progress."}))
             return
-        room["players"].append({"id": username, "name": username, "ws": ws, "hand": [], "result": None})
+        room["players"].append({"id": username, "name": username, "ws": ws, "hand": [], "result": None, "score": 0})
         state = bj_room_state(room)
         await ws.send_str(json.dumps({"type": "bj_joined", "room_id": room_id, "player_id": username, "state": state}))
         await bj_broadcast_state(room)
@@ -2383,6 +2969,7 @@ async def handle_bj_action(ws, username, data):
             p["result"] = None
         room["phase"] = "playing"
         room["current_turn_idx"] = 0
+        asyncio.create_task(bj_turn_timeout(room_id, 0))
         await bj_broadcast_state(room)
 
     elif action == "hit":
@@ -2403,6 +2990,7 @@ async def handle_bj_action(ws, username, data):
             if room["current_turn_idx"] >= len(room["players"]):
                 await bj_dealer_play(room)
             else:
+                asyncio.create_task(bj_turn_timeout(room_id, room["current_turn_idx"]))
                 await bj_broadcast_state(room)
         else:
             await bj_broadcast_state(room)
@@ -2422,6 +3010,7 @@ async def handle_bj_action(ws, username, data):
         if room["current_turn_idx"] >= len(room["players"]):
             await bj_dealer_play(room)
         else:
+            asyncio.create_task(bj_turn_timeout(room_id, room["current_turn_idx"]))
             await bj_broadcast_state(room)
 
     elif action == "leave":
@@ -2446,14 +3035,18 @@ async def bj_dealer_play(room):
     for p in room["players"]:
         if p["result"] == "Bust":
             p["result"] = "Lose"
+            p["score"] = p.get("score", 0) - 1
             continue
         pv = bj_card_value(p["hand"])
         if dv > 21:
             p["result"] = "Win"
+            p["score"] = p.get("score", 0) + 1
         elif pv > dv:
             p["result"] = "Win"
+            p["score"] = p.get("score", 0) + 1
         elif pv < dv:
             p["result"] = "Lose"
+            p["score"] = p.get("score", 0) - 1
         else:
             p["result"] = "Push"
     room["phase"] = "done"
@@ -2550,6 +3143,7 @@ async def handle_client_ws(request):
                     text = data.get("text", "").strip()
                     if text:
                         await broadcast_all({"type": "chat", "sender": username, "text": text})
+                        add_log("chat", sender=username, text=text)
                         print(f"[{username}] {text}")
 
                 elif data.get("type") == "dm_message":
@@ -2579,6 +3173,7 @@ async def handle_client_ws(request):
                             await send_to_admin({"type": "dm_spy_update", "pair": spy_pair_display, "sender": username, "recipient": target, "text": text})
                         await ws.send_str(json.dumps(dm_msg))
                         await send_dm_pairs_to_admin()
+                        add_log("dm", sender=username, recipient=target, text=text)
                         print(f"[DM] {username} -> {target}: {text}")
 
                 elif data.get("type") == "dm_open":
@@ -2591,6 +3186,22 @@ async def handle_client_ws(request):
                         "target": target,
                         "messages": history
                     }))
+
+                elif data.get("type") == "gc_create":
+                    await handle_gc_create(ws, username, data)
+
+                elif data.get("type") == "gc_message":
+                    await handle_gc_message(ws, username, data)
+
+                elif data.get("type") == "gc_open":
+                    gc_id = data.get("gc_id", "")
+                    gc = gc_store.get(gc_id)
+                    if gc and username in gc["members"]:
+                        await ws.send_str(json.dumps({
+                            "type": "gc_history",
+                            "gc_id": gc_id,
+                            "messages": gc["messages"]
+                        }))
 
                 elif data.get("type") == "bj_action":
                     await handle_bj_action(ws, username, data)
@@ -2621,6 +3232,8 @@ async def handle_client_ws(request):
 
 
 async def main():
+    load_logs()
+
     app = web.Application()
     app.router.add_get("/", handle_chat_page)
     app.router.add_get("/admin", handle_admin_page)
@@ -2632,6 +3245,8 @@ async def main():
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", 5000)
     await site.start()
+
+    asyncio.create_task(midnight_log_clear())
 
     print("=" * 50)
     print("  CHAT SERVER - ADMIN PANEL")
