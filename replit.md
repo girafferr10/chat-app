@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a real-time chat application built with Python using aiohttp for WebSocket-based communication. Features a Discord-like dark theme with Light and Midnight alternatives. Users join as Guest or Admin from a unified page at `/`. The app supports group chat (#General channel), direct messaging (DMs), group chats (GCs), a tabbed interface with games, admin controls, JSON logging, and user customization.
+This is a real-time chat application built with Python using aiohttp for WebSocket-based communication. Features a Discord-like dark theme with Light and Midnight alternatives. Three-tier role system: Owner, Admin (staff), and Guest. The app supports group chat (#General channel), direct messaging (DMs), group chats (GCs), a tabbed interface with games, role-based moderation controls, suggestion/mailbox system, JSON logging with Mountain Time timestamps, and user customization.
 
 ## User Preferences
 
@@ -26,10 +26,16 @@ Preferred communication style: Simple, everyday language.
 - `games/minesweeper.py` - Minesweeper (singleplayer)
 
 ### Routes
-- `GET /` - Main page with unified Guest/Admin join flow
-- `GET /admin` - Legacy admin login page
+- `GET /` - Main page with unified Guest/Admin/Owner join flow
+- `GET /admin` - Owner login page (requires owner token)
+- `GET /owner-ws` - WebSocket endpoint for owner (requires `?token=...`)
+- `GET /staff-ws` - WebSocket endpoint for staff admins (requires `?key=...`)
 - `GET /ws` - WebSocket endpoint for guest clients
-- `GET /admin-ws` - WebSocket endpoint for admin (requires `?token=...`)
+
+### Three-Tier Role System
+1. **Owner**: Full control - kick, ban, unban, view/delete logs, DM spy, create/manage admin accounts, view/delete suggestions
+2. **Admin (Staff)**: Limited moderation - kick users, view logs (read-only), send suggestions to owner, chat
+3. **Guest**: Standard user - chat, DM, group chats, games, send suggestions
 
 ### WebSocket Message Types
 - `join` - Guest sends username to join
@@ -38,45 +44,70 @@ Preferred communication style: Simple, everyday language.
 - `dm_open` - Request DM history with a user
 - `dm` - Server delivers DM to participants
 - `dm_history` - Server sends DM conversation history
-- `dm_pairs` - Server sends list of active DM pairs (admin only)
-- `dm_spy_open` - Admin requests to view a specific DM pair
+- `dm_pairs` - Server sends list of active DM pairs (owner only)
+- `dm_spy_open` - Owner requests to view a specific DM pair
 - `dm_spy` - Server sends full DM conversation for spy viewing
-- `dm_spy_update` - Real-time DM update sent to admin
+- `dm_spy_update` - Real-time DM update sent to owner
 - `gc_create` - Create a group chat (name + members, 2+ others required)
 - `gc_created` - Server confirms GC creation to creator
 - `gc_invited` - Server notifies other members of new GC
 - `gc_message` - Send a message to a group chat
 - `gc_open` - Request GC history
 - `gc_history` - Server sends GC message history
-- `get_logs` - Admin requests chat logs (JSON)
-- `logs_data` - Server sends log entries to admin
-- `clear_logs` - Admin clears all logs
+- `get_logs` - Owner/Admin requests chat logs (JSON)
+- `logs_data` - Server sends log entries
+- `delete_log` - Owner deletes individual log entry by ID
+- `create_admin` - Owner creates a new admin account
+- `admin_created` - Server confirms admin creation with key
+- `get_admins` - Owner requests list of admin accounts
+- `admins_data` - Server sends admin accounts list
+- `remove_admin` - Owner removes an admin account
+- `send_suggestion` - Admin/Guest sends a suggestion to owner
+- `suggestion_sent` - Server confirms suggestion was sent
+- `get_suggestions` - Owner requests all suggestions
+- `suggestions_data` - Server sends suggestions list
+- `delete_suggestion` - Owner deletes a suggestion
+- `new_suggestion` - Server notifies owner of new suggestion
 - `users` - Online user list broadcast
 - `system` - System messages (join/leave)
-- `banned_list` - Banned user list (admin only)
-- `kick` / `ban` / `unban` - Admin moderation actions
+- `banned_list` - Banned user list (owner only)
+- `kick` - Owner/Admin kicks a user
+- `ban` / `unban` - Owner bans/unbans a user
 - `bj_action` - Multiplayer blackjack actions (create/join/hit/stand/leave/start)
 - `bj_room_created` / `bj_joined` / `bj_state` / `bj_error` - Server responses for multiplayer blackjack
 
 ### Key Design Decisions
-1. **Unified join page**: Single page at `/` offers Guest or Admin choice
-2. **Admin stable identity**: Admin DMs use internal `~admin~` identity for dm_key so changing display name doesn't break conversation history
-3. **In-memory storage**: All messages and DM history stored in Python dicts (not persistent)
-4. **Three theme system**: Dark (default), Light, Midnight - stored in localStorage
-5. **Username restrictions**: Guest usernames cannot contain "admin" or "mod" (case-insensitive)
-6. **Tabbed interface**: Tab bar at TOP of main panel with singleton tabs. New Tab picker for adding tabs.
-7. **Game modules**: Each game in its own Python file returning JS code strings, injected into the HTML at render time
-8. **Games split**: Games hub shows "Single Player" and "Multiplayer" sections with filtered search
-9. **JSON logging**: All chat/DM/GC messages logged to `chat_logs.json`, auto-cleared at midnight
-10. **User customization**: Background image URL, accent color, text color saved to localStorage
+1. **Three-tier join page**: Single page at `/` offers Guest, Admin, or Owner choice
+2. **Owner stable identity**: Owner DMs use internal `~admin~` identity for dm_key
+3. **Staff admin identity**: Staff DMs use `~staff:<key>~` identity for dm_key
+4. **Admin accounts**: Created by owner with fixed display names, stored in `admin_accounts` dict
+5. **In-memory storage**: All messages and DM history stored in Python dicts (not persistent)
+6. **Three theme system**: Dark (default), Light, Midnight - stored in localStorage
+7. **Username restrictions**: Guest usernames cannot contain "admin", "mod", or "owner" (case-insensitive)
+8. **Tabbed interface**: Tab bar at TOP of main panel with singleton tabs. New Tab picker for adding tabs.
+9. **Game modules**: Each game in its own Python file returning JS code strings, injected into the HTML at render time
+10. **Games split**: Games hub shows "Single Player" and "Multiplayer" sections with filtered search
+11. **JSON logging**: All chat/DM/GC messages logged to `chat_logs.json` with Mountain Time timestamps, no auto-clear, per-entry deletion by owner
+12. **User customization**: Background image URL (covers full page via body), accent color, text color saved to localStorage
+13. **Suggestion system**: Guests and admins can send suggestions to owner's mailbox
 
-### Admin Features
-- **Admin Token**: Derived from SESSION_SECRET environment variable via SHA-256 hash
+### Owner Features
+- **Owner Token**: Derived from SESSION_SECRET environment variable via SHA-256 hash
 - **Display Name**: Changeable anytime via input field; applies to both chat and DMs
 - **Kick/Ban**: Hover over users in sidebar to see kick/ban buttons
 - **DM Spy**: View all active DM conversations between users
 - **Banned List**: See and unban banned users
-- **Log Viewer**: View all chat/DM/GC logs in a modal, with clear option
+- **Log Viewer**: View all chat/DM/GC logs with filters (type/sender/text), per-entry delete
+- **Admin Creator**: Create new admin accounts with fixed display names
+- **Manage Admins**: View/remove admin accounts
+- **Suggestions/Mailbox**: View and delete suggestions from admins and guests
+
+### Admin (Staff) Features
+- **Fixed Display Name**: Set at account creation by owner, cannot be changed
+- **Kick Users**: Can kick (but not ban) other users
+- **Log Viewer**: View logs (read-only, no deletion)
+- **Send Suggestions**: Send suggestions to owner's mailbox
+- **Chat/DM/GC**: Full chat, DM, and group chat capabilities
 
 ### Tabbed Interface
 - **Tab bar**: At the TOP of the main panel (border-bottom style)
@@ -99,14 +130,16 @@ Preferred communication style: Simple, everyday language.
 - **Room system**: Create/join rooms with 5-char alphanumeric codes
 
 ### Logging System
-- **File**: `chat_logs.json` - JSON array of log entries
+- **File**: `chat_logs.json` - JSON array of log entries with unique IDs
 - **Types**: chat, dm, gc - each with timestamp, sender, text, and type-specific fields
-- **Auto-clear**: Midnight clear via asyncio background task
-- **Admin viewer**: Modal showing all log entries with timestamps, clear button
+- **Timezone**: Mountain Time (America/Denver) via ZoneInfo or pytz fallback
+- **No auto-clear**: Logs persist until manually deleted by owner
+- **Per-entry deletion**: Owner can delete individual log entries by ID
+- **Filters**: Type, sender, and text search in logs modal
 
 ### User Customization
 - **Settings modal**: Accessible via gear icon in header
-- **Background image**: URL-based, applied to main container
+- **Background image**: URL-based, applied to body for full-page coverage
 - **Accent color**: Color picker, overrides --accent CSS variable
 - **Text color**: Color picker, overrides --text-primary CSS variable
 - **Persistence**: All settings saved to localStorage
@@ -114,8 +147,8 @@ Preferred communication style: Simple, everyday language.
 
 ### External Dependencies
 - **aiohttp**: Python async web framework
-- **SESSION_SECRET**: Environment variable used to derive admin token
+- **SESSION_SECRET**: Environment variable used to derive owner token
 
 ### Environment Variables Required
-- `SESSION_SECRET`: Used to generate admin token (falls back to random if not set)
+- `SESSION_SECRET`: Used to generate owner token (falls back to random if not set)
 - `DATABASE_URL`: PostgreSQL connection string (available but not currently used by chat)
