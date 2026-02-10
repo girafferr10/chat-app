@@ -15,23 +15,48 @@ from games import tictactoe, snake, memory, blackjack, blackjack_multi, mineswee
 
 connected = {}       # ws -> {"username": str, "ws": ws}
 banned_users = set() # set of banned usernames
-admin_ws = None      # admin websocket connection
+owner_ws = None      # owner websocket connection
+admin_connections = {}  # ws -> {"name": str, "key": str}
 dm_store = {}        # (sorted_user_a, sorted_user_b) -> [{"sender":..., "recipient":..., "text":..., "ts":...}]
 
-bj_rooms = {}        # room_id -> { players: [...], deck: [...], dealer_hand: [...], phase: str, host: str, current_turn_idx: int }
-gc_store = {}        # gc_id -> {"id": str, "name": str, "members": [str], "creator": str, "messages": []}
+bj_rooms = {}
+gc_store = {}
 gc_counter = 0
+
+admin_accounts = {}  # key -> {"name": str, "created": str}
+suggestions = []     # [{"id": int, "from": str, "text": str, "timestamp": str, "read": bool}]
+suggestion_counter = [0]
+owner_mailbox = []   # [{"id": int, "type": str, "text": str, "timestamp": str, "read": bool}]
+owner_mailbox_counter = 0
 
 LOG_FILE = "chat_logs.json"
 chat_logs = []
+log_id_counter = 0
+
+try:
+    from zoneinfo import ZoneInfo
+    MTN_TZ = ZoneInfo("America/Denver")
+except ImportError:
+    import pytz
+    MTN_TZ = pytz.timezone("America/Denver")
+
+
+def mtn_now():
+    return datetime.now(MTN_TZ)
 
 
 def load_logs():
-    global chat_logs
+    global chat_logs, log_id_counter
     try:
         if os.path.exists(LOG_FILE):
             with open(LOG_FILE, "r") as f:
                 chat_logs = json.load(f)
+                for entry in chat_logs:
+                    if "id" not in entry:
+                        log_id_counter += 1
+                        entry["id"] = log_id_counter
+                if chat_logs:
+                    log_id_counter = max(e.get("id", 0) for e in chat_logs)
     except Exception:
         chat_logs = []
 
@@ -45,37 +70,32 @@ def save_logs():
 
 
 def add_log(log_type, **kwargs):
+    global log_id_counter
+    log_id_counter += 1
     entry = {
+        "id": log_id_counter,
         "type": log_type,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": mtn_now().strftime("%Y-%m-%d %H:%M:%S MT"),
         **kwargs
     }
     chat_logs.append(entry)
     save_logs()
 
 
-def clear_logs():
+def delete_log(log_id):
     global chat_logs
-    chat_logs = []
+    chat_logs = [e for e in chat_logs if e.get("id") != log_id]
     save_logs()
-    print("[LOG] Logs cleared at midnight")
 
-
-async def midnight_log_clear():
-    while True:
-        now = datetime.now()
-        midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-        wait_secs = (midnight - now).total_seconds()
-        await asyncio.sleep(wait_secs)
-        clear_logs()
 
 def dm_key(a, b):
     return tuple(sorted([a, b]))
+
 _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
-ADMIN_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
+OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 USERNAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,20}$')
-RESERVED_RE = re.compile(r'admin|mod', re.IGNORECASE)
+RESERVED_RE = re.compile(r'admin|mod|owner', re.IGNORECASE)
 
 
 def get_admin_html(token):
@@ -84,7 +104,7 @@ def get_admin_html(token):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat Server - Admin Panel</title>
+<title>Chat Server - Owner Panel</title>
 <style>
 :root {
   --bg-primary: #313338;
@@ -293,10 +313,10 @@ body.theme-midnight {
   </div>
 </div>
 <script>
-const ADMIN_TOKEN = '__TOKEN__';
+const OWNER_TOKEN = '__TOKEN__';
 history.replaceState({}, '', '/admin');
 const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-const wsUrl = protocol + '//' + location.host + '/admin-ws?token=' + ADMIN_TOKEN;
+const wsUrl = protocol + '//' + location.host + '/owner-ws?token=' + OWNER_TOKEN;
 let ws;
 const themes = ['theme-dark', 'theme-light', 'theme-midnight'];
 const themeLabels = ['Dark', 'Light', 'Midnight'];
@@ -972,9 +992,10 @@ body.theme-midnight {
   <div class="join-box" id="roleBox">
     <h2>Join Chat</h2>
     <p>How would you like to join?</p>
-    <div style="display:flex;gap:8px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button id="guestBtn" data-testid="button-guest" style="flex:1;">Guest</button>
-      <button id="adminBtn" data-testid="button-admin" style="flex:1;background:var(--admin-color);">Admin</button>
+      <button id="staffAdminBtn" data-testid="button-staff-admin" style="flex:1;background:var(--accent);">Admin</button>
+      <button id="ownerBtn" data-testid="button-owner" style="flex:1;background:var(--admin-color);">Owner</button>
     </div>
   </div>
   <div class="join-box" id="guestBox" style="display:none;">
@@ -986,12 +1007,21 @@ body.theme-midnight {
     <button id="joinBtn" data-testid="button-join">Join</button>
     <button id="backBtn1" data-testid="button-back-guest" style="margin-top:8px;background:var(--input-bg);color:var(--text-secondary);">Back</button>
   </div>
-  <div class="join-box" id="adminBox" style="display:none;">
+  <div class="join-box" id="staffAdminBox" style="display:none;">
     <h2>Join as Admin</h2>
-    <p>Enter the admin token to continue.</p>
+    <p>Enter your admin key to continue.</p>
+    <div class="join-error" id="staffAdminError"></div>
+    <label for="staffAdminKeyInput">Admin Key</label>
+    <input type="password" id="staffAdminKeyInput" data-testid="input-admin-key" placeholder="Paste admin key here..." />
+    <button id="staffAdminLoginBtn" data-testid="button-staff-admin-login">Login</button>
+    <button id="backBtn3" data-testid="button-back-staff-admin" style="margin-top:8px;background:var(--input-bg);color:var(--text-secondary);">Back</button>
+  </div>
+  <div class="join-box" id="adminBox" style="display:none;">
+    <h2>Join as Owner</h2>
+    <p>Enter the owner key to continue.</p>
     <div class="join-error" id="adminError"></div>
-    <label for="adminTokenInput">Admin Token</label>
-    <input type="password" id="adminTokenInput" data-testid="input-token" placeholder="Paste token here..." />
+    <label for="adminTokenInput">Owner Key</label>
+    <input type="password" id="adminTokenInput" data-testid="input-token" placeholder="Paste owner key here..." />
     <button id="adminLoginBtn" data-testid="button-admin-login">Login</button>
     <button id="backBtn2" data-testid="button-back-admin" style="margin-top:8px;background:var(--input-bg);color:var(--text-secondary);">Back</button>
   </div>
@@ -1037,6 +1067,19 @@ body.theme-midnight {
       <div id="logsSection" class="dm-spy-section" style="display:none;">
         <div class="dm-spy-label" style="display:flex;align-items:center;justify-content:space-between;">Logs <button class="gc-create-btn" id="viewLogsBtn" data-testid="button-view-logs" title="View Logs" style="font-size:11px;width:auto;padding:0 6px;">View</button></div>
       </div>
+      <div id="mailboxSection" class="dm-spy-section" style="display:none;">
+        <div class="dm-spy-label" style="display:flex;align-items:center;justify-content:space-between;color:var(--orange);">Mailbox <span class="dm-badge" id="mailboxBadge" style="display:none;">0</span></div>
+        <div class="dm-spy-item" id="suggestionsBtn" data-testid="button-suggestions" style="cursor:pointer;"><span class="dm-spy-icon" style="color:var(--orange);">IN</span><span>Suggestions</span></div>
+        <div class="dm-spy-item" id="adminCreatorBtn" data-testid="button-admin-creator" style="cursor:pointer;display:none;"><span class="dm-spy-icon" style="color:var(--green);">+</span><span>Create Admin</span></div>
+        <div class="dm-spy-item" id="manageAdminsBtn" data-testid="button-manage-admins" style="cursor:pointer;display:none;"><span class="dm-spy-icon" style="color:var(--accent);">A</span><span>Manage Admins</span></div>
+      </div>
+      <div id="suggestBoxSection" class="dm-spy-section" style="display:none;">
+        <div class="dm-spy-label" style="color:var(--green);">Send Suggestion</div>
+        <div style="padding:4px 0;">
+          <input type="text" id="suggestInput" data-testid="input-suggestion" placeholder="Type a suggestion..." style="width:100%;padding:6px 8px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:12px;outline:none;box-sizing:border-box;" />
+          <button id="suggestSendBtn" data-testid="button-send-suggestion" style="margin-top:4px;width:100%;padding:4px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;">Send</button>
+        </div>
+      </div>
     </div>
     <div class="main-panel">
       <div class="tab-bar">
@@ -1076,6 +1119,9 @@ body.theme-midnight {
 var ws = null;
 var myUsername = '';
 var isAdmin = false;
+var isOwner = false;
+var isStaffAdmin = false;
+var myRole = 'guest';
 var currentChannel = 'general';
 var generalMessages = [];
 var dmMessages = {};
@@ -1106,10 +1152,15 @@ document.getElementById('guestBtn').addEventListener('click', function() {
   document.getElementById('guestBox').style.display = 'block';
   document.getElementById('usernameInput').focus();
 });
-document.getElementById('adminBtn').addEventListener('click', function() {
+document.getElementById('ownerBtn').addEventListener('click', function() {
   document.getElementById('roleBox').style.display = 'none';
   document.getElementById('adminBox').style.display = 'block';
   document.getElementById('adminTokenInput').focus();
+});
+document.getElementById('staffAdminBtn').addEventListener('click', function() {
+  document.getElementById('roleBox').style.display = 'none';
+  document.getElementById('staffAdminBox').style.display = 'block';
+  document.getElementById('staffAdminKeyInput').focus();
 });
 document.getElementById('backBtn1').addEventListener('click', function() {
   document.getElementById('guestBox').style.display = 'none';
@@ -1117,6 +1168,10 @@ document.getElementById('backBtn1').addEventListener('click', function() {
 });
 document.getElementById('backBtn2').addEventListener('click', function() {
   document.getElementById('adminBox').style.display = 'none';
+  document.getElementById('roleBox').style.display = 'block';
+});
+document.getElementById('backBtn3').addEventListener('click', function() {
+  document.getElementById('staffAdminBox').style.display = 'none';
   document.getElementById('roleBox').style.display = 'block';
 });
 
@@ -1436,9 +1491,9 @@ function loadUserSettings() {
   var accentColor = localStorage.getItem('chat-accent-color') || '';
   var textColor = localStorage.getItem('chat-text-color') || '';
   if (bgUrl) {
-    document.querySelector('.container').style.backgroundImage = 'url(' + bgUrl + ')';
-    document.querySelector('.container').style.backgroundSize = 'cover';
-    document.querySelector('.container').style.backgroundPosition = 'center';
+    document.body.style.backgroundImage = 'url(' + bgUrl + ')';
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
   }
   if (accentColor) {
     document.documentElement.style.setProperty('--accent', accentColor);
@@ -1510,7 +1565,7 @@ function showSettingsModal() {
     localStorage.removeItem('chat-bg-url');
     localStorage.removeItem('chat-accent-color');
     localStorage.removeItem('chat-text-color');
-    document.querySelector('.container').style.backgroundImage = '';
+    document.body.style.backgroundImage = '';
     document.documentElement.style.removeProperty('--accent');
     document.documentElement.style.removeProperty('--text-primary');
     overlay.remove();
@@ -1526,12 +1581,12 @@ function showSettingsModal() {
     var textClr = textInput.value;
     if (bgUrl) {
       localStorage.setItem('chat-bg-url', bgUrl);
-      document.querySelector('.container').style.backgroundImage = 'url(' + bgUrl + ')';
-      document.querySelector('.container').style.backgroundSize = 'cover';
-      document.querySelector('.container').style.backgroundPosition = 'center';
+      document.body.style.backgroundImage = 'url(' + bgUrl + ')';
+      document.body.style.backgroundSize = 'cover';
+      document.body.style.backgroundPosition = 'center';
     } else {
       localStorage.removeItem('chat-bg-url');
-      document.querySelector('.container').style.backgroundImage = '';
+      document.body.style.backgroundImage = '';
     }
     if (accent) {
       localStorage.setItem('chat-accent-color', accent);
@@ -1550,28 +1605,67 @@ function showSettingsModal() {
   document.body.appendChild(overlay);
 }
 
-function showLogsModal(logs) {
+function showLogsModal(logs, filterOpts) {
   var overlay = document.createElement('div');
   overlay.className = 'gc-overlay';
   overlay.setAttribute('data-testid', 'logs-modal');
   var modal = document.createElement('div');
   modal.className = 'gc-modal';
-  modal.style.width = '500px';
-  modal.style.maxHeight = '80vh';
+  modal.style.width = '600px';
+  modal.style.maxHeight = '85vh';
   var title = document.createElement('div');
   title.className = 'gc-modal-title';
   title.textContent = 'Chat Logs (' + logs.length + ' entries)';
   modal.appendChild(title);
+
+  var filterBar = document.createElement('div');
+  filterBar.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;';
+  var typeFilter = document.createElement('select');
+  typeFilter.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:12px;';
+  ['all','chat','dm','gc'].forEach(function(t) {
+    var opt = document.createElement('option');
+    opt.value = t; opt.textContent = t === 'all' ? 'All Types' : t.toUpperCase();
+    typeFilter.appendChild(opt);
+  });
+  filterBar.appendChild(typeFilter);
+  var senderFilter = document.createElement('input');
+  senderFilter.type = 'text';
+  senderFilter.placeholder = 'Filter by sender...';
+  senderFilter.style.cssText = 'flex:1;padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:12px;outline:none;min-width:100px;';
+  filterBar.appendChild(senderFilter);
+  var searchFilter = document.createElement('input');
+  searchFilter.type = 'text';
+  searchFilter.placeholder = 'Search text...';
+  searchFilter.style.cssText = 'flex:1;padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:12px;outline:none;min-width:100px;';
+  filterBar.appendChild(searchFilter);
+  modal.appendChild(filterBar);
+
   var logList = document.createElement('div');
   logList.style.cssText = 'max-height:50vh;overflow-y:auto;font-size:12px;font-family:monospace;';
-  if (logs.length === 0) {
-    logList.textContent = 'No logs recorded.';
-    logList.style.color = 'var(--text-muted)';
-  } else {
-    logs.forEach(function(entry) {
+
+  function renderLogEntries() {
+    logList.innerHTML = '';
+    var ft = typeFilter.value;
+    var fs = senderFilter.value.toLowerCase().trim();
+    var fq = searchFilter.value.toLowerCase().trim();
+    var filtered = logs.filter(function(e) {
+      if (ft !== 'all' && e.type !== ft) return false;
+      if (fs && (e.sender || '').toLowerCase().indexOf(fs) === -1) return false;
+      if (fq && (e.text || '').toLowerCase().indexOf(fq) === -1) return false;
+      return true;
+    });
+    if (filtered.length === 0) {
+      logList.textContent = 'No matching logs.';
+      logList.style.color = 'var(--text-muted)';
+      return;
+    }
+    logList.style.color = '';
+    filtered.forEach(function(entry) {
       var row = document.createElement('div');
-      row.style.cssText = 'padding:3px 0;border-bottom:1px solid var(--border);color:var(--text-secondary);';
-      var ts = entry.timestamp ? entry.timestamp.substring(11, 19) : '';
+      row.style.cssText = 'padding:3px 0;border-bottom:1px solid var(--border);color:var(--text-secondary);display:flex;align-items:flex-start;gap:6px;';
+      var textSpan = document.createElement('span');
+      textSpan.style.flex = '1';
+      var ts = entry.timestamp || '';
       var label = '[' + ts + '] ';
       if (entry.type === 'chat') {
         label += '[CHAT] ' + (entry.sender || '') + ': ' + (entry.text || '');
@@ -1582,24 +1676,189 @@ function showLogsModal(logs) {
       } else {
         label += JSON.stringify(entry);
       }
-      row.textContent = label;
+      textSpan.textContent = label;
+      row.appendChild(textSpan);
+      if (isOwner) {
+        var delBtn = document.createElement('button');
+        delBtn.style.cssText = 'background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;flex-shrink:0;padding:0 4px;';
+        delBtn.textContent = 'X';
+        delBtn.title = 'Delete this log entry';
+        delBtn.addEventListener('click', function() {
+          ws.send(JSON.stringify({type: 'delete_log', log_id: entry.id}));
+          logs = logs.filter(function(e) { return e.id !== entry.id; });
+          renderLogEntries();
+          title.textContent = 'Chat Logs (' + logs.length + ' entries)';
+        });
+        row.appendChild(delBtn);
+      }
       logList.appendChild(row);
     });
   }
+
+  typeFilter.addEventListener('change', renderLogEntries);
+  senderFilter.addEventListener('input', renderLogEntries);
+  searchFilter.addEventListener('input', renderLogEntries);
+  [senderFilter, searchFilter].forEach(function(el) { el.addEventListener('keydown', function(e) { e.stopPropagation(); }); });
+  renderLogEntries();
+
   modal.appendChild(logList);
   var btns = document.createElement('div');
   btns.className = 'gc-modal-btns';
   btns.style.marginTop = '12px';
-  var clearBtn = document.createElement('button');
-  clearBtn.className = 'gc-cancel';
-  clearBtn.textContent = 'Clear Logs';
-  clearBtn.style.color = 'var(--red)';
-  clearBtn.setAttribute('data-testid', 'button-clear-logs');
-  clearBtn.addEventListener('click', function() {
-    ws.send(JSON.stringify({type: 'clear_logs'}));
-    overlay.remove();
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'gc-confirm';
+  closeBtn.textContent = 'Close';
+  closeBtn.addEventListener('click', function() { overlay.remove(); });
+  btns.appendChild(closeBtn);
+  modal.appendChild(btns);
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function showSuggestionsModal(suggestions) {
+  var overlay = document.createElement('div');
+  overlay.className = 'gc-overlay';
+  var modal = document.createElement('div');
+  modal.className = 'gc-modal';
+  modal.style.width = '500px';
+  var title = document.createElement('div');
+  title.className = 'gc-modal-title';
+  title.textContent = 'Suggestions (' + suggestions.length + ')';
+  modal.appendChild(title);
+  var list = document.createElement('div');
+  list.style.cssText = 'max-height:50vh;overflow-y:auto;';
+  if (suggestions.length === 0) {
+    list.textContent = 'No suggestions yet.';
+    list.style.cssText += 'color:var(--text-muted);font-size:13px;padding:8px 0;';
+  } else {
+    suggestions.forEach(function(s) {
+      var row = document.createElement('div');
+      row.style.cssText = 'padding:6px 0;border-bottom:1px solid var(--border);';
+      var header = document.createElement('div');
+      header.style.cssText = 'font-size:11px;color:var(--text-muted);';
+      header.textContent = s.from + ' - ' + (s.timestamp || '');
+      row.appendChild(header);
+      var body = document.createElement('div');
+      body.style.cssText = 'font-size:13px;color:var(--text-secondary);margin-top:2px;';
+      body.textContent = s.text;
+      row.appendChild(body);
+      if (isOwner) {
+        var delBtn = document.createElement('button');
+        delBtn.style.cssText = 'background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;margin-top:2px;';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', function() {
+          ws.send(JSON.stringify({type: 'delete_suggestion', id: s.id}));
+          row.remove();
+        });
+        row.appendChild(delBtn);
+      }
+      list.appendChild(row);
+    });
+  }
+  modal.appendChild(list);
+  var btns = document.createElement('div');
+  btns.className = 'gc-modal-btns';
+  btns.style.marginTop = '12px';
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'gc-confirm';
+  closeBtn.textContent = 'Close';
+  closeBtn.addEventListener('click', function() { overlay.remove(); });
+  btns.appendChild(closeBtn);
+  modal.appendChild(btns);
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function showAdminCreatorModal() {
+  var overlay = document.createElement('div');
+  overlay.className = 'gc-overlay';
+  var modal = document.createElement('div');
+  modal.className = 'gc-modal';
+  var title = document.createElement('div');
+  title.className = 'gc-modal-title';
+  title.textContent = 'Create Admin Account';
+  modal.appendChild(title);
+  var nameLabel = document.createElement('div');
+  nameLabel.style.cssText = 'font-size:12px;color:var(--text-muted);margin-bottom:4px;';
+  nameLabel.textContent = 'Admin display name (permanent):';
+  modal.appendChild(nameLabel);
+  var nameInput = document.createElement('input');
+  nameInput.className = 'gc-modal-input';
+  nameInput.placeholder = 'Admin name...';
+  nameInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
+  modal.appendChild(nameInput);
+  var resultDiv = document.createElement('div');
+  resultDiv.style.cssText = 'font-size:12px;color:var(--green);display:none;padding:8px;background:var(--bg-tertiary);border-radius:4px;margin-bottom:8px;word-break:break-all;';
+  modal.appendChild(resultDiv);
+  var btns = document.createElement('div');
+  btns.className = 'gc-modal-btns';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'gc-cancel';
+  cancelBtn.textContent = 'Close';
+  cancelBtn.addEventListener('click', function() { overlay.remove(); });
+  btns.appendChild(cancelBtn);
+  var createBtn = document.createElement('button');
+  createBtn.className = 'gc-confirm';
+  createBtn.textContent = 'Create';
+  createBtn.addEventListener('click', function() {
+    var n = nameInput.value.trim();
+    if (!n) return;
+    ws.send(JSON.stringify({type: 'create_admin', name: n}));
+    createBtn.disabled = true;
   });
-  btns.appendChild(clearBtn);
+  btns.appendChild(createBtn);
+  modal.appendChild(btns);
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  window._adminCreatorResult = function(data) {
+    resultDiv.style.display = 'block';
+    resultDiv.textContent = 'Admin key for "' + data.name + '": ' + data.key + ' (save this!)';
+    createBtn.disabled = false;
+    nameInput.value = '';
+  };
+}
+
+function showManageAdminsModal(admins) {
+  var overlay = document.createElement('div');
+  overlay.className = 'gc-overlay';
+  var modal = document.createElement('div');
+  modal.className = 'gc-modal';
+  modal.style.width = '450px';
+  var title = document.createElement('div');
+  title.className = 'gc-modal-title';
+  title.textContent = 'Admin Accounts (' + admins.length + ')';
+  modal.appendChild(title);
+  var list = document.createElement('div');
+  list.style.cssText = 'max-height:50vh;overflow-y:auto;';
+  if (admins.length === 0) {
+    list.textContent = 'No admin accounts created.';
+    list.style.cssText += 'color:var(--text-muted);font-size:13px;padding:8px 0;';
+  } else {
+    admins.forEach(function(a) {
+      var row = document.createElement('div');
+      row.style.cssText = 'padding:6px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;';
+      var info = document.createElement('div');
+      info.style.cssText = 'font-size:13px;color:var(--text-secondary);';
+      info.textContent = a.name + ' (created: ' + a.created + ')';
+      row.appendChild(info);
+      var delBtn = document.createElement('button');
+      delBtn.style.cssText = 'background:var(--bg-tertiary);border:none;color:var(--red);cursor:pointer;font-size:11px;padding:3px 8px;border-radius:4px;';
+      delBtn.textContent = 'Remove';
+      delBtn.addEventListener('click', function() {
+        ws.send(JSON.stringify({type: 'remove_admin', key: a.key}));
+        row.remove();
+      });
+      row.appendChild(delBtn);
+      list.appendChild(row);
+    });
+  }
+  modal.appendChild(list);
+  var btns = document.createElement('div');
+  btns.className = 'gc-modal-btns';
+  btns.style.marginTop = '12px';
   var closeBtn = document.createElement('button');
   closeBtn.className = 'gc-confirm';
   closeBtn.textContent = 'Close';
@@ -1628,7 +1887,7 @@ function renderUsers(list) {
     nameEl.textContent = name + (name === myUsername ? ' (you)' : '');
     div.appendChild(avatar);
     div.appendChild(nameEl);
-    if (name !== myUsername && !isAdmin) {
+    if (name !== myUsername) {
       div.style.cursor = 'pointer';
       div.title = 'Click to DM ' + name;
       div.addEventListener('click', function(e) {
@@ -1636,15 +1895,7 @@ function renderUsers(list) {
         openDm(name);
       });
     }
-    if (isAdmin) {
-      if (name !== myUsername) {
-        div.style.cursor = 'pointer';
-        div.title = 'Click to DM ' + name;
-        div.addEventListener('click', function(e) {
-          if (e.target.tagName === 'BUTTON') return;
-          openDm(name);
-        });
-      }
+    if (isOwner && name !== myUsername) {
       var actions = document.createElement('div');
       actions.className = 'user-actions';
       var kickBtn = document.createElement('button');
@@ -1657,6 +1908,15 @@ function renderUsers(list) {
       banBtn.addEventListener('click', function(e) { e.stopPropagation(); ws.send(JSON.stringify({type:'ban',username:name})); });
       actions.appendChild(kickBtn);
       actions.appendChild(banBtn);
+      div.appendChild(actions);
+    } else if (isStaffAdmin && name !== myUsername) {
+      var actions = document.createElement('div');
+      actions.className = 'user-actions';
+      var kickBtn = document.createElement('button');
+      kickBtn.style.cssText = 'padding:4px 8px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:var(--bg-tertiary);color:var(--orange);';
+      kickBtn.textContent = 'Kick';
+      kickBtn.addEventListener('click', function(e) { e.stopPropagation(); ws.send(JSON.stringify({type:'kick',username:name})); });
+      actions.appendChild(kickBtn);
       div.appendChild(actions);
     }
     ul.appendChild(div);
@@ -1794,6 +2054,19 @@ function handleMessage(data) {
     renderDmSpy(data.pairs);
   } else if (data.type === 'logs_data') {
     showLogsModal(data.logs || []);
+  } else if (data.type === 'suggestions_data') {
+    showSuggestionsModal(data.suggestions || []);
+  } else if (data.type === 'admins_data') {
+    showManageAdminsModal(data.admins || []);
+  } else if (data.type === 'admin_created') {
+    if (window._adminCreatorResult) window._adminCreatorResult(data);
+  } else if (data.type === 'suggestion_sent') {
+    // silently handled
+  } else if (data.type === 'new_suggestion') {
+    var badge = document.getElementById('mailboxBadge');
+    var c = parseInt(badge.textContent || '0') + 1;
+    badge.textContent = c;
+    badge.style.display = 'inline';
   } else if (data.type === 'gc_created') {
     gcList[data.gc.id] = data.gc;
     gcMessages[data.gc.id] = [];
@@ -1833,23 +2106,58 @@ function handleMessage(data) {
 }
 
 var adminConnected = false;
-function connectAdmin(token) {
+function connectOwner(token) {
   var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   adminConnected = false;
-  ws = new WebSocket(protocol + '//' + location.host + '/admin-ws?token=' + token);
+  ws = new WebSocket(protocol + '//' + location.host + '/owner-ws?token=' + token);
   ws.onopen = function() {
     adminConnected = true;
     isAdmin = true;
+    isOwner = true;
+    myRole = 'owner';
     document.getElementById('nameInput').style.display = 'block';
     document.getElementById('joinScreen').style.display = 'none';
     document.getElementById('chatScreen').style.display = 'flex';
     document.getElementById('logsSection').style.display = 'block';
+    document.getElementById('mailboxSection').style.display = 'block';
+    document.getElementById('adminCreatorBtn').style.display = 'flex';
+    document.getElementById('manageAdminsBtn').style.display = 'flex';
     document.getElementById('msgInput').focus();
   };
   ws.onclose = function() {
     if (!adminConnected) {
       var err = document.getElementById('adminError');
-      err.textContent = 'Invalid token or connection failed.';
+      err.textContent = 'Invalid owner key or connection failed.';
+      err.style.display = 'block';
+      ws = null;
+      return;
+    }
+    document.getElementById('sendBtn').disabled = true;
+    document.getElementById('msgInput').disabled = true;
+  };
+  ws.onerror = function() {};
+  ws.onmessage = function(event) { handleMessage(JSON.parse(event.data)); };
+}
+
+function connectStaffAdmin(key) {
+  var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  var staffConnected = false;
+  ws = new WebSocket(protocol + '//' + location.host + '/staff-ws?key=' + encodeURIComponent(key));
+  ws.onopen = function() {
+    staffConnected = true;
+    isAdmin = true;
+    isStaffAdmin = true;
+    myRole = 'admin';
+    document.getElementById('joinScreen').style.display = 'none';
+    document.getElementById('chatScreen').style.display = 'flex';
+    document.getElementById('logsSection').style.display = 'block';
+    document.getElementById('suggestBoxSection').style.display = 'block';
+    document.getElementById('msgInput').focus();
+  };
+  ws.onclose = function() {
+    if (!staffConnected) {
+      var err = document.getElementById('staffAdminError');
+      err.textContent = 'Invalid admin key or connection failed.';
       err.style.display = 'block';
       ws = null;
       return;
@@ -1866,6 +2174,7 @@ function connectGuest(username) {
   ws = new WebSocket(protocol + '//' + location.host + '/ws');
   ws.onopen = function() {
     ws.send(JSON.stringify({ type: 'join', username: username }));
+    document.getElementById('suggestBoxSection').style.display = 'block';
   };
   ws.onmessage = function(event) { handleMessage(JSON.parse(event.data)); };
   ws.onclose = function() {
@@ -1876,7 +2185,7 @@ function connectGuest(username) {
   };
 }
 
-var RESERVED = /admin|mod/i;
+var RESERVED = /admin|mod|owner/i;
 
 document.getElementById('channelGeneral').addEventListener('click', function() {
   switchChannel('general');
@@ -1892,6 +2201,31 @@ document.getElementById('viewLogsBtn').addEventListener('click', function() {
 
 document.getElementById('settingsBtn').addEventListener('click', function() {
   showSettingsModal();
+});
+
+document.getElementById('adminCreatorBtn').addEventListener('click', function() {
+  showAdminCreatorModal();
+});
+
+document.getElementById('manageAdminsBtn').addEventListener('click', function() {
+  ws.send(JSON.stringify({type: 'get_admins'}));
+});
+
+document.getElementById('suggestionsBtn').addEventListener('click', function() {
+  ws.send(JSON.stringify({type: 'get_suggestions'}));
+});
+
+document.getElementById('suggestSendBtn').addEventListener('click', function() {
+  var input = document.getElementById('suggestInput');
+  var text = input.value.trim();
+  if (!text || !ws) return;
+  ws.send(JSON.stringify({type: 'send_suggestion', text: text}));
+  input.value = '';
+});
+
+document.getElementById('suggestInput').addEventListener('keydown', function(e) {
+  e.stopPropagation();
+  if (e.key === 'Enter') document.getElementById('suggestSendBtn').click();
 });
 
 loadUserSettings();
@@ -1916,12 +2250,23 @@ document.getElementById('usernameInput').addEventListener('keydown', function(e)
 document.getElementById('adminLoginBtn').addEventListener('click', function() {
   var token = document.getElementById('adminTokenInput').value.trim();
   var err = document.getElementById('adminError');
-  if (!token) { err.textContent = 'Please enter the admin token.'; err.style.display = 'block'; return; }
-  connectAdmin(token);
+  if (!token) { err.textContent = 'Please enter the owner key.'; err.style.display = 'block'; return; }
+  connectOwner(token);
 });
 
 document.getElementById('adminTokenInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') document.getElementById('adminLoginBtn').click();
+});
+
+document.getElementById('staffAdminLoginBtn').addEventListener('click', function() {
+  var key = document.getElementById('staffAdminKeyInput').value.trim();
+  var err = document.getElementById('staffAdminError');
+  if (!key) { err.textContent = 'Please enter your admin key.'; err.style.display = 'block'; return; }
+  connectStaffAdmin(key);
+});
+
+document.getElementById('staffAdminKeyInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('staffAdminLoginBtn').click();
 });
 
 document.getElementById('sendBtn').addEventListener('click', function() {
@@ -2544,19 +2889,35 @@ async def send_to_admin(message):
             admin_ws = None
 
 
+async def broadcast_to_staff(message):
+    msg_str = json.dumps(message) if isinstance(message, dict) else message
+    for sws in list(staff_connected.keys()):
+        try:
+            await sws.send_str(msg_str)
+        except Exception:
+            pass
+
+
 async def broadcast_all(message):
     await broadcast_to_clients(message)
     await send_to_admin(message)
+    await broadcast_to_staff(message)
 
 
 def user_list():
-    return [info["username"] for info in connected.values()]
+    users = [info["username"] for info in connected.values()]
+    for sinfo in staff_connected.values():
+        if sinfo["username"] not in users:
+            users.append(sinfo["username"])
+    return users
 
 
 async def send_user_list():
     users = user_list()
-    await broadcast_to_clients({"type": "users", "list": users})
-    await send_to_admin({"type": "users", "list": users})
+    msg = {"type": "users", "list": users}
+    await broadcast_to_clients(msg)
+    await send_to_admin(msg)
+    await broadcast_to_staff(msg)
     await send_to_admin({"type": "banned_list", "list": list(banned_users)})
 
 
@@ -2571,7 +2932,7 @@ async def handle_admin_page(request):
         token = data.get("token", "")
     else:
         token = request.query.get("token", "")
-    if token == ADMIN_TOKEN:
+    if token == OWNER_TOKEN:
         return web.Response(text=get_admin_html(token), content_type="text/html")
     login_html = """<!DOCTYPE html>
 <html lang="en">
@@ -2697,16 +3058,18 @@ async def send_dm_pairs_to_admin():
     await send_to_admin({"type": "dm_pairs", "pairs": pairs})
 
 
-async def handle_admin_ws(request):
+staff_connected = {}
+
+async def handle_owner_ws(request):
     global admin_ws
     token = request.query.get("token", "")
-    if token != ADMIN_TOKEN:
+    if token != OWNER_TOKEN:
         return web.Response(text="Unauthorized", status=403)
 
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     admin_ws = ws
-    print("[ADMIN] Admin panel connected")
+    print("[OWNER] Owner connected")
 
     await send_to_admin({"type": "users", "list": user_list()})
     await send_to_admin({"type": "banned_list", "list": list(banned_users)})
@@ -2723,11 +3086,15 @@ async def handle_admin_ws(request):
                         if info["username"] == target:
                             await client_ws.send_str(json.dumps({
                                 "type": "error",
-                                "text": "You have been kicked by the admin."
+                                "text": "You have been kicked by the owner."
                             }))
                             await client_ws.close()
                             break
-                    print(f"[ADMIN] Kicked: {target}")
+                    for sws, sinfo in list(staff_connected.items()):
+                        if sinfo["username"] == target:
+                            await sws.close()
+                            break
+                    print(f"[OWNER] Kicked: {target}")
 
                 elif data["type"] == "ban":
                     target = data["username"]
@@ -2736,31 +3103,31 @@ async def handle_admin_ws(request):
                         if info["username"] == target:
                             await client_ws.send_str(json.dumps({
                                 "type": "error",
-                                "text": "You have been banned by the admin."
+                                "text": "You have been banned."
                             }))
                             await client_ws.close()
                             break
                     await send_to_admin({"type": "banned_list", "list": list(banned_users)})
-                    print(f"[ADMIN] Banned: {target}")
+                    print(f"[OWNER] Banned: {target}")
 
                 elif data["type"] == "unban":
                     target = data["username"]
                     banned_users.discard(target)
                     await send_to_admin({"type": "banned_list", "list": list(banned_users)})
-                    print(f"[ADMIN] Unbanned: {target}")
+                    print(f"[OWNER] Unbanned: {target}")
 
                 elif data["type"] == "chat":
                     text = data.get("text", "").strip()
-                    name = data.get("name", "").strip() or "Admin"
+                    name = data.get("name", "").strip() or "Owner"
                     if text:
                         await broadcast_all({"type": "chat", "sender": name, "text": text, "admin": True})
                         add_log("chat", sender=name, text=text, admin=True)
-                        print(f"[{name} (Admin)] {text}")
+                        print(f"[{name} (Owner)] {text}")
 
                 elif data["type"] == "dm_message":
                     target = data.get("target", "").strip()
                     text = data.get("text", "").strip()
-                    name = data.get("name", "").strip() or "Admin"
+                    name = data.get("name", "").strip() or "Owner"
                     if target and text:
                         key = dm_key("~admin~", target)
                         if key not in dm_store:
@@ -2779,7 +3146,7 @@ async def handle_admin_ws(request):
                         await ws.send_str(json.dumps(dm_msg_to_admin))
                         await send_dm_pairs_to_admin()
                         add_log("dm", sender=name, recipient=target, text=text, admin=True)
-                        print(f"[DM] {name} (Admin) -> {target}: {text}")
+                        print(f"[DM] {name} (Owner) -> {target}: {text}")
 
                 elif data["type"] == "dm_open":
                     target = data.get("target", "")
@@ -2808,12 +3175,55 @@ async def handle_admin_ws(request):
                 elif data.get("type") == "get_logs":
                     await ws.send_str(json.dumps({"type": "logs_data", "logs": chat_logs}))
 
-                elif data.get("type") == "clear_logs":
-                    clear_logs()
-                    await ws.send_str(json.dumps({"type": "logs_data", "logs": []}))
+                elif data.get("type") == "delete_log":
+                    log_id = data.get("log_id")
+                    if log_id is not None:
+                        delete_log(log_id)
+
+                elif data.get("type") == "create_admin":
+                    admin_name = data.get("name", "").strip()
+                    if admin_name:
+                        new_key = hashlib.sha256((admin_name + str(_time.time())).encode()).hexdigest()[:16]
+                        admin_accounts[new_key] = {
+                            "name": admin_name,
+                            "created": mtn_now().strftime("%Y-%m-%d %H:%M"),
+                            "key": new_key
+                        }
+                        await ws.send_str(json.dumps({
+                            "type": "admin_created",
+                            "name": admin_name,
+                            "key": new_key
+                        }))
+                        print(f"[OWNER] Created admin account: {admin_name}")
+
+                elif data.get("type") == "get_admins":
+                    admins_list = []
+                    for k, v in admin_accounts.items():
+                        admins_list.append({"name": v["name"], "created": v["created"], "key": k})
+                    await ws.send_str(json.dumps({"type": "admins_data", "admins": admins_list}))
+
+                elif data.get("type") == "remove_admin":
+                    key_to_remove = data.get("key", "")
+                    if key_to_remove in admin_accounts:
+                        removed_name = admin_accounts[key_to_remove]["name"]
+                        del admin_accounts[key_to_remove]
+                        for sws, sinfo in list(staff_connected.items()):
+                            if sinfo.get("admin_key") == key_to_remove:
+                                await sws.close()
+                        print(f"[OWNER] Removed admin: {removed_name}")
+
+                elif data.get("type") == "get_suggestions":
+                    await ws.send_str(json.dumps({"type": "suggestions_data", "suggestions": suggestions}))
+                    suggestion_counter[0] = 0
+
+                elif data.get("type") == "delete_suggestion":
+                    sid = data.get("id")
+                    for i, s in enumerate(suggestions):
+                        if s.get("id") == sid:
+                            suggestions.pop(i)
+                            break
 
                 elif data.get("type") == "gc_create":
-                    admin_name = data.get("name", "Admin").strip() or "Admin"
                     await handle_gc_create(ws, "~admin~", data)
 
                 elif data.get("type") == "gc_message":
@@ -2830,13 +3240,143 @@ async def handle_admin_ws(request):
                         }))
 
             except Exception as e:
-                print(f"[ADMIN] Error: {e}")
+                print(f"[OWNER] Error: {e}")
 
         elif msg.type == aiohttp.WSMsgType.ERROR:
             break
 
     admin_ws = None
-    print("[ADMIN] Admin panel disconnected")
+    print("[OWNER] Owner disconnected")
+    return ws
+
+
+async def handle_staff_ws(request):
+    key = request.query.get("key", "")
+    if key not in admin_accounts:
+        return web.Response(text="Unauthorized", status=403)
+
+    account = admin_accounts[key]
+    staff_name = account["name"]
+
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+
+    staff_connected[ws] = {"username": staff_name, "admin_key": key, "role": "admin"}
+    print(f"[STAFF] Admin '{staff_name}' connected")
+
+    await ws.send_str(json.dumps({"type": "welcome", "username": staff_name, "role": "admin"}))
+    await broadcast_all({"type": "users", "list": user_list()})
+
+    async for msg in ws:
+        if msg.type == aiohttp.WSMsgType.TEXT:
+            try:
+                data = json.loads(msg.data)
+
+                if data["type"] == "kick":
+                    target = data["username"]
+                    for client_ws, info in list(connected.items()):
+                        if info["username"] == target:
+                            await client_ws.send_str(json.dumps({
+                                "type": "error",
+                                "text": "You have been kicked by an admin."
+                            }))
+                            await client_ws.close()
+                            break
+                    print(f"[STAFF:{staff_name}] Kicked: {target}")
+
+                elif data["type"] == "chat":
+                    text = data.get("text", "").strip()
+                    if text:
+                        await broadcast_all({"type": "chat", "sender": staff_name, "text": text, "admin": True})
+                        add_log("chat", sender=staff_name, text=text, admin=True)
+                        print(f"[{staff_name} (Admin)] {text}")
+
+                elif data["type"] == "dm_message":
+                    target = data.get("target", "").strip()
+                    text = data.get("text", "").strip()
+                    if target and text:
+                        identity = "~staff:" + key + "~"
+                        k = dm_key(identity, target)
+                        if k not in dm_store:
+                            dm_store[k] = []
+                        ts = _time.strftime("%H:%M")
+                        dm_store[k].append({"sender": staff_name, "recipient": target, "text": text, "time": ts, "admin": True})
+                        dm_msg = {"type": "dm", "sender": staff_name, "recipient": target, "text": text, "admin": True, "admin_dm": True}
+                        for client_ws, info in connected.items():
+                            if info["username"] == target:
+                                try:
+                                    await client_ws.send_str(json.dumps(dm_msg))
+                                except Exception:
+                                    pass
+                                break
+                        await ws.send_str(json.dumps({"type": "dm", "sender": staff_name, "recipient": target, "text": text, "admin": True}))
+                        add_log("dm", sender=staff_name, recipient=target, text=text, admin=True)
+
+                elif data["type"] == "dm_open":
+                    target = data.get("target", "")
+                    identity = "~staff:" + key + "~"
+                    k = dm_key(identity, target)
+                    history = dm_store.get(k, [])
+                    await ws.send_str(json.dumps({
+                        "type": "dm_history",
+                        "target": target,
+                        "messages": history
+                    }))
+
+                elif data.get("type") == "get_logs":
+                    await ws.send_str(json.dumps({"type": "logs_data", "logs": chat_logs}))
+
+                elif data.get("type") == "send_suggestion":
+                    text = data.get("text", "").strip()
+                    if text:
+                        sid = len(suggestions) + 1
+                        suggestions.append({
+                            "id": sid,
+                            "from": staff_name,
+                            "text": text,
+                            "timestamp": mtn_now().strftime("%Y-%m-%d %H:%M")
+                        })
+                        suggestion_counter[0] += 1
+                        await ws.send_str(json.dumps({"type": "suggestion_sent"}))
+                        if admin_ws:
+                            try:
+                                await admin_ws.send_str(json.dumps({"type": "new_suggestion"}))
+                            except Exception:
+                                pass
+                        print(f"[STAFF:{staff_name}] Suggestion: {text}")
+
+                elif data.get("type") == "gc_create":
+                    identity = "~staff:" + key + "~"
+                    await handle_gc_create(ws, identity, data)
+
+                elif data.get("type") == "gc_message":
+                    identity = "~staff:" + key + "~"
+                    await handle_gc_message(ws, identity, data)
+
+                elif data.get("type") == "gc_open":
+                    gc_id = data.get("gc_id", "")
+                    identity = "~staff:" + key + "~"
+                    gc = gc_store.get(gc_id)
+                    if gc and identity in gc["members"]:
+                        await ws.send_str(json.dumps({
+                            "type": "gc_history",
+                            "gc_id": gc_id,
+                            "messages": gc["messages"]
+                        }))
+
+                elif data.get("type") == "bj_action":
+                    await handle_bj_action(ws, staff_name, data)
+
+            except Exception as e:
+                print(f"[STAFF:{staff_name}] Error: {e}")
+
+        elif msg.type == aiohttp.WSMsgType.ERROR:
+            break
+
+    if ws in staff_connected:
+        del staff_connected[ws]
+    await broadcast_all({"type": "users", "list": user_list()})
+    print(f"[STAFF] Admin '{staff_name}' disconnected")
     return ws
 
 
@@ -3113,7 +3653,7 @@ async def handle_client_ws(request):
                     if RESERVED_RE.search(name):
                         await ws.send_str(json.dumps({
                             "type": "error",
-                            "text": "Username cannot contain 'admin' or 'mod'."
+                            "text": "Username cannot contain 'admin', 'mod', or 'owner'."
                         }))
                         continue
 
@@ -3203,6 +3743,24 @@ async def handle_client_ws(request):
                             "messages": gc["messages"]
                         }))
 
+                elif data.get("type") == "send_suggestion":
+                    text = data.get("text", "").strip()
+                    if text:
+                        sid = len(suggestions) + 1
+                        suggestions.append({
+                            "id": sid,
+                            "from": username,
+                            "text": text,
+                            "timestamp": mtn_now().strftime("%Y-%m-%d %H:%M")
+                        })
+                        suggestion_counter[0] += 1
+                        await ws.send_str(json.dumps({"type": "suggestion_sent"}))
+                        if admin_ws:
+                            try:
+                                await admin_ws.send_str(json.dumps({"type": "new_suggestion"}))
+                            except Exception:
+                                pass
+
                 elif data.get("type") == "bj_action":
                     await handle_bj_action(ws, username, data)
 
@@ -3238,7 +3796,8 @@ async def main():
     app.router.add_get("/", handle_chat_page)
     app.router.add_get("/admin", handle_admin_page)
     app.router.add_post("/admin", handle_admin_page)
-    app.router.add_get("/admin-ws", handle_admin_ws)
+    app.router.add_get("/owner-ws", handle_owner_ws)
+    app.router.add_get("/staff-ws", handle_staff_ws)
     app.router.add_get("/ws", handle_client_ws)
 
     runner = web.AppRunner(app)
@@ -3246,16 +3805,15 @@ async def main():
     site = web.TCPSite(runner, "0.0.0.0", 5000)
     await site.start()
 
-    asyncio.create_task(midnight_log_clear())
 
     print("=" * 50)
-    print("  CHAT SERVER - ADMIN PANEL")
+    print("  CHAT SERVER - OWNER PANEL")
     print("=" * 50)
     print()
     print("  Server running on port 5000")
     print()
-    print("  ADMIN URL (keep this secret!):")
-    print(f"  /admin?token={ADMIN_TOKEN}")
+    print("  OWNER URL (keep this secret!):")
+    print(f"  /admin?token={OWNER_TOKEN}")
     print()
     print("  Friends open your Replit URL to chat.")
     print("  No token needed - just pick a username.")
