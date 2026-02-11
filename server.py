@@ -11,7 +11,7 @@ from aiohttp import web
 import time as _time
 from datetime import datetime, timedelta
 
-from games import tictactoe, snake, memory, blackjack, blackjack_multi, minesweeper
+from games import tictactoe, snake, memory, blackjack, blackjack_multi, minesweeper, solitaire, checkers, hangman, war, crazy_eights, twenty_fortyeight
 
 connected = {}       # ws -> {"username": str, "ws": ws}
 banned_users = set() # set of banned usernames
@@ -277,6 +277,36 @@ body.theme-midnight {
   --input-bg: #14141c;
   --admin-color: #ff5555;
 }
+body.theme-ocean {
+  --bg-primary: #0d1b2a; --bg-secondary: #1b2838; --bg-tertiary: #0a1520;
+  --bg-message-hover: #1f3044; --text-primary: #e0f0ff; --text-secondary: #8ab4d6;
+  --text-tertiary: #5a8aaa; --text-muted: #3a6080; --border: #1a3050;
+  --accent: #1e90ff; --accent-hover: #1570cc; --input-bg: #162636; --admin-color: #ff6b6b;
+}
+body.theme-forest {
+  --bg-primary: #1a2618; --bg-secondary: #222e20; --bg-tertiary: #141e12;
+  --bg-message-hover: #283628; --text-primary: #e0f0e0; --text-secondary: #8ab88a;
+  --text-tertiary: #5a8a5a; --text-muted: #3a6a3a; --border: #2a3e2a;
+  --accent: #2ecc71; --accent-hover: #27ae60; --input-bg: #1e2e1c; --admin-color: #e74c3c;
+}
+body.theme-sunset {
+  --bg-primary: #2a1a1e; --bg-secondary: #381e24; --bg-tertiary: #1e1214;
+  --bg-message-hover: #3e242a; --text-primary: #ffe8e0; --text-secondary: #d4a090;
+  --text-tertiary: #a07060; --text-muted: #705040; --border: #4a2a30;
+  --accent: #ff6b35; --accent-hover: #e55a2b; --input-bg: #321a20; --admin-color: #ff4444;
+}
+body.theme-neon {
+  --bg-primary: #0a0a14; --bg-secondary: #10101e; --bg-tertiary: #06060c;
+  --bg-message-hover: #161628; --text-primary: #e0e0ff; --text-secondary: #a0a0d0;
+  --text-tertiary: #7070a0; --text-muted: #404070; --border: #1e1e3a;
+  --accent: #ff00ff; --accent-hover: #cc00cc; --input-bg: #12121e; --admin-color: #ff3366;
+}
+body.theme-rose {
+  --bg-primary: #201418; --bg-secondary: #2a1a20; --bg-tertiary: #180e12;
+  --bg-message-hover: #301e26; --text-primary: #ffe8f0; --text-secondary: #d4a0b8;
+  --text-tertiary: #a07088; --text-muted: #705060; --border: #3a1e2a;
+  --accent: #e91e63; --accent-hover: #c2185b; --input-bg: #261620; --admin-color: #ff5252;
+}
 </style>
 </head>
 <body>
@@ -318,8 +348,8 @@ history.replaceState({}, '', '/admin');
 const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
 const wsUrl = protocol + '//' + location.host + '/owner-ws?token=' + OWNER_TOKEN;
 let ws;
-const themes = ['theme-dark', 'theme-light', 'theme-midnight'];
-const themeLabels = ['Dark', 'Light', 'Midnight'];
+const themes = ['theme-dark', 'theme-light', 'theme-midnight', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-neon', 'theme-rose'];
+const themeLabels = ['Dark', 'Light', 'Midnight', 'Ocean', 'Forest', 'Sunset', 'Neon', 'Rose'];
 let themeIdx = parseInt(localStorage.getItem('admin-theme') || '0');
 
 function applyTheme() {
@@ -364,7 +394,8 @@ function renderUsers(users) {
     return;
   }
   el.innerHTML = '';
-  users.forEach(u => {
+  users.forEach(userObj => {
+    const u = typeof userObj === 'string' ? userObj : userObj.name;
     const item = document.createElement('div');
     item.className = 'user-item';
     const info = document.createElement('div');
@@ -779,7 +810,7 @@ header h1 { font-size: 16px; font-weight: 600; }
 .channel-header .dm-label { color: var(--dm-color); }
 
 #messages { flex: 1; overflow-y: auto; padding: 16px 16px; min-height: 0; }
-.msg { padding: 2px 8px; border-radius: 4px; line-height: 1.4; }
+.msg { padding: var(--msg-padding, 2px 8px); border-radius: 4px; line-height: 1.4; }
 .msg:hover { background: var(--bg-message-hover); }
 .msg-inline { padding: 4px 8px; display: flex; align-items: baseline; gap: 0; flex-wrap: wrap; }
 .msg-sender { font-size: 14px; font-weight: 600; color: var(--text-primary); }
@@ -980,11 +1011,91 @@ body.theme-midnight {
   --admin-color: #ff5555;
   --dm-color: #bb86fc;
 }
+body.theme-ocean {
+  --bg-primary: #0d1b2a;
+  --bg-secondary: #1b2838;
+  --bg-tertiary: #0a1520;
+  --bg-message-hover: #1f3044;
+  --text-primary: #e0f0ff;
+  --text-secondary: #8ab4d6;
+  --text-tertiary: #5a8aaa;
+  --text-muted: #3a6080;
+  --border: #1a3050;
+  --accent: #1e90ff;
+  --accent-hover: #1570cc;
+  --input-bg: #162636;
+  --admin-color: #ff6b6b;
+  --dm-color: #64b5f6;
+}
+body.theme-forest {
+  --bg-primary: #1a2618;
+  --bg-secondary: #222e20;
+  --bg-tertiary: #141e12;
+  --bg-message-hover: #283628;
+  --text-primary: #e0f0e0;
+  --text-secondary: #8ab88a;
+  --text-tertiary: #5a8a5a;
+  --text-muted: #3a6a3a;
+  --border: #2a3e2a;
+  --accent: #2ecc71;
+  --accent-hover: #27ae60;
+  --input-bg: #1e2e1c;
+  --admin-color: #e74c3c;
+  --dm-color: #a0d468;
+}
+body.theme-sunset {
+  --bg-primary: #2a1a1e;
+  --bg-secondary: #381e24;
+  --bg-tertiary: #1e1214;
+  --bg-message-hover: #3e242a;
+  --text-primary: #ffe8e0;
+  --text-secondary: #d4a090;
+  --text-tertiary: #a07060;
+  --text-muted: #705040;
+  --border: #4a2a30;
+  --accent: #ff6b35;
+  --accent-hover: #e55a2b;
+  --input-bg: #321a20;
+  --admin-color: #ff4444;
+  --dm-color: #ffb380;
+}
+body.theme-neon {
+  --bg-primary: #0a0a14;
+  --bg-secondary: #10101e;
+  --bg-tertiary: #06060c;
+  --bg-message-hover: #161628;
+  --text-primary: #e0e0ff;
+  --text-secondary: #a0a0d0;
+  --text-tertiary: #7070a0;
+  --text-muted: #404070;
+  --border: #1e1e3a;
+  --accent: #ff00ff;
+  --accent-hover: #cc00cc;
+  --input-bg: #12121e;
+  --admin-color: #ff3366;
+  --dm-color: #00ffcc;
+}
+body.theme-rose {
+  --bg-primary: #201418;
+  --bg-secondary: #2a1a20;
+  --bg-tertiary: #180e12;
+  --bg-message-hover: #301e26;
+  --text-primary: #ffe8f0;
+  --text-secondary: #d4a0b8;
+  --text-tertiary: #a07088;
+  --text-muted: #705060;
+  --border: #3a1e2a;
+  --accent: #e91e63;
+  --accent-hover: #c2185b;
+  --input-bg: #261620;
+  --admin-color: #ff5252;
+  --dm-color: #f48fb1;
+}
 
 @media (max-width: 600px) {
   .sidebar { display: none; }
 }
-""" + tictactoe.get_css() + snake.get_css() + memory.get_css() + blackjack.get_css() + blackjack_multi.get_css() + minesweeper.get_css() + """
+""" + tictactoe.get_css() + snake.get_css() + memory.get_css() + blackjack.get_css() + blackjack_multi.get_css() + minesweeper.get_css() + solitaire.get_css() + checkers.get_css() + hangman.get_css() + war.get_css() + crazy_eights.get_css() + twenty_fortyeight.get_css() + """
 </style>
 </head>
 <body>
@@ -1131,8 +1242,8 @@ var activeDmPairs = [];
 var gcList = {};
 var gcMessages = {};
 var gcUnread = {};
-var themes = ['theme-dark', 'theme-light', 'theme-midnight'];
-var themeLabels = ['Dark', 'Light', 'Midnight'];
+var themes = ['theme-dark', 'theme-light', 'theme-midnight', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-neon', 'theme-rose'];
+var themeLabels = ['Dark', 'Light', 'Midnight', 'Ocean', 'Forest', 'Sunset', 'Neon', 'Rose'];
 var themeIdx = parseInt(localStorage.getItem('chat-theme') || '0');
 
 function applyTheme() {
@@ -1486,20 +1597,51 @@ function showGcCreateModal() {
   nameInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
 }
 
+function hexToRgb(hex) {
+  var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return {r:r, g:g, b:b};
+}
+function blendColor(c, factor) {
+  return '#' + [c.r, c.g, c.b].map(function(v) {
+    return Math.round(v * factor).toString(16).padStart(2, '0');
+  }).join('');
+}
+function applyTextColor(hex) {
+  document.documentElement.style.setProperty('--text-primary', hex);
+  var rgb = hexToRgb(hex);
+  document.documentElement.style.setProperty('--text-secondary', blendColor(rgb, 0.72));
+  document.documentElement.style.setProperty('--text-tertiary', blendColor(rgb, 0.58));
+  document.documentElement.style.setProperty('--text-muted', blendColor(rgb, 0.42));
+}
+
 function loadUserSettings() {
   var bgUrl = localStorage.getItem('chat-bg-url') || '';
   var accentColor = localStorage.getItem('chat-accent-color') || '';
   var textColor = localStorage.getItem('chat-text-color') || '';
+  var fontSize = localStorage.getItem('chat-font-size') || '';
+  var chatDensity = localStorage.getItem('chat-density') || '';
+  var bgBlur = localStorage.getItem('chat-bg-blur') || '';
   if (bgUrl) {
     document.body.style.backgroundImage = 'url(' + bgUrl + ')';
     document.body.style.backgroundSize = 'cover';
     document.body.style.backgroundPosition = 'center';
   }
+  if (bgBlur) {
+    document.body.style.backdropFilter = 'blur(' + bgBlur + 'px)';
+  }
   if (accentColor) {
     document.documentElement.style.setProperty('--accent', accentColor);
   }
   if (textColor) {
-    document.documentElement.style.setProperty('--text-primary', textColor);
+    applyTextColor(textColor);
+  }
+  if (fontSize) {
+    document.documentElement.style.setProperty('font-size', fontSize + 'px');
+  }
+  if (chatDensity === 'compact') {
+    document.documentElement.style.setProperty('--msg-padding', '2px 16px');
+  } else if (chatDensity === 'cozy') {
+    document.documentElement.style.setProperty('--msg-padding', '8px 16px');
   }
 }
 
@@ -1509,65 +1651,101 @@ function showSettingsModal() {
   overlay.setAttribute('data-testid', 'settings-modal');
   var modal = document.createElement('div');
   modal.className = 'gc-modal';
+  modal.style.maxHeight = '85vh';
+  modal.style.overflowY = 'auto';
   var title = document.createElement('div');
   title.className = 'gc-modal-title';
   title.textContent = 'User Settings';
   modal.appendChild(title);
 
-  var row1 = document.createElement('div');
-  row1.className = 'settings-row';
-  var label1 = document.createElement('span');
-  label1.className = 'settings-label';
-  label1.textContent = 'Background Image URL';
-  row1.appendChild(label1);
+  function addRow(labelText, inputEl) {
+    var row = document.createElement('div');
+    row.className = 'settings-row';
+    var lbl = document.createElement('span');
+    lbl.className = 'settings-label';
+    lbl.textContent = labelText;
+    row.appendChild(lbl);
+    row.appendChild(inputEl);
+    modal.appendChild(row);
+    return row;
+  }
+
   var bgInput = document.createElement('input');
   bgInput.type = 'text';
   bgInput.placeholder = 'https://...';
   bgInput.value = localStorage.getItem('chat-bg-url') || '';
   bgInput.setAttribute('data-testid', 'input-settings-bg');
   bgInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
-  row1.appendChild(bgInput);
-  modal.appendChild(row1);
+  addRow('Background Image URL', bgInput);
 
-  var row2 = document.createElement('div');
-  row2.className = 'settings-row';
-  var label2 = document.createElement('span');
-  label2.className = 'settings-label';
-  label2.textContent = 'Accent Color';
-  row2.appendChild(label2);
+  var blurInput = document.createElement('input');
+  blurInput.type = 'range';
+  blurInput.min = '0'; blurInput.max = '20'; blurInput.step = '1';
+  blurInput.value = localStorage.getItem('chat-bg-blur') || '0';
+  blurInput.style.cssText = 'flex:1;cursor:pointer;';
+  blurInput.setAttribute('data-testid', 'input-settings-blur');
+  addRow('Background Blur', blurInput);
+
   var accentInput = document.createElement('input');
   accentInput.type = 'color';
   accentInput.value = localStorage.getItem('chat-accent-color') || '#5865f2';
   accentInput.setAttribute('data-testid', 'input-settings-accent');
-  row2.appendChild(accentInput);
-  modal.appendChild(row2);
+  addRow('Accent Color', accentInput);
 
-  var row3 = document.createElement('div');
-  row3.className = 'settings-row';
-  var label3 = document.createElement('span');
-  label3.className = 'settings-label';
-  label3.textContent = 'Text Color';
-  row3.appendChild(label3);
   var textInput = document.createElement('input');
   textInput.type = 'color';
   textInput.value = localStorage.getItem('chat-text-color') || '#ffffff';
   textInput.setAttribute('data-testid', 'input-settings-text');
-  row3.appendChild(textInput);
-  modal.appendChild(row3);
+  addRow('Text Color', textInput);
+
+  var fontSelect = document.createElement('select');
+  fontSelect.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:13px;';
+  fontSelect.setAttribute('data-testid', 'select-settings-font-size');
+  [['Small', '13'], ['Normal', '14'], ['Large', '16'], ['Extra Large', '18']].forEach(function(opt) {
+    var o = document.createElement('option');
+    o.value = opt[1]; o.textContent = opt[0];
+    fontSelect.appendChild(o);
+  });
+  fontSelect.value = localStorage.getItem('chat-font-size') || '14';
+  addRow('Font Size', fontSelect);
+
+  var densitySelect = document.createElement('select');
+  densitySelect.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:13px;';
+  densitySelect.setAttribute('data-testid', 'select-settings-density');
+  [['Default', 'default'], ['Compact', 'compact'], ['Cozy', 'cozy']].forEach(function(opt) {
+    var o = document.createElement('option');
+    o.value = opt[1]; o.textContent = opt[0];
+    densitySelect.appendChild(o);
+  });
+  densitySelect.value = localStorage.getItem('chat-density') || 'default';
+  addRow('Chat Density', densitySelect);
+
+  var soundCheck = document.createElement('input');
+  soundCheck.type = 'checkbox';
+  soundCheck.checked = localStorage.getItem('chat-sounds') !== 'off';
+  soundCheck.style.cssText = 'width:18px;height:18px;cursor:pointer;';
+  soundCheck.setAttribute('data-testid', 'input-settings-sounds');
+  addRow('Notification Sounds', soundCheck);
 
   var btns = document.createElement('div');
   btns.className = 'gc-modal-btns';
   var resetBtn = document.createElement('button');
   resetBtn.className = 'gc-cancel';
-  resetBtn.textContent = 'Reset';
+  resetBtn.textContent = 'Reset All';
   resetBtn.setAttribute('data-testid', 'button-settings-reset');
   resetBtn.addEventListener('click', function() {
-    localStorage.removeItem('chat-bg-url');
-    localStorage.removeItem('chat-accent-color');
-    localStorage.removeItem('chat-text-color');
+    ['chat-bg-url','chat-accent-color','chat-text-color','chat-font-size','chat-density','chat-bg-blur','chat-sounds'].forEach(function(k) {
+      localStorage.removeItem(k);
+    });
     document.body.style.backgroundImage = '';
+    document.body.style.backdropFilter = '';
     document.documentElement.style.removeProperty('--accent');
     document.documentElement.style.removeProperty('--text-primary');
+    document.documentElement.style.removeProperty('--text-secondary');
+    document.documentElement.style.removeProperty('--text-tertiary');
+    document.documentElement.style.removeProperty('--text-muted');
+    document.documentElement.style.removeProperty('font-size');
+    document.documentElement.style.removeProperty('--msg-padding');
     overlay.remove();
   });
   btns.appendChild(resetBtn);
@@ -1579,6 +1757,10 @@ function showSettingsModal() {
     var bgUrl = bgInput.value.trim();
     var accent = accentInput.value;
     var textClr = textInput.value;
+    var fSize = fontSelect.value;
+    var density = densitySelect.value;
+    var blur = blurInput.value;
+    var sounds = soundCheck.checked;
     if (bgUrl) {
       localStorage.setItem('chat-bg-url', bgUrl);
       document.body.style.backgroundImage = 'url(' + bgUrl + ')';
@@ -1588,14 +1770,31 @@ function showSettingsModal() {
       localStorage.removeItem('chat-bg-url');
       document.body.style.backgroundImage = '';
     }
+    localStorage.setItem('chat-bg-blur', blur);
+    if (parseInt(blur) > 0) {
+      document.body.style.backdropFilter = 'blur(' + blur + 'px)';
+    } else {
+      document.body.style.backdropFilter = '';
+    }
     if (accent) {
       localStorage.setItem('chat-accent-color', accent);
       document.documentElement.style.setProperty('--accent', accent);
     }
     if (textClr) {
       localStorage.setItem('chat-text-color', textClr);
-      document.documentElement.style.setProperty('--text-primary', textClr);
+      applyTextColor(textClr);
     }
+    localStorage.setItem('chat-font-size', fSize);
+    document.documentElement.style.setProperty('font-size', fSize + 'px');
+    localStorage.setItem('chat-density', density);
+    if (density === 'compact') {
+      document.documentElement.style.setProperty('--msg-padding', '2px 16px');
+    } else if (density === 'cozy') {
+      document.documentElement.style.setProperty('--msg-padding', '8px 16px');
+    } else {
+      document.documentElement.style.removeProperty('--msg-padding');
+    }
+    localStorage.setItem('chat-sounds', sounds ? 'on' : 'off');
     overlay.remove();
   });
   btns.appendChild(saveBtn);
@@ -1870,22 +2069,34 @@ function showManageAdminsModal(admins) {
   document.body.appendChild(overlay);
 }
 
+var statusColors = { online: 'var(--green)', idle: '#f0b232', dnd: 'var(--red)', invisible: 'var(--text-muted)' };
+var typingUsers = {};
+var typingTimers = {};
+
 function renderUsers(list) {
-  onlineUsers = list;
+  onlineUsers = list.map(function(u) { return typeof u === 'string' ? u : u.name; });
   document.getElementById('userCount').textContent = list.length;
   var ul = document.getElementById('userList');
   ul.innerHTML = '';
-  list.forEach(function(name) {
+  list.forEach(function(user) {
+    var name = typeof user === 'string' ? user : user.name;
+    var status = typeof user === 'string' ? 'online' : (user.status || 'online');
     var div = document.createElement('div');
     div.className = 'user-item';
     div.setAttribute('data-testid', 'user-item-' + name);
+    var avatarWrap = document.createElement('div');
+    avatarWrap.style.cssText = 'position:relative;flex-shrink:0;';
     var avatar = document.createElement('div');
     avatar.className = 'user-avatar';
     avatar.textContent = name.substring(0,2).toUpperCase();
+    var statusDot = document.createElement('div');
+    statusDot.style.cssText = 'position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg-secondary);background:' + (statusColors[status] || statusColors.online) + ';';
+    avatarWrap.appendChild(avatar);
+    avatarWrap.appendChild(statusDot);
+    div.appendChild(avatarWrap);
     var nameEl = document.createElement('span');
     nameEl.className = 'user-name';
     nameEl.textContent = name + (name === myUsername ? ' (you)' : '');
-    div.appendChild(avatar);
     div.appendChild(nameEl);
     if (name !== myUsername) {
       div.style.cursor = 'pointer';
@@ -1921,6 +2132,44 @@ function renderUsers(list) {
     }
     ul.appendChild(div);
   });
+}
+
+function showTypingIndicator(username, channel) {
+  if (username === myUsername) return;
+  var key = channel + ':' + username;
+  typingUsers[key] = true;
+  if (typingTimers[key]) clearTimeout(typingTimers[key]);
+  typingTimers[key] = setTimeout(function() {
+    delete typingUsers[key];
+    updateTypingDisplay();
+  }, 3000);
+  updateTypingDisplay();
+}
+
+function updateTypingDisplay() {
+  var el = document.getElementById('typingIndicator');
+  if (!el) return;
+  var names = [];
+  for (var key in typingUsers) {
+    var parts = key.split(':');
+    var ch = parts[0];
+    var who = parts.slice(1).join(':');
+    if (currentChannel === ch || (currentChannel === 'general' && ch === 'general')) {
+      names.push(who);
+    }
+  }
+  if (names.length === 0) {
+    el.style.display = 'none';
+  } else if (names.length === 1) {
+    el.style.display = 'block';
+    el.textContent = names[0] + ' is typing...';
+  } else if (names.length === 2) {
+    el.style.display = 'block';
+    el.textContent = names[0] + ' and ' + names[1] + ' are typing...';
+  } else {
+    el.style.display = 'block';
+    el.textContent = names.length + ' people are typing...';
+  }
 }
 
 function openDm(target) {
@@ -1978,11 +2227,29 @@ function renderDmSpy(pairs) {
   });
 }
 
+function playNotifSound() {
+  if (localStorage.getItem('chat-sounds') === 'off') return;
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 800;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.15);
+  } catch(e) {}
+}
+
 function handleMessage(data) {
   if (data.type === 'chat') {
     var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     generalMessages.push({sender: data.sender, text: data.text, admin: data.admin || false, time: time});
     if (currentChannel === 'general') renderMessages();
+    if (data.sender !== myUsername) playNotifSound();
   } else if (data.type === 'system') {
     generalMessages.push({type: 'system', text: data.text});
     if (currentChannel === 'general') renderMessages();
@@ -2011,6 +2278,7 @@ function handleMessage(data) {
       renderMessages();
     } else {
       dmUnread[other] = (dmUnread[other] || 0) + 1;
+      playNotifSound();
       renderDmChannels();
     }
   } else if (data.type === 'dm_history') {
@@ -2067,6 +2335,8 @@ function handleMessage(data) {
     var c = parseInt(badge.textContent || '0') + 1;
     badge.textContent = c;
     badge.style.display = 'inline';
+  } else if (data.type === 'typing') {
+    showTypingIndicator(data.username, data.channel);
   } else if (data.type === 'gc_created') {
     gcList[data.gc.id] = data.gc;
     gcMessages[data.gc.id] = [];
@@ -2620,6 +2890,14 @@ function convertTabToChat(tabId) {
   msgInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') document.getElementById('sendBtn').click();
   });
+  var lastTypingSent = 0;
+  msgInput.addEventListener('input', function() {
+    var now = Date.now();
+    if (now - lastTypingSent > 2000 && ws && ws.readyState === WebSocket.OPEN) {
+      lastTypingSent = now;
+      ws.send(JSON.stringify({type: 'typing', channel: currentChannel}));
+    }
+  });
   inputBar.appendChild(msgInput);
 
   var emojiContainer = document.createElement('div');
@@ -2682,6 +2960,11 @@ function convertTabToChat(tabId) {
     input.focus();
   });
   inputBar.appendChild(sendBtn);
+  var typingIndicator = document.createElement('div');
+  typingIndicator.id = 'typingIndicator';
+  typingIndicator.style.cssText = 'display:none;padding:2px 16px;font-size:12px;color:var(--text-muted);font-style:italic;';
+  typingIndicator.setAttribute('data-testid', 'text-typing-indicator');
+  chatArea.appendChild(typingIndicator);
   chatArea.appendChild(inputBar);
   el.appendChild(chatArea);
 
@@ -2727,6 +3010,12 @@ var allGames = [
   { id: 'blackjack', name: 'Blackjack', desc: 'Beat the dealer by getting as close to 21 as possible', badge: 'single' },
   { id: 'blackjack_multi', name: 'Blackjack (Multiplayer)', desc: 'Play blackjack with friends in real-time rooms', badge: 'multi' },
   { id: 'minesweeper', name: 'Minesweeper', desc: 'Clear the minefield without detonating any hidden mines', badge: 'single' },
+  { id: 'war', name: 'War', desc: 'Classic card game - flip cards and battle for the whole deck', badge: 'single' },
+  { id: 'crazy_eights', name: 'Crazy Eights', desc: 'Match suits or ranks, play wild 8s to change the suit', badge: 'single' },
+  { id: 'solitaire', name: 'Solitaire', desc: 'Classic Klondike solitaire card game with drag and click controls', badge: 'single' },
+  { id: 'checkers', name: 'Checkers', desc: 'Play checkers against a simple AI opponent with kings and multi-jumps', badge: 'single' },
+  { id: 'twenty_fortyeight', name: '2048', desc: 'Slide and merge tiles to reach the 2048 tile', badge: 'single' },
+  { id: 'hangman', name: 'Hangman', desc: 'Guess the hidden word one letter at a time before the hangman is complete', badge: 'single' },
 ];
 
 function buildGamesHub(container) {
@@ -2817,7 +3106,9 @@ function buildGamesHub(container) {
 
 var gameNames = {
   tictactoe: 'Tic-Tac-Toe', snake: 'Snake', memory: 'Memory Match',
-  blackjack: 'Blackjack', blackjack_multi: 'Blackjack (Multiplayer)', minesweeper: 'Minesweeper'
+  blackjack: 'Blackjack', blackjack_multi: 'Blackjack (Multiplayer)', minesweeper: 'Minesweeper',
+  solitaire: 'Solitaire', checkers: 'Checkers', hangman: 'Hangman',
+  war: 'War', crazy_eights: 'Crazy Eights', twenty_fortyeight: '2048'
 };
 
 function showGame(container, gameId) {
@@ -2852,9 +3143,15 @@ function showGame(container, gameId) {
   else if (gameId === 'blackjack') initBlackjack(playArea);
   else if (gameId === 'blackjack_multi') initBlackjackMulti(playArea);
   else if (gameId === 'minesweeper') initMinesweeper(playArea);
+  else if (gameId === 'solitaire') initSolitaire(playArea);
+  else if (gameId === 'checkers') initCheckers(playArea);
+  else if (gameId === 'hangman') initHangman(playArea);
+  else if (gameId === 'war') initWar(playArea);
+  else if (gameId === 'crazy_eights') initCrazyEights(playArea);
+  else if (gameId === 'twenty_fortyeight') init2048(playArea);
 }
 
-""" + tictactoe.get_js() + snake.get_js() + memory.get_js() + blackjack.get_js() + blackjack_multi.get_js() + minesweeper.get_js() + r"""
+""" + tictactoe.get_js() + snake.get_js() + memory.get_js() + blackjack.get_js() + blackjack_multi.get_js() + minesweeper.get_js() + solitaire.get_js() + checkers.get_js() + hangman.get_js() + war.get_js() + crazy_eights.get_js() + twenty_fortyeight.get_js() + r"""
 
 tabs.push({ id: 'chat', type: 'chat', label: 'Chat' });
 renderTabBar();
@@ -2905,10 +3202,12 @@ async def broadcast_all(message):
 
 
 def user_list():
-    users = [info["username"] for info in connected.values()]
+    users = []
+    for info in connected.values():
+        users.append({"name": info["username"], "status": info.get("status", "online")})
     for sinfo in staff_connected.values():
-        if sinfo["username"] not in users:
-            users.append(sinfo["username"])
+        if sinfo["username"] not in [u["name"] for u in users]:
+            users.append({"name": sinfo["username"], "status": sinfo.get("status", "online")})
     return users
 
 
@@ -3760,6 +4059,34 @@ async def handle_client_ws(request):
                                 await admin_ws.send_str(json.dumps({"type": "new_suggestion"}))
                             except Exception:
                                 pass
+
+                elif data.get("type") == "typing":
+                    channel = data.get("channel", "general")
+                    typing_msg = {"type": "typing", "username": username, "channel": channel}
+                    if channel == "general":
+                        for c_ws in list(connected.keys()):
+                            if c_ws != ws:
+                                try:
+                                    await c_ws.send_str(json.dumps(typing_msg))
+                                except Exception:
+                                    pass
+                        await send_to_admin(typing_msg)
+                        await broadcast_to_staff(typing_msg)
+                    elif channel.startswith("dm:"):
+                        target = channel[3:]
+                        for c_ws, info in connected.items():
+                            if info["username"] == target:
+                                try:
+                                    await c_ws.send_str(json.dumps(typing_msg))
+                                except Exception:
+                                    pass
+                                break
+
+                elif data.get("type") == "set_status":
+                    status = data.get("status", "online")
+                    if status in ("online", "idle", "dnd", "invisible"):
+                        connected[ws]["status"] = status
+                        await send_user_list()
 
                 elif data.get("type") == "bj_action":
                     await handle_bj_action(ws, username, data)
