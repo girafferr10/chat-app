@@ -24,6 +24,12 @@ Preferred communication style: Simple, everyday language.
 - `games/blackjack.py` - Blackjack (singleplayer vs dealer)
 - `games/blackjack_multi.py` - Multiplayer Blackjack (WebSocket rooms, scoring, 30s turn timeout)
 - `games/minesweeper.py` - Minesweeper (singleplayer)
+- `games/war.py` - War card game (singleplayer)
+- `games/crazy_eights.py` - Crazy Eights card game (singleplayer vs AI)
+- `games/solitaire.py` - Klondike Solitaire (singleplayer)
+- `games/checkers.py` - Checkers vs AI (singleplayer)
+- `games/twenty_fortyeight.py` - 2048 puzzle game (singleplayer)
+- `games/hangman.py` - Hangman word guessing (singleplayer)
 
 ### Routes
 - `GET /` - Main page with unified Guest/Admin/Owner join flow
@@ -82,7 +88,7 @@ Preferred communication style: Simple, everyday language.
 3. **Staff admin identity**: Staff DMs use `~staff:<key>~` identity for dm_key
 4. **Admin accounts**: Created by owner with fixed display names, stored in `admin_accounts` dict
 5. **In-memory storage**: All messages and DM history stored in Python dicts (not persistent)
-6. **Three theme system**: Dark (default), Light, Midnight - stored in localStorage
+6. **Eight theme system**: Dark (default), Light, Midnight, Ocean, Forest, Sunset, Neon, Rose - stored in localStorage
 7. **Username restrictions**: Guest usernames cannot contain "admin", "mod", or "owner" (case-insensitive)
 8. **Tabbed interface**: Tab bar at TOP of main panel with singleton tabs. New Tab picker for adding tabs.
 9. **Game modules**: Each game in its own Python file returning JS code strings, injected into the HTML at render time
@@ -140,10 +146,19 @@ Preferred communication style: Simple, everyday language.
 ### User Customization
 - **Settings modal**: Accessible via gear icon in header
 - **Background image**: URL-based, applied to body for full-page coverage
+- **Background blur**: Slider (0-20px) for backdrop blur effect
 - **Accent color**: Color picker, overrides --accent CSS variable
-- **Text color**: Color picker, overrides --text-primary CSS variable
+- **Text color**: Color picker, overrides --text-primary, --text-secondary, --text-tertiary, --text-muted CSS variables (auto-derived)
+- **Font size**: Small/Normal/Large/Extra Large options
+- **Chat density**: Default/Compact/Cozy message spacing
+- **Notification sounds**: Toggle on/off for message notification beeps
 - **Persistence**: All settings saved to localStorage
 - **Reset**: Button to clear all customizations
+
+### Entertaining Features
+- **Typing indicator**: Shows "X is typing..." in chat when others type (debounced 2s)
+- **User status**: Online/Idle/DND/Invisible status with colored dot on avatar
+- **Notification sounds**: Beep sound for new messages and DMs (Web Audio API)
 
 ### External Dependencies
 - **aiohttp**: Python async web framework
