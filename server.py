@@ -11,11 +11,12 @@ from aiohttp import web
 import time as _time
 from datetime import datetime, timedelta
 
-from games import tictactoe, snake, memory, blackjack, blackjack_multi, minesweeper, solitaire, checkers, hangman, war, crazy_eights, twenty_fortyeight
+from games import tictactoe, snake, memory, blackjack, blackjack_multi, minesweeper, solitaire, checkers, hangman, war, crazy_eights, twenty_fortyeight, genetic_cars
 
 connected = {}       # ws -> {"username": str, "ws": ws}
 banned_users = set() # set of banned usernames
-owner_ws = None      # owner websocket connection
+admin_ws = None      # owner websocket connection
+staff_connected = {} # staff ws -> {"username": str, "admin_key": str}
 admin_connections = {}  # ws -> {"name": str, "key": str}
 dm_store = {}        # (sorted_user_a, sorted_user_b) -> [{"sender":..., "recipient":..., "text":..., "ts":...}]
 
@@ -878,7 +879,10 @@ header h1 { font-size: 16px; font-weight: 600; }
 .emoji-item:hover { background: var(--bg-message-hover); }
 
 .input-bar {
-  padding: 12px 16px; display: flex; gap: 8px; flex-shrink: 0;
+  padding: 8px 16px 12px; display: flex; flex-direction: column; gap: 0; flex-shrink: 0;
+}
+.input-bar-row {
+  display: flex; gap: 8px; align-items: flex-end;
 }
 .input-bar input {
   flex: 1; padding: 10px 14px; border: none; border-radius: 8px;
@@ -892,6 +896,63 @@ header h1 { font-size: 16px; font-weight: 600; }
 }
 .input-bar button:hover { background: var(--accent-hover); }
 .input-bar button:disabled { background: var(--bg-tertiary); color: var(--text-muted); cursor: not-allowed; }
+.attach-btn {
+  background: var(--input-bg); color: var(--text-secondary); border: none;
+  padding: 10px 13px; border-radius: 8px; font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.attach-btn:hover { background: var(--border); color: var(--accent); }
+.image-preview-bar {
+  display: flex; gap: 8px; flex-wrap: wrap; padding: 6px 0 2px;
+}
+.image-preview-item {
+  position: relative; width: 72px; height: 72px; border-radius: 6px;
+  overflow: hidden; border: 2px solid var(--accent); flex-shrink: 0;
+}
+.image-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+.image-preview-item .remove-img {
+  position: absolute; top: 2px; right: 2px; width: 18px; height: 18px;
+  background: rgba(0,0,0,0.7); color: #fff; border: none; border-radius: 50%;
+  font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+.drop-overlay {
+  position: absolute; inset: 0; background: rgba(88,101,242,0.15);
+  border: 2px dashed var(--accent); border-radius: 4px; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 600; color: var(--accent); pointer-events: none;
+  opacity: 0; transition: opacity 0.15s;
+}
+.drop-overlay.visible { opacity: 1; }
+.msg-img-attachment {
+  display: block; max-width: 360px; max-height: 260px; border-radius: 8px;
+  margin-top: 6px; cursor: pointer; border: 1px solid var(--border);
+}
+.msg-img-attachment:hover { opacity: 0.88; }
+.msg-grouped { padding-left: 52px; }
+.msg-avatar-col {
+  width: 40px; flex-shrink: 0; display: flex; justify-content: center; padding-top: 2px;
+}
+.msg-avatar {
+  width: 36px; height: 36px; border-radius: 50%; background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; user-select: none;
+}
+.msg-full {
+  display: flex; align-items: flex-start; gap: 12px; padding: 4px 8px 2px;
+  border-radius: 4px;
+}
+.msg-full:hover { background: var(--bg-message-hover); }
+.msg-grouped-row {
+  padding: 1px 8px 1px 52px; border-radius: 4px; line-height: 1.45;
+}
+.msg-grouped-row:hover { background: var(--bg-message-hover); }
+.msg-content { flex: 1; min-width: 0; }
+.msg-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+.msg-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.msg-name.is-admin { color: var(--admin-color); }
+.msg-timestamp { font-size: 11px; color: var(--text-muted); }
+.msg-body { font-size: 14px; color: var(--text-secondary); word-break: break-word; line-height: 1.45; }
 
 .empty { color: var(--text-muted); text-align: center; margin-top: 60px; font-size: 14px; }
 
@@ -1206,18 +1267,23 @@ body.theme-rose {
             <div id="messages" data-testid="list-messages">
               <div class="empty" id="emptyState">No messages yet</div>
             </div>
-            <div class="input-bar">
-              <input type="text" id="nameInput" data-testid="input-admin-name" placeholder="Your name" value="Admin" style="display:none;width:140px;flex:unset;" />
-              <input type="text" id="msgInput" data-testid="input-message" placeholder="Type a message..." />
-              <div class="emoji-picker-container">
-                <button class="emoji-picker-btn" id="emojiBtn" data-testid="button-emoji" type="button" title="Emoji picker">&#x1F600;</button>
-                <div class="emoji-panel" id="emojiPanel">
-                  <input type="text" class="emoji-search" id="emojiSearch" data-testid="input-emoji-search" placeholder="Search emojis..." />
-                  <div class="emoji-panel-header" id="emojiCatBar"></div>
-                  <div class="emoji-grid" id="emojiGrid" data-testid="grid-emoji"></div>
+            <div class="input-bar" id="inputBar">
+              <div class="image-preview-bar" id="imagePreviewBar" style="display:none;"></div>
+              <div class="input-bar-row">
+                <input type="text" id="nameInput" data-testid="input-admin-name" placeholder="Your name" value="Admin" style="display:none;width:140px;flex:unset;" />
+                <button class="attach-btn" id="attachBtn" data-testid="button-attach" type="button" title="Attach image">&#x1F4CE;</button>
+                <input type="file" id="fileInput" accept="image/*" multiple style="display:none;" />
+                <input type="text" id="msgInput" data-testid="input-message" placeholder="Type a message..." />
+                <div class="emoji-picker-container">
+                  <button class="emoji-picker-btn" id="emojiBtn" data-testid="button-emoji" type="button" title="Emoji picker">&#x1F600;</button>
+                  <div class="emoji-panel" id="emojiPanel">
+                    <input type="text" class="emoji-search" id="emojiSearch" data-testid="input-emoji-search" placeholder="Search emojis..." />
+                    <div class="emoji-panel-header" id="emojiCatBar"></div>
+                    <div class="emoji-grid" id="emojiGrid" data-testid="grid-emoji"></div>
+                  </div>
                 </div>
+                <button id="sendBtn" data-testid="button-send">Send</button>
               </div>
-              <button id="sendBtn" data-testid="button-send">Send</button>
             </div>
           </div>
         </div>
@@ -1324,8 +1390,10 @@ function escapeHtml(s) {
 var IMAGE_EXTS = /\.(png|jpg|jpeg|gif|webp|svg|bmp|apng)(\?.*)?$/i;
 var GIF_HOSTS = /tenor\.com|giphy\.com|gfycat\.com|imgur\.com/i;
 var URL_RE = /(https?:\/\/[^\s<>"']+)/g;
+var pendingImages = []; // {dataUrl, name}
 
 function isImageUrl(url) {
+  if (/^data:image\//i.test(url)) return true;
   if (IMAGE_EXTS.test(url)) return true;
   if (GIF_HOSTS.test(url) && /\.(gif|webp|mp4)(\?.*)?$/i.test(url)) return true;
   if (/media\d*\.giphy\.com/i.test(url)) return true;
@@ -1336,35 +1404,42 @@ function isImageUrl(url) {
 
 function renderRichText(text) {
   var container = document.createElement('span');
-  container.className = 'msg-text';
+  container.className = 'msg-body';
+  // Handle data: image URLs specially
+  if (/^data:image\//i.test(text)) {
+    var img = document.createElement('img');
+    img.className = 'msg-img-attachment';
+    img.src = text;
+    img.alt = 'Image';
+    img.addEventListener('click', function() {
+      var win = window.open('', '_blank');
+      win.document.write('<img src="' + text + '" style="max-width:100%;background:#111;" />');
+    });
+    container.appendChild(img);
+    return container;
+  }
   var parts = text.split(URL_RE);
-  var hasImage = false;
   for (var i = 0; i < parts.length; i++) {
     var part = parts[i];
     if (!part) continue;
     if (/^https?:\/\//i.test(part)) {
       if (isImageUrl(part)) {
-        hasImage = true;
-        var img = document.createElement('img');
-        img.className = 'inline-img';
-        img.src = part;
-        img.alt = 'Image';
-        img.loading = 'lazy';
-        img.addEventListener('click', function() { window.open(this.src, '_blank'); });
-        img.addEventListener('error', function() {
+        var img2 = document.createElement('img');
+        img2.className = 'msg-img-attachment';
+        img2.src = part;
+        img2.alt = 'Image';
+        img2.loading = 'lazy';
+        img2.addEventListener('click', function() { window.open(this.src, '_blank'); });
+        img2.addEventListener('error', function() {
           var link = document.createElement('a');
-          link.href = this.src;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
+          link.href = this.src; link.target = '_blank'; link.rel = 'noopener noreferrer';
           link.textContent = this.src;
           this.parentNode.replaceChild(link, this);
         });
-        container.appendChild(img);
+        container.appendChild(img2);
       } else {
         var link = document.createElement('a');
-        link.href = part;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
+        link.href = part; link.target = '_blank'; link.rel = 'noopener noreferrer';
         link.textContent = part;
         container.appendChild(link);
       }
@@ -1377,40 +1452,61 @@ function renderRichText(text) {
   return container;
 }
 
-function makeMessageDiv(sender, text, admin, isDm, time) {
-  var div = document.createElement('div');
-  div.className = 'msg msg-inline';
-  var senderEl = document.createElement('span');
-  senderEl.className = 'msg-sender' + (admin ? ' is-admin' : '');
-  senderEl.textContent = sender;
-  div.appendChild(senderEl);
-  if (admin) {
+function avatarColor(name) {
+  var colors = ['#5865f2','#57f287','#fee75c','#eb459e','#ed4245','#f0b232','#00b0f4','#3ba55c'];
+  var h = 0;
+  for (var i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return colors[Math.abs(h) % colors.length];
+}
+
+function makeFullMessageDiv(m) {
+  var row = document.createElement('div');
+  row.className = 'msg-full';
+  var avatarCol = document.createElement('div');
+  avatarCol.className = 'msg-avatar-col';
+  var avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.style.background = avatarColor(m.sender || '?');
+  avatar.textContent = (m.sender || '?').substring(0, 2).toUpperCase();
+  avatarCol.appendChild(avatar);
+  row.appendChild(avatarCol);
+  var content = document.createElement('div');
+  content.className = 'msg-content';
+  var header = document.createElement('div');
+  header.className = 'msg-header';
+  var nameEl = document.createElement('span');
+  nameEl.className = 'msg-name' + (m.admin ? ' is-admin' : '');
+  nameEl.textContent = m.sender || '?';
+  header.appendChild(nameEl);
+  if (m.admin) {
     var badge = document.createElement('span');
     badge.className = 'msg-badge';
     badge.textContent = 'ADMIN';
-    div.appendChild(badge);
+    badge.style.cssText = 'font-size:10px;font-weight:700;color:#fff;background:var(--admin-color);padding:1px 4px;border-radius:3px;vertical-align:middle;';
+    header.appendChild(badge);
   }
-  if (isDm && !admin) {
-    var dmBadge = document.createElement('span');
-    dmBadge.className = 'msg-badge dm-badge-inline';
-    dmBadge.textContent = 'DM';
-    div.appendChild(dmBadge);
-  }
-  var colon = document.createElement('span');
-  colon.className = 'msg-colon';
-  colon.textContent = ': ';
-  div.appendChild(colon);
-  var textEl = renderRichText(text);
-  div.appendChild(textEl);
   var timeEl = document.createElement('span');
-  timeEl.className = 'msg-time';
-  timeEl.textContent = time || new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  div.appendChild(timeEl);
-  return div;
+  timeEl.className = 'msg-timestamp';
+  timeEl.textContent = m.time || new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  header.appendChild(timeEl);
+  content.appendChild(header);
+  var body = renderRichText(m.text || '');
+  content.appendChild(body);
+  row.appendChild(content);
+  return row;
+}
+
+function makeGroupedMessageDiv(m) {
+  var row = document.createElement('div');
+  row.className = 'msg-grouped-row';
+  var body = renderRichText(m.text || '');
+  row.appendChild(body);
+  return row;
 }
 
 function renderMessages() {
   var el = document.getElementById('messages');
+  if (!el) return;
   el.innerHTML = '';
   var msgs = [];
   if (currentChannel === 'general') {
@@ -1427,22 +1523,32 @@ function renderMessages() {
   }
   if (msgs.length === 0) {
     var empty = document.createElement('div');
-    empty.className = 'empty';
-    empty.id = 'emptyState';
+    empty.className = 'empty'; empty.id = 'emptyState';
     empty.textContent = currentChannel === 'general' ? 'No messages yet' : 'No messages in this conversation';
     el.appendChild(empty);
     return;
   }
+  var lastSender = null;
+  var lastTime = 0;
   msgs.forEach(function(m) {
     if (m.type === 'system') {
       var wrapper = document.createElement('div');
       wrapper.className = 'msg-system';
-      var span = document.createElement('span');
-      span.textContent = m.text;
-      wrapper.appendChild(span);
+      var s = document.createElement('span');
+      s.textContent = m.text;
+      wrapper.appendChild(s);
       el.appendChild(wrapper);
+      lastSender = null; lastTime = 0;
     } else {
-      el.appendChild(makeMessageDiv(m.sender, m.text, m.admin || false, m.isDm || false, m.time));
+      var msgTime = m.time ? m.time : new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      var isGrouped = (m.sender === lastSender) && (Date.now() - lastTime < 5 * 60 * 1000);
+      if (isGrouped) {
+        el.appendChild(makeGroupedMessageDiv(m));
+      } else {
+        el.appendChild(makeFullMessageDiv(m));
+        lastSender = m.sender;
+        lastTime = Date.now();
+      }
     }
   });
   el.scrollTop = el.scrollHeight;
@@ -2672,8 +2778,127 @@ document.getElementById('emojiSearch').addEventListener('keydown', function(e) {
 document.addEventListener('click', function(e) {
   var panel = document.getElementById('emojiPanel');
   var btn = document.getElementById('emojiBtn');
-  if (!panel.contains(e.target) && e.target !== btn) {
+  if (panel && btn && !panel.contains(e.target) && e.target !== btn) {
     panel.classList.remove('open');
+  }
+});
+
+// Image attachment / paste / drag-and-drop support
+function addImageToPending(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    pendingImages.push({dataUrl: ev.target.result, name: file.name});
+    refreshImagePreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function refreshImagePreview() {
+  var bar = document.getElementById('imagePreviewBar');
+  if (!bar) return;
+  if (pendingImages.length === 0) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.style.display = 'flex'; bar.innerHTML = '';
+  pendingImages.forEach(function(img, idx) {
+    var item = document.createElement('div');
+    item.className = 'image-preview-item';
+    var el = document.createElement('img');
+    el.src = img.dataUrl;
+    item.appendChild(el);
+    var rm = document.createElement('button');
+    rm.className = 'remove-img';
+    rm.textContent = '\u00D7';
+    rm.addEventListener('click', function() {
+      pendingImages.splice(idx, 1);
+      refreshImagePreview();
+    });
+    item.appendChild(rm);
+    bar.appendChild(item);
+  });
+}
+
+function sendPendingImages() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  pendingImages.forEach(function(img) {
+    var msgObj;
+    if (currentChannel === 'general') {
+      if (isAdmin) {
+        var name = (document.getElementById('nameInput') || {}).value || 'Admin';
+        msgObj = {type: 'chat', text: img.dataUrl, name: name};
+      } else {
+        msgObj = {type: 'chat', text: img.dataUrl};
+      }
+    } else if (currentChannel.startsWith('dm:')) {
+      var target = currentChannel.substring(3);
+      msgObj = {type: 'dm_message', target: target, text: img.dataUrl};
+    } else if (currentChannel.startsWith('gc:')) {
+      var gcId = currentChannel.substring(3);
+      msgObj = {type: 'gc_message', gc_id: gcId, text: img.dataUrl};
+    }
+    if (msgObj) ws.send(JSON.stringify(msgObj));
+  });
+  pendingImages = [];
+  refreshImagePreview();
+}
+
+// Attach button click -> file input
+document.addEventListener('click', function(e) {
+  if (e.target && e.target.id === 'attachBtn') {
+    var fi = document.getElementById('fileInput');
+    if (fi) fi.click();
+  }
+});
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.id === 'fileInput') {
+    for (var i = 0; i < e.target.files.length; i++) addImageToPending(e.target.files[i]);
+    e.target.value = '';
+  }
+});
+
+// Paste handler on the whole document (when in chat)
+document.addEventListener('paste', function(e) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  var items = (e.clipboardData || e.originalEvent && e.originalEvent.clipboardData || {}).items;
+  if (!items) return;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].kind === 'file' && items[i].type.startsWith('image/')) {
+      var file = items[i].getAsFile();
+      if (file) { addImageToPending(file); e.preventDefault(); }
+    }
+  }
+});
+
+// Drag-and-drop on messages area
+document.addEventListener('dragover', function(e) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  var el = document.getElementById('messages');
+  var overlay = document.getElementById('dropOverlay');
+  if (el && el.contains(e.target) || (overlay && overlay.contains(e.target))) {
+    e.preventDefault();
+    if (overlay) overlay.classList.add('visible');
+  }
+});
+document.addEventListener('dragleave', function(e) {
+  var overlay = document.getElementById('dropOverlay');
+  if (overlay && !document.getElementById('messages').contains(e.relatedTarget)) {
+    overlay.classList.remove('visible');
+  }
+});
+document.addEventListener('drop', function(e) {
+  var overlay = document.getElementById('dropOverlay');
+  if (overlay) overlay.classList.remove('visible');
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  var el = document.getElementById('messages');
+  if (!el) return;
+  e.preventDefault();
+  var files = e.dataTransfer ? e.dataTransfer.files : [];
+  for (var i = 0; i < files.length; i++) addImageToPending(files[i]);
+});
+
+// Hook send button to also send pending images
+document.addEventListener('click', function(e) {
+  if (e.target && e.target.id === 'sendBtn' && pendingImages.length > 0) {
+    sendPendingImages();
   }
 });
 
@@ -2871,6 +3096,16 @@ function convertTabToChat(tabId) {
 
   var inputBar = document.createElement('div');
   inputBar.className = 'input-bar';
+  inputBar.id = 'inputBar';
+
+  var imgPreviewBar = document.createElement('div');
+  imgPreviewBar.className = 'image-preview-bar';
+  imgPreviewBar.id = 'imagePreviewBar';
+  imgPreviewBar.style.display = 'none';
+  inputBar.appendChild(imgPreviewBar);
+
+  var inputRow = document.createElement('div');
+  inputRow.className = 'input-bar-row';
 
   var nameInput = document.createElement('input');
   nameInput.type = 'text';
@@ -2880,7 +3115,24 @@ function convertTabToChat(tabId) {
   nameInput.value = 'Admin';
   nameInput.style.cssText = 'display:none;width:140px;flex:unset;';
   if (isAdmin) nameInput.style.display = 'block';
-  inputBar.appendChild(nameInput);
+  inputRow.appendChild(nameInput);
+
+  var attachBtn = document.createElement('button');
+  attachBtn.className = 'attach-btn';
+  attachBtn.id = 'attachBtn';
+  attachBtn.setAttribute('data-testid', 'button-attach');
+  attachBtn.type = 'button';
+  attachBtn.title = 'Attach image';
+  attachBtn.textContent = '\U0001F4CE';
+  inputRow.appendChild(attachBtn);
+
+  var fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.id = 'fileInput';
+  fileInput.accept = 'image/*';
+  fileInput.multiple = true;
+  fileInput.style.display = 'none';
+  inputRow.appendChild(fileInput);
 
   var msgInput = document.createElement('input');
   msgInput.type = 'text';
@@ -2898,7 +3150,7 @@ function convertTabToChat(tabId) {
       ws.send(JSON.stringify({type: 'typing', channel: currentChannel}));
     }
   });
-  inputBar.appendChild(msgInput);
+  inputRow.appendChild(msgInput);
 
   var emojiContainer = document.createElement('div');
   emojiContainer.className = 'emoji-picker-container';
@@ -2908,7 +3160,7 @@ function convertTabToChat(tabId) {
   emojiBtn.setAttribute('data-testid', 'button-emoji');
   emojiBtn.type = 'button';
   emojiBtn.title = 'Emoji picker';
-  emojiBtn.textContent = ':)';
+  emojiBtn.textContent = '\U0001F600';
   var emojiPanel = document.createElement('div');
   emojiPanel.className = 'emoji-panel';
   emojiPanel.id = 'emojiPanel';
@@ -2930,19 +3182,20 @@ function convertTabToChat(tabId) {
   emojiPanel.appendChild(emojiGridEl);
   emojiContainer.appendChild(emojiBtn);
   emojiContainer.appendChild(emojiPanel);
-  inputBar.appendChild(emojiContainer);
+  inputRow.appendChild(emojiContainer);
 
   var sendBtn = document.createElement('button');
   sendBtn.id = 'sendBtn';
   sendBtn.setAttribute('data-testid', 'button-send');
   sendBtn.textContent = 'Send';
   sendBtn.addEventListener('click', function() {
+    if (pendingImages.length > 0) sendPendingImages();
     var input = document.getElementById('msgInput');
-    var text = input.value.trim();
+    var text = input ? input.value.trim() : '';
     if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
     if (currentChannel === 'general') {
       if (isAdmin) {
-        var name = document.getElementById('nameInput').value.trim() || 'Admin';
+        var name = (document.getElementById('nameInput') || {value:'Admin'}).value.trim() || 'Admin';
         ws.send(JSON.stringify({ type: 'chat', text: text, name: name }));
       } else {
         ws.send(JSON.stringify({ type: 'chat', text: text }));
@@ -2950,16 +3203,19 @@ function convertTabToChat(tabId) {
     } else if (currentChannel.startsWith('dm:')) {
       var target = currentChannel.substring(3);
       if (isAdmin) {
-        var name = document.getElementById('nameInput').value.trim() || 'Admin';
+        var name = (document.getElementById('nameInput') || {value:'Admin'}).value.trim() || 'Admin';
         ws.send(JSON.stringify({ type: 'dm_message', target: target, text: text, name: name }));
       } else {
         ws.send(JSON.stringify({ type: 'dm_message', target: target, text: text }));
       }
+    } else if (currentChannel.startsWith('gc:')) {
+      var gcId = currentChannel.substring(3);
+      ws.send(JSON.stringify({ type: 'gc_message', gc_id: gcId, text: text }));
     }
-    input.value = '';
-    input.focus();
+    if (input) { input.value = ''; input.focus(); }
   });
-  inputBar.appendChild(sendBtn);
+  inputRow.appendChild(sendBtn);
+  inputBar.appendChild(inputRow);
   var typingIndicator = document.createElement('div');
   typingIndicator.id = 'typingIndicator';
   typingIndicator.style.cssText = 'display:none;padding:2px 16px;font-size:12px;color:var(--text-muted);font-style:italic;';
@@ -3016,6 +3272,7 @@ var allGames = [
   { id: 'checkers', name: 'Checkers', desc: 'Play checkers against a simple AI opponent with kings and multi-jumps', badge: 'single' },
   { id: 'twenty_fortyeight', name: '2048', desc: 'Slide and merge tiles to reach the 2048 tile', badge: 'single' },
   { id: 'hangman', name: 'Hangman', desc: 'Guess the hidden word one letter at a time before the hangman is complete', badge: 'single' },
+  { id: 'genetic_cars', name: 'Genetic Cars', desc: 'Watch AI-evolved cars learn to drive using genetic algorithms and natural selection', badge: 'single' },
 ];
 
 function buildGamesHub(container) {
@@ -3149,9 +3406,10 @@ function showGame(container, gameId) {
   else if (gameId === 'war') initWar(playArea);
   else if (gameId === 'crazy_eights') initCrazyEights(playArea);
   else if (gameId === 'twenty_fortyeight') init2048(playArea);
+  else if (gameId === 'genetic_cars') initGeneticCars(playArea);
 }
 
-""" + tictactoe.get_js() + snake.get_js() + memory.get_js() + blackjack.get_js() + blackjack_multi.get_js() + minesweeper.get_js() + solitaire.get_js() + checkers.get_js() + hangman.get_js() + war.get_js() + crazy_eights.get_js() + twenty_fortyeight.get_js() + r"""
+""" + tictactoe.get_js() + snake.get_js() + memory.get_js() + blackjack.get_js() + blackjack_multi.get_js() + minesweeper.get_js() + solitaire.get_js() + checkers.get_js() + hangman.get_js() + war.get_js() + crazy_eights.get_js() + twenty_fortyeight.get_js() + genetic_cars.get_js() + r"""
 
 tabs.push({ id: 'chat', type: 'chat', label: 'Chat' });
 renderTabBar();
@@ -3356,8 +3614,6 @@ async def send_dm_pairs_to_admin():
     pairs = get_dm_pairs()
     await send_to_admin({"type": "dm_pairs", "pairs": pairs})
 
-
-staff_connected = {}
 
 async def handle_owner_ws(request):
     global admin_ws
