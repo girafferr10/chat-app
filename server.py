@@ -11,7 +11,13 @@ from aiohttp import web
 import time as _time
 from datetime import datetime, timedelta
 
-from games import tictactoe, snake, memory, blackjack, blackjack_multi, minesweeper, solitaire, checkers, hangman, war, crazy_eights, twenty_fortyeight, genetic_cars
+from games import tictactoe, snake, memory, blackjack, blackjack_multi, minesweeper, solitaire, checkers, hangman, war, crazy_eights, twenty_fortyeight, genetic_cars, garlic_phone
+
+try:
+    import asyncpg
+    HAS_ASYNCPG = True
+except ImportError:
+    HAS_ASYNCPG = False
 
 connected = {}       # ws -> {"username": str, "ws": ws}
 banned_users = set() # set of banned usernames
@@ -23,6 +29,7 @@ dm_store = {}        # (sorted_user_a, sorted_user_b) -> [{"sender":..., "recipi
 bj_rooms = {}
 gc_store = {}
 gc_counter = 0
+garlic_rooms = {}
 
 admin_accounts = {}  # key -> {"name": str, "created": str}
 suggestions = []     # [{"id": int, "from": str, "text": str, "timestamp": str, "read": bool}]
@@ -94,6 +101,172 @@ def dm_key(a, b):
 
 _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
+
+db_pool = None
+CURRENT_VERSION = "2.0"
+CHANGELOG_NOTES = (
+    "<b>What's new in v2.0</b><br><br>"
+    "&#x2022; <b>Account System</b> — Sign up &amp; log in with a persistent account<br>"
+    "&#x2022; <b>Profile Customization</b> — Display name, bio, and profile picture<br>"
+    "&#x2022; <b>Garlic Phone</b> — New multiplayer drawing &amp; writing game<br>"
+    "&#x2022; <b>Game Fixes</b> — All games clean up properly; keyboard works everywhere<br>"
+    "&#x2022; <b>Changelog Popups</b> — See what's new on each update<br>"
+)
+
+
+async def init_db():
+    global db_pool
+    if not HAS_ASYNCPG:
+        return
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        return
+    try:
+        db_pool = await asyncpg.create_pool(db_url)
+        async with db_pool.acquire() as conn:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(20) UNIQUE NOT NULL,
+                    password_hash VARCHAR(64) NOT NULL,
+                    display_name VARCHAR(30) NOT NULL,
+                    bio TEXT DEFAULT '',
+                    pfp_data TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS sessions (
+                    token VARCHAR(64) PRIMARY KEY,
+                    username VARCHAR(20) NOT NULL,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS changelog_seen (
+                    username VARCHAR(20) NOT NULL,
+                    version VARCHAR(20) NOT NULL,
+                    PRIMARY KEY (username, version)
+                )
+            """)
+        print("[DB] Database initialized.")
+    except Exception as e:
+        print(f"[DB] Error: {e}")
+
+
+async def db_register(username, password, display_name):
+    if not db_pool:
+        return {"error": "Database not available"}
+    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    try:
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO users (username, password_hash, display_name) VALUES ($1, $2, $3)",
+                username, pw_hash, display_name
+            )
+            token = secrets.token_hex(32)
+            await conn.execute(
+                "INSERT INTO sessions (token, username) VALUES ($1, $2)",
+                token, username
+            )
+            return {"token": token, "username": username, "display_name": display_name,
+                    "bio": "", "pfp_data": "", "show_changelog": True}
+    except Exception as e:
+        if "unique" in str(e).lower():
+            return {"error": "Username already taken"}
+        return {"error": str(e)}
+
+
+async def db_login(username, password):
+    if not db_pool:
+        return {"error": "Database not available"}
+    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    async with db_pool.acquire() as conn:
+        user = await conn.fetchrow(
+            "SELECT * FROM users WHERE username=$1 AND password_hash=$2",
+            username, pw_hash
+        )
+        if not user:
+            return {"error": "Invalid username or password"}
+        token = secrets.token_hex(32)
+        await conn.execute("INSERT INTO sessions (token, username) VALUES ($1, $2)", token, username)
+        seen = await conn.fetchrow(
+            "SELECT 1 FROM changelog_seen WHERE username=$1 AND version=$2",
+            username, CURRENT_VERSION
+        )
+        return {
+            "token": token,
+            "username": username,
+            "display_name": user["display_name"],
+            "bio": user["bio"] or "",
+            "pfp_data": user["pfp_data"] or "",
+            "show_changelog": not seen
+        }
+
+
+async def db_validate_session(token):
+    if not db_pool or not token:
+        return None
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT s.username, u.display_name, u.bio, u.pfp_data "
+            "FROM sessions s JOIN users u ON s.username=u.username WHERE s.token=$1",
+            token
+        )
+        return dict(row) if row else None
+
+
+async def db_update_profile(token, display_name=None, bio=None, pfp_data=None):
+    if not db_pool:
+        return {"error": "Database not available"}
+    user = await db_validate_session(token)
+    if not user:
+        return {"error": "Invalid session"}
+    sets, params = [], []
+    if display_name is not None:
+        params.append(display_name[:30])
+        sets.append(f"display_name=${len(params)}")
+    if bio is not None:
+        params.append(bio[:300])
+        sets.append(f"bio=${len(params)}")
+    if pfp_data is not None:
+        params.append(pfp_data[:200000])
+        sets.append(f"pfp_data=${len(params)}")
+    if sets:
+        params.append(user["username"])
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                f"UPDATE users SET {', '.join(sets)} WHERE username=${len(params)}",
+                *params
+            )
+    return {
+        **user,
+        **({"display_name": display_name} if display_name is not None else {}),
+        **({"bio": bio} if bio is not None else {}),
+        **({"pfp_data": pfp_data} if pfp_data is not None else {}),
+    }
+
+
+async def db_mark_changelog_seen(token, check_only=False):
+    if not db_pool:
+        return False
+    user = await db_validate_session(token)
+    if not user:
+        return False
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT 1 FROM changelog_seen WHERE username=$1 AND version=$2",
+            user["username"], CURRENT_VERSION
+        )
+        already_seen = row is not None
+        if check_only:
+            return not already_seen
+        if not already_seen:
+            await conn.execute(
+                "INSERT INTO changelog_seen (username, version) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                user["username"], CURRENT_VERSION
+            )
+        return not already_seen
 
 USERNAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,20}$')
 RESERVED_RE = re.compile(r'admin|mod|owner', re.IGNORECASE)
@@ -578,6 +751,10 @@ body {
 }
 .join-box button:hover { background: var(--accent-hover); }
 .join-error { color: var(--red); font-size: 13px; margin-bottom: 10px; display: none; }
+.join-tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
+.join-tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); font-size: 14px; font-weight: 600; padding: 8px 14px; cursor: pointer; margin-bottom: -1px; transition: color 0.15s; }
+.join-tab:hover { color: var(--text-primary); background: none; }
+.join-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: none; }
 
 header {
   background: var(--bg-primary); border-bottom: 1px solid var(--bg-tertiary);
@@ -1162,22 +1339,49 @@ body.theme-rose {
 <body>
 <div class="join-screen" id="joinScreen">
   <div class="join-box" id="roleBox">
-    <h2>Join Chat</h2>
+    <h2 style="text-align:center;">&#x1F4AC; Chat</h2>
     <p>How would you like to join?</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button id="guestBtn" data-testid="button-guest" style="flex:1;">Guest</button>
+      <button id="guestBtn" data-testid="button-guest" style="flex:1;">Account / Guest</button>
       <button id="staffAdminBtn" data-testid="button-staff-admin" style="flex:1;background:var(--accent);">Admin</button>
       <button id="ownerBtn" data-testid="button-owner" style="flex:1;background:var(--admin-color);">Owner</button>
     </div>
   </div>
-  <div class="join-box" id="guestBox" style="display:none;">
-    <h2>Join as Guest</h2>
-    <p>Pick a username to start chatting.</p>
-    <div class="join-error" id="joinError"></div>
-    <label for="usernameInput">Username</label>
-    <input type="text" id="usernameInput" data-testid="input-username" placeholder="Enter username..." maxlength="20" />
-    <button id="joinBtn" data-testid="button-join">Join</button>
-    <button id="backBtn1" data-testid="button-back-guest" style="margin-top:8px;background:var(--input-bg);color:var(--text-secondary);">Back</button>
+  <div class="join-box" id="guestBox" style="display:none;max-width:420px;">
+    <div class="join-tabs" id="joinTabBar">
+      <button class="join-tab active" id="tabLoginBtn" data-testid="tab-login">Log In</button>
+      <button class="join-tab" id="tabRegisterBtn" data-testid="tab-register">Sign Up</button>
+      <button class="join-tab" id="tabGuestBtn" data-testid="tab-guest">Guest</button>
+    </div>
+    <!-- Login Panel -->
+    <div id="loginPanel">
+      <div class="join-error" id="loginError"></div>
+      <label for="loginUsername">Username</label>
+      <input type="text" id="loginUsername" data-testid="input-login-username" placeholder="Username..." maxlength="20" autocomplete="username" />
+      <label for="loginPassword">Password</label>
+      <input type="password" id="loginPassword" data-testid="input-login-password" placeholder="Password..." autocomplete="current-password" />
+      <button id="loginBtn" data-testid="button-login">Log In</button>
+    </div>
+    <!-- Register Panel -->
+    <div id="registerPanel" style="display:none;">
+      <div class="join-error" id="registerError"></div>
+      <label for="registerUsername">Username</label>
+      <input type="text" id="registerUsername" data-testid="input-register-username" placeholder="Username (letters, numbers, _-)..." maxlength="20" autocomplete="username" />
+      <label for="registerDisplayName">Display Name <span style="font-weight:400;text-transform:none;">(shown in chat)</span></label>
+      <input type="text" id="registerDisplayName" data-testid="input-register-displayname" placeholder="Your display name..." maxlength="30" />
+      <label for="registerPassword">Password</label>
+      <input type="password" id="registerPassword" data-testid="input-register-password" placeholder="At least 6 characters..." autocomplete="new-password" />
+      <button id="registerBtn" data-testid="button-register">Create Account</button>
+    </div>
+    <!-- Guest Panel -->
+    <div id="guestPanel" style="display:none;">
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px;">Guest mode — no account needed, but your data won't be saved.</p>
+      <div class="join-error" id="joinError"></div>
+      <label for="usernameInput">Username</label>
+      <input type="text" id="usernameInput" data-testid="input-username" placeholder="Enter username..." maxlength="20" />
+      <button id="joinBtn" data-testid="button-join">Join as Guest</button>
+    </div>
+    <button id="backBtn1" data-testid="button-back-guest" style="margin-top:12px;background:var(--input-bg);color:var(--text-secondary);">Back</button>
   </div>
   <div class="join-box" id="staffAdminBox" style="display:none;">
     <h2>Join as Admin</h2>
@@ -1199,11 +1403,43 @@ body.theme-rose {
   </div>
 </div>
 
+<!-- Profile Modal -->
+<div id="profileModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-primary);border-radius:10px;padding:28px;max-width:440px;width:90%;max-height:90vh;overflow-y:auto;position:relative;">
+    <button id="profileModalClose" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;">&#x2715;</button>
+    <h2 style="font-size:18px;font-weight:700;margin-bottom:18px;">Your Profile</h2>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:20px;">
+      <div id="profilePfpPreview" style="width:80px;height:80px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff;overflow:hidden;border:3px solid var(--border);cursor:pointer;" title="Click to change picture">?</div>
+      <input type="file" id="pfpFileInput" accept="image/*" style="display:none;" />
+      <button id="changePfpBtn" style="font-size:12px;padding:5px 12px;background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border);border-radius:4px;cursor:pointer;">Change Picture</button>
+      <div style="font-size:12px;color:var(--text-muted);">@<span id="profileUsernameDisplay">username</span></div>
+    </div>
+    <div class="join-error" id="profileError" style="display:none;"></div>
+    <label style="display:block;font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Display Name</label>
+    <input type="text" id="profileDisplayName" maxlength="30" placeholder="Your display name..." style="width:100%;padding:10px 12px;border:none;border-radius:4px;font-size:14px;margin-bottom:16px;background:var(--bg-tertiary);color:var(--text-primary);outline:none;box-sizing:border-box;" />
+    <label style="display:block;font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Bio</label>
+    <textarea id="profileBio" maxlength="300" placeholder="Say something about yourself..." rows="3" style="width:100%;padding:10px 12px;border:none;border-radius:4px;font-size:14px;margin-bottom:16px;background:var(--bg-tertiary);color:var(--text-primary);outline:none;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
+    <button id="saveProfileBtn" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;">Save Changes</button>
+    <button id="logoutBtn" style="width:100%;padding:10px;background:transparent;color:var(--red);border:1px solid var(--red);border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">Log Out</button>
+  </div>
+</div>
+
+<!-- Changelog Modal -->
+<div id="changelogModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2001;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-primary);border-radius:10px;padding:28px;max-width:440px;width:90%;position:relative;">
+    <h2 style="font-size:18px;font-weight:700;margin-bottom:6px;">&#x1F389; What's New</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Version """ + CURRENT_VERSION + """</p>
+    <div style="font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:20px;">""" + CHANGELOG_NOTES + """</div>
+    <button id="changelogCloseBtn" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;">Got it!</button>
+  </div>
+</div>
+
 <div class="chat-screen" id="chatScreen">
   <header>
     <h1 data-testid="text-header">Chat</h1>
     <div class="header-right">
       <div class="status"><div class="dot"></div> Connected</div>
+      <button class="theme-btn" id="profileBtn" data-testid="button-profile" title="Your Profile" style="padding:2px;width:30px;height:30px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">&#x1F464;</button>
       <button class="theme-btn" id="settingsBtn" data-testid="button-settings" title="Settings" style="font-size:16px;padding:4px 8px;">&#x2699;</button>
       <button class="theme-btn" id="themeBtn" data-testid="button-theme">Dark</button>
     </div>
@@ -1295,6 +1531,11 @@ body.theme-rose {
 <script>
 var ws = null;
 var myUsername = '';
+var myDisplayName = '';
+var myPfpData = '';
+var myBio = '';
+var mySessionToken = localStorage.getItem('chat_session_token') || '';
+var myIsGuest = false;
 var isAdmin = false;
 var isOwner = false;
 var isStaffAdmin = false;
@@ -1327,8 +1568,94 @@ document.getElementById('themeBtn').addEventListener('click', function() {
 document.getElementById('guestBtn').addEventListener('click', function() {
   document.getElementById('roleBox').style.display = 'none';
   document.getElementById('guestBox').style.display = 'block';
-  document.getElementById('usernameInput').focus();
+  document.getElementById('loginUsername').focus();
 });
+
+function setJoinTab(tab) {
+  ['login','register','guest'].forEach(function(t) {
+    document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)+'Btn').classList.toggle('active', t===tab);
+    document.getElementById(t+'Panel').style.display = t===tab ? 'block' : 'none';
+  });
+}
+document.getElementById('tabLoginBtn').addEventListener('click', function() { setJoinTab('login'); });
+document.getElementById('tabRegisterBtn').addEventListener('click', function() { setJoinTab('register'); });
+document.getElementById('tabGuestBtn').addEventListener('click', function() { setJoinTab('guest'); });
+
+function doLogin() {
+  var un = document.getElementById('loginUsername').value.trim();
+  var pw = document.getElementById('loginPassword').value;
+  var err = document.getElementById('loginError');
+  err.style.display='none';
+  if (!un || !pw) { err.textContent='Please fill in all fields.'; err.style.display='block'; return; }
+  fetch('/api/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:un,password:pw})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (d.error) { err.textContent=d.error; err.style.display='block'; return; }
+      localStorage.setItem('chat_session_token', d.session_token);
+      mySessionToken = d.session_token;
+      myUsername = d.username;
+      myDisplayName = d.display_name || d.username;
+      myPfpData = d.pfp_data || '';
+      myBio = d.bio || '';
+      myIsGuest = false;
+      document.getElementById('joinScreen').style.display = 'none';
+      document.getElementById('chatScreen').style.display = 'flex';
+      connectGuest(d.username);
+      document.getElementById('msgInput').focus();
+    }).catch(function(){err.textContent='Connection error.'; err.style.display='block';});
+}
+
+function doRegister() {
+  var un = document.getElementById('registerUsername').value.trim();
+  var dn = document.getElementById('registerDisplayName').value.trim() || un;
+  var pw = document.getElementById('registerPassword').value;
+  var err = document.getElementById('registerError');
+  err.style.display='none';
+  if (!un || !pw) { err.textContent='Please fill in username and password.'; err.style.display='block'; return; }
+  if (!/^[a-zA-Z0-9_-]{1,20}$/.test(un)) { err.textContent='Username: letters, numbers, _ or - only (1-20 chars).'; err.style.display='block'; return; }
+  if (pw.length < 6) { err.textContent='Password must be at least 6 characters.'; err.style.display='block'; return; }
+  if (RESERVED.test(un)) { err.textContent='Username cannot contain "admin", "mod", or "owner".'; err.style.display='block'; return; }
+  fetch('/api/register', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:un,display_name:dn,password:pw})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (d.error) { err.textContent=d.error; err.style.display='block'; return; }
+      localStorage.setItem('chat_session_token', d.session_token);
+      mySessionToken = d.session_token;
+      myUsername = d.username;
+      myDisplayName = d.display_name || d.username;
+      myPfpData = '';
+      myBio = '';
+      myIsGuest = false;
+      document.getElementById('joinScreen').style.display = 'none';
+      document.getElementById('chatScreen').style.display = 'flex';
+      connectGuest(d.username);
+      document.getElementById('msgInput').focus();
+    }).catch(function(){err.textContent='Connection error.'; err.style.display='block';});
+}
+
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginPassword').addEventListener('keydown', function(e){if(e.key==='Enter')doLogin();});
+document.getElementById('loginUsername').addEventListener('keydown', function(e){if(e.key==='Enter')doLogin();});
+document.getElementById('registerBtn').addEventListener('click', doRegister);
+document.getElementById('registerPassword').addEventListener('keydown', function(e){if(e.key==='Enter')doRegister();});
+
+if (mySessionToken) {
+  fetch('/api/profile', {headers:{'X-Session-Token':mySessionToken}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (d.username) {
+        myUsername = d.username;
+        myDisplayName = d.display_name || d.username;
+        myPfpData = d.pfp_data || '';
+        myBio = d.bio || '';
+        myIsGuest = false;
+        document.getElementById('joinScreen').style.display = 'none';
+        document.getElementById('chatScreen').style.display = 'flex';
+        connectGuest(d.username);
+        document.getElementById('msgInput').focus();
+      }
+    }).catch(function(){});
+}
 document.getElementById('ownerBtn').addEventListener('click', function() {
   document.getElementById('roleBox').style.display = 'none';
   document.getElementById('adminBox').style.display = 'block';
@@ -1460,14 +1787,22 @@ function avatarColor(name) {
 }
 
 function makeFullMessageDiv(m) {
+  var displaySender = m.display_name || m.sender || '?';
   var row = document.createElement('div');
   row.className = 'msg-full';
   var avatarCol = document.createElement('div');
   avatarCol.className = 'msg-avatar-col';
   var avatar = document.createElement('div');
   avatar.className = 'msg-avatar';
-  avatar.style.background = avatarColor(m.sender || '?');
-  avatar.textContent = (m.sender || '?').substring(0, 2).toUpperCase();
+  if (m.pfp) {
+    avatar.style.backgroundImage = 'url(' + m.pfp + ')';
+    avatar.style.backgroundSize = 'cover';
+    avatar.style.backgroundPosition = 'center';
+    avatar.style.background = '';
+  } else {
+    avatar.style.background = avatarColor(displaySender);
+    avatar.textContent = displaySender.substring(0, 2).toUpperCase();
+  }
   avatarCol.appendChild(avatar);
   row.appendChild(avatarCol);
   var content = document.createElement('div');
@@ -1476,7 +1811,7 @@ function makeFullMessageDiv(m) {
   header.className = 'msg-header';
   var nameEl = document.createElement('span');
   nameEl.className = 'msg-name' + (m.admin ? ' is-admin' : '');
-  nameEl.textContent = m.sender || '?';
+  nameEl.textContent = displaySender;
   header.appendChild(nameEl);
   if (m.admin) {
     var badge = document.createElement('span');
@@ -2186,6 +2521,8 @@ function renderUsers(list) {
   ul.innerHTML = '';
   list.forEach(function(user) {
     var name = typeof user === 'string' ? user : user.name;
+    var displayName = typeof user === 'string' ? user : (user.display_name || user.name);
+    var pfpUrl = typeof user === 'string' ? '' : (user.pfp || '');
     var status = typeof user === 'string' ? 'online' : (user.status || 'online');
     var div = document.createElement('div');
     div.className = 'user-item';
@@ -2194,7 +2531,13 @@ function renderUsers(list) {
     avatarWrap.style.cssText = 'position:relative;flex-shrink:0;';
     var avatar = document.createElement('div');
     avatar.className = 'user-avatar';
-    avatar.textContent = name.substring(0,2).toUpperCase();
+    if (pfpUrl) {
+      avatar.style.backgroundImage = 'url(' + pfpUrl + ')';
+      avatar.style.backgroundSize = 'cover';
+      avatar.style.backgroundPosition = 'center';
+    } else {
+      avatar.textContent = displayName.substring(0,2).toUpperCase();
+    }
     var statusDot = document.createElement('div');
     statusDot.style.cssText = 'position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg-secondary);background:' + (statusColors[status] || statusColors.online) + ';';
     avatarWrap.appendChild(avatar);
@@ -2202,7 +2545,7 @@ function renderUsers(list) {
     div.appendChild(avatarWrap);
     var nameEl = document.createElement('span');
     nameEl.className = 'user-name';
-    nameEl.textContent = name + (name === myUsername ? ' (you)' : '');
+    nameEl.textContent = displayName + (name === myUsername ? ' (you)' : '');
     div.appendChild(nameEl);
     if (name !== myUsername) {
       div.style.cursor = 'pointer';
@@ -2350,10 +2693,37 @@ function playNotifSound() {
   } catch(e) {}
 }
 
+function updateProfileBtn() {
+  var btn = document.getElementById('profileBtn');
+  if (!btn) return;
+  if (myPfpData) {
+    btn.style.backgroundImage = 'url(' + myPfpData + ')';
+    btn.style.backgroundSize = 'cover';
+    btn.style.backgroundPosition = 'center';
+    btn.textContent = '';
+  } else {
+    btn.textContent = (myDisplayName || myUsername || '?').charAt(0).toUpperCase();
+  }
+}
+
 function handleMessage(data) {
-  if (data.type === 'chat') {
+  if (data.type === 'joined') {
+    myUsername = data.username || myUsername;
+    myDisplayName = data.display_name || data.username || myUsername;
+    myPfpData = data.pfp_data || '';
+    myBio = data.bio || '';
+    updateProfileBtn();
+    if (!myIsGuest && mySessionToken) {
+      fetch('/api/changelog-seen', {headers:{'X-Session-Token':mySessionToken}})
+        .then(function(r){return r.json();})
+        .then(function(d){ if (d.show) showChangelog(); })
+        .catch(function(){});
+    }
+  } else if (data.type === 'garlic_state' || data.type === 'garlic_error' || data.type === 'garlic_draw' || data.type === 'garlic_guess' || data.type === 'garlic_reveal' || data.type === 'garlic_lobby') {
+    if (typeof window._garlicMessageHandler === 'function') window._garlicMessageHandler(data);
+  } else if (data.type === 'chat') {
     var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    generalMessages.push({sender: data.sender, text: data.text, admin: data.admin || false, time: time});
+    generalMessages.push({sender: data.sender, display_name: data.display_name || data.sender, pfp: data.pfp || '', text: data.text, admin: data.admin || false, time: time});
     if (currentChannel === 'general') renderMessages();
     if (data.sender !== myUsername) playNotifSound();
   } else if (data.type === 'system') {
@@ -2549,7 +2919,7 @@ function connectGuest(username) {
   var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(protocol + '//' + location.host + '/ws');
   ws.onopen = function() {
-    ws.send(JSON.stringify({ type: 'join', username: username }));
+    ws.send(JSON.stringify({ type: 'join', username: username, session_token: mySessionToken || '' }));
     document.getElementById('suggestBoxSection').style.display = 'block';
   };
   ws.onmessage = function(event) { handleMessage(JSON.parse(event.data)); };
@@ -2577,6 +2947,111 @@ document.getElementById('viewLogsBtn').addEventListener('click', function() {
 
 document.getElementById('settingsBtn').addEventListener('click', function() {
   showSettingsModal();
+});
+
+document.getElementById('profileBtn').addEventListener('click', function() {
+  if (myIsGuest || !mySessionToken) {
+    alert('You need an account to edit your profile. Log in or sign up!');
+    return;
+  }
+  showProfileModal();
+});
+
+function showProfileModal() {
+  var modal = document.getElementById('profileModal');
+  modal.style.display = 'flex';
+  document.getElementById('profileUsernameDisplay').textContent = myUsername;
+  document.getElementById('profileDisplayName').value = myDisplayName || '';
+  document.getElementById('profileBio').value = myBio || '';
+  var preview = document.getElementById('profilePfpPreview');
+  if (myPfpData) {
+    preview.style.backgroundImage = 'url(' + myPfpData + ')';
+    preview.style.backgroundSize = 'cover';
+    preview.style.backgroundPosition = 'center';
+    preview.textContent = '';
+  } else {
+    preview.style.backgroundImage = '';
+    preview.textContent = (myDisplayName || myUsername || '?').charAt(0).toUpperCase();
+  }
+  var errEl = document.getElementById('profileError');
+  errEl.style.display = 'none';
+}
+
+document.getElementById('profileModalClose').addEventListener('click', function() {
+  document.getElementById('profileModal').style.display = 'none';
+});
+document.getElementById('profileModal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+
+var _profilePfpPending = null;
+document.getElementById('changePfpBtn').addEventListener('click', function() {
+  document.getElementById('pfpFileInput').click();
+});
+document.getElementById('profilePfpPreview').addEventListener('click', function() {
+  document.getElementById('pfpFileInput').click();
+});
+document.getElementById('pfpFileInput').addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { alert('Image must be under 2MB.'); return; }
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    _profilePfpPending = ev.target.result;
+    var preview = document.getElementById('profilePfpPreview');
+    preview.style.backgroundImage = 'url(' + _profilePfpPending + ')';
+    preview.style.backgroundSize = 'cover';
+    preview.style.backgroundPosition = 'center';
+    preview.textContent = '';
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('saveProfileBtn').addEventListener('click', function() {
+  var dn = document.getElementById('profileDisplayName').value.trim();
+  var bio = document.getElementById('profileBio').value.trim();
+  var errEl = document.getElementById('profileError');
+  errEl.style.display = 'none';
+  if (!dn) { errEl.textContent = 'Display name cannot be empty.'; errEl.style.display = 'block'; return; }
+  var payload = {display_name: dn, bio: bio};
+  if (_profilePfpPending) payload.pfp_data = _profilePfpPending;
+  fetch('/api/profile', {method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':mySessionToken},body:JSON.stringify(payload)})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (d.error) { errEl.textContent=d.error; errEl.style.display='block'; return; }
+      myDisplayName = dn;
+      myBio = bio;
+      if (_profilePfpPending) { myPfpData = _profilePfpPending; _profilePfpPending = null; }
+      updateProfileBtn();
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({type:'update_display_name', display_name: dn}));
+      }
+      document.getElementById('profileModal').style.display = 'none';
+    }).catch(function(){ errEl.textContent='Failed to save. Please try again.'; errEl.style.display='block'; });
+});
+
+document.getElementById('logoutBtn').addEventListener('click', function() {
+  localStorage.removeItem('chat_session_token');
+  mySessionToken = '';
+  myUsername = '';
+  myDisplayName = '';
+  myPfpData = '';
+  myBio = '';
+  myIsGuest = false;
+  if (ws) { ws.close(); ws = null; }
+  document.getElementById('profileModal').style.display = 'none';
+  document.getElementById('chatScreen').style.display = 'none';
+  document.getElementById('joinScreen').style.display = 'flex';
+  document.getElementById('roleBox').style.display = 'block';
+  document.getElementById('guestBox').style.display = 'none';
+});
+
+function showChangelog() {
+  document.getElementById('changelogModal').style.display = 'flex';
+}
+document.getElementById('changelogCloseBtn').addEventListener('click', function() {
+  document.getElementById('changelogModal').style.display = 'none';
+  fetch('/api/changelog-seen', {method:'POST',headers:{'X-Session-Token':mySessionToken}}).catch(function(){});
 });
 
 document.getElementById('adminCreatorBtn').addEventListener('click', function() {
@@ -3273,6 +3748,7 @@ var allGames = [
   { id: 'twenty_fortyeight', name: '2048', desc: 'Slide and merge tiles to reach the 2048 tile', badge: 'single' },
   { id: 'hangman', name: 'Hangman', desc: 'Guess the hidden word one letter at a time before the hangman is complete', badge: 'single' },
   { id: 'genetic_cars', name: 'Genetic Cars', desc: 'Watch AI-evolved cars learn to drive using genetic algorithms and natural selection', badge: 'single' },
+  { id: 'garlic_phone', name: 'Garlic Phone', desc: 'Multiplayer telephone game with drawing — write a phrase, draw it, guess the drawing!', badge: 'multi' },
 ];
 
 function buildGamesHub(container) {
@@ -3365,10 +3841,18 @@ var gameNames = {
   tictactoe: 'Tic-Tac-Toe', snake: 'Snake', memory: 'Memory Match',
   blackjack: 'Blackjack', blackjack_multi: 'Blackjack (Multiplayer)', minesweeper: 'Minesweeper',
   solitaire: 'Solitaire', checkers: 'Checkers', hangman: 'Hangman',
-  war: 'War', crazy_eights: 'Crazy Eights', twenty_fortyeight: '2048'
+  war: 'War', crazy_eights: 'Crazy Eights', twenty_fortyeight: '2048',
+  genetic_cars: 'Genetic Cars', garlic_phone: 'Garlic Phone'
 };
 
 function showGame(container, gameId) {
+  if (typeof window._gameCleanup === 'function') {
+    try { window._gameCleanup(); } catch(e) {}
+    window._gameCleanup = null;
+  }
+  if (typeof window._garlicMessageHandler === 'function') {
+    window._garlicMessageHandler = null;
+  }
   container.innerHTML = '';
   var hub = document.createElement('div');
   hub.className = 'games-hub';
@@ -3380,6 +3864,11 @@ function showGame(container, gameId) {
   backBtn.textContent = 'Back';
   backBtn.setAttribute('data-testid', 'button-back-games');
   backBtn.addEventListener('click', function() {
+    if (typeof window._gameCleanup === 'function') {
+      try { window._gameCleanup(); } catch(e) {}
+      window._gameCleanup = null;
+    }
+    window._garlicMessageHandler = null;
     container.innerHTML = '';
     buildGamesHub(container);
   });
@@ -3407,9 +3896,10 @@ function showGame(container, gameId) {
   else if (gameId === 'crazy_eights') initCrazyEights(playArea);
   else if (gameId === 'twenty_fortyeight') init2048(playArea);
   else if (gameId === 'genetic_cars') initGeneticCars(playArea);
+  else if (gameId === 'garlic_phone') initGarlicPhone(playArea);
 }
 
-""" + tictactoe.get_js() + snake.get_js() + memory.get_js() + blackjack.get_js() + blackjack_multi.get_js() + minesweeper.get_js() + solitaire.get_js() + checkers.get_js() + hangman.get_js() + war.get_js() + crazy_eights.get_js() + twenty_fortyeight.get_js() + genetic_cars.get_js() + r"""
+""" + tictactoe.get_js() + snake.get_js() + memory.get_js() + blackjack.get_js() + blackjack_multi.get_js() + minesweeper.get_js() + solitaire.get_js() + checkers.get_js() + hangman.get_js() + war.get_js() + crazy_eights.get_js() + twenty_fortyeight.get_js() + genetic_cars.get_js() + garlic_phone.get_js() + r"""
 
 tabs.push({ id: 'chat', type: 'chat', label: 'Chat' });
 renderTabBar();
@@ -3462,10 +3952,20 @@ async def broadcast_all(message):
 def user_list():
     users = []
     for info in connected.values():
-        users.append({"name": info["username"], "status": info.get("status", "online")})
+        users.append({
+            "name": info["username"],
+            "display_name": info.get("display_name", info["username"]),
+            "pfp": info.get("pfp_data", ""),
+            "status": info.get("status", "online")
+        })
     for sinfo in staff_connected.values():
         if sinfo["username"] not in [u["name"] for u in users]:
-            users.append({"name": sinfo["username"], "status": sinfo.get("status", "online")})
+            users.append({
+                "name": sinfo["username"],
+                "display_name": sinfo.get("display_name", sinfo["username"]),
+                "pfp": "",
+                "status": sinfo.get("status", "online")
+            })
     return users
 
 
@@ -4197,6 +4697,19 @@ async def handle_client_ws(request):
                         continue
 
                     name = data["username"].strip()
+                    session_token = data.get("session_token", "").strip()
+                    display_name = name
+                    pfp_data = ""
+                    bio = ""
+                    show_changelog = False
+
+                    if session_token:
+                        profile = await db_validate_session(session_token)
+                        if profile:
+                            name = profile["username"]
+                            display_name = profile["display_name"]
+                            pfp_data = profile.get("pfp_data", "")
+                            bio = profile.get("bio", "")
 
                     if not USERNAME_RE.match(name):
                         await ws.send_str(json.dumps({
@@ -4228,18 +4741,31 @@ async def handle_client_ws(request):
                         continue
 
                     username = name
-                    connected[ws] = {"username": username, "ws": ws}
-                    print(f"[+] {username} joined  ({len(connected)} online)")
+                    connected[ws] = {
+                        "username": username, "ws": ws,
+                        "display_name": display_name,
+                        "pfp_data": pfp_data, "bio": bio
+                    }
+                    print(f"[+] {username} ({display_name}) joined  ({len(connected)} online)")
 
-                    await broadcast_all({"type": "system", "text": f"{username} joined the chat"})
+                    await ws.send_str(json.dumps({
+                        "type": "joined",
+                        "username": username,
+                        "display_name": display_name,
+                        "pfp_data": pfp_data,
+                        "bio": bio
+                    }))
+                    await broadcast_all({"type": "system", "text": f"{display_name} joined the chat"})
                     await send_user_list()
 
                 elif data.get("type") == "chat":
                     text = data.get("text", "").strip()
                     if text:
-                        await broadcast_all({"type": "chat", "sender": username, "text": text})
-                        add_log("chat", sender=username, text=text)
-                        print(f"[{username}] {text}")
+                        disp = connected[ws].get("display_name", username)
+                        pfp = connected[ws].get("pfp_data", "")
+                        await broadcast_all({"type": "chat", "sender": username, "display_name": disp, "pfp": pfp, "text": text})
+                        add_log("chat", sender=disp, text=text)
+                        print(f"[{disp}] {text}")
 
                 elif data.get("type") == "dm_message":
                     target = data.get("target", "").strip()
@@ -4347,6 +4873,15 @@ async def handle_client_ws(request):
                 elif data.get("type") == "bj_action":
                     await handle_bj_action(ws, username, data)
 
+                elif data.get("type") == "garlic_action":
+                    await handle_garlic_action(ws, username, data)
+
+                elif data.get("type") == "update_display_name":
+                    new_dn = data.get("display_name", "").strip()[:30]
+                    if new_dn and ws in connected:
+                        connected[ws]["display_name"] = new_dn
+                        await send_user_list()
+
             except Exception as e:
                 print(f"[!] Error: {e}")
 
@@ -4354,16 +4889,19 @@ async def handle_client_ws(request):
             break
 
     if ws in connected:
-        left = connected.pop(ws)["username"]
+        info = connected.pop(ws)
+        left = info["username"]
+        left_display = info.get("display_name", left)
         print(f"[-] {left} left  ({len(connected)} online)")
 
         await bj_handle_disconnect(left)
+        await garlic_handle_disconnect(left)
 
         keys_to_remove = [k for k in dm_store if left in k]
         for k in keys_to_remove:
             del dm_store[k]
 
-        await broadcast_all({"type": "system", "text": f"{left} left the chat"})
+        await broadcast_all({"type": "system", "text": f"{left_display} left the chat"})
         await broadcast_all({"type": "dm_cleanup", "username": left})
         await send_to_admin({"type": "dm_cleanup", "username": left})
         await send_user_list()
@@ -4372,16 +4910,267 @@ async def handle_client_ws(request):
     return ws
 
 
+async def garlic_broadcast_state(room):
+    players_info = [{"username": p["username"], "display_name": p.get("display_name", p["username"])} for p in room["players"]]
+    for player in room["players"]:
+        try:
+            await player["ws"].send_str(json.dumps({
+                "type": "garlic_state",
+                "room_id": room["id"],
+                "status": room["status"],
+                "players": players_info,
+                "is_host": player["username"] == room["host"]
+            }))
+        except Exception:
+            pass
+
+
+async def garlic_advance_round(room):
+    n = len(room["players"])
+    current_round = room["round"]
+    prompt_type = "text" if current_round % 2 == 0 else "draw"
+    for i in range(n):
+        book_idx = (i + current_round) % n
+        pname = room["players"][i]["username"]
+        sub = room["submissions"].get(pname, "")
+        room["chains"][book_idx].append({
+            "type": prompt_type,
+            "content": sub,
+            "author": room["players"][i].get("display_name", pname)
+        })
+    room["round"] += 1
+    room["submissions"] = {}
+    if room["round"] >= room["total_rounds"]:
+        room["status"] = "done"
+        player_names = [p.get("display_name", p["username"]) for p in room["players"]]
+        for player in room["players"]:
+            try:
+                await player["ws"].send_str(json.dumps({
+                    "type": "garlic_reveal",
+                    "room_id": room["id"],
+                    "chains": room["chains"],
+                    "players": player_names
+                }))
+            except Exception:
+                pass
+    else:
+        new_round = room["round"]
+        next_type = "text" if new_round % 2 == 0 else "draw"
+        for i, player in enumerate(room["players"]):
+            book_idx = (i + new_round) % n
+            last = room["chains"][book_idx][-1] if room["chains"][book_idx] else None
+            try:
+                await player["ws"].send_str(json.dumps({
+                    "type": "garlic_prompt",
+                    "room_id": room["id"],
+                    "round": new_round,
+                    "prompt_type": next_type,
+                    "prompt": last["content"] if last else None,
+                    "prompt_was_type": last["type"] if last else "text",
+                    "players_count": n,
+                    "round_of": room["total_rounds"]
+                }))
+            except Exception:
+                pass
+        await garlic_broadcast_state(room)
+
+
+async def handle_garlic_action(ws, username, data):
+    action = data.get("action", "")
+    display = connected.get(ws, {}).get("display_name", username)
+
+    if action == "create":
+        room_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+        room = {
+            "id": room_id, "host": username, "status": "lobby",
+            "round": 0, "total_rounds": 0, "chains": [], "submissions": {},
+            "players": [{"username": username, "display_name": display, "ws": ws}]
+        }
+        garlic_rooms[room_id] = room
+        await garlic_broadcast_state(room)
+
+    elif action == "join":
+        room_id = data.get("room_id", "").strip().upper()
+        room = garlic_rooms.get(room_id)
+        if not room:
+            await ws.send_str(json.dumps({"type": "garlic_error", "text": "Room not found."}))
+            return
+        if room["status"] != "lobby":
+            await ws.send_str(json.dumps({"type": "garlic_error", "text": "Game already in progress."}))
+            return
+        if len(room["players"]) >= 8:
+            await ws.send_str(json.dumps({"type": "garlic_error", "text": "Room is full (8 max)."}))
+            return
+        if any(p["username"] == username for p in room["players"]):
+            await ws.send_str(json.dumps({"type": "garlic_error", "text": "Already in this room."}))
+            return
+        room["players"].append({"username": username, "display_name": display, "ws": ws})
+        await garlic_broadcast_state(room)
+
+    elif action == "start":
+        room_id = data.get("room_id", "")
+        room = garlic_rooms.get(room_id)
+        if not room or room["host"] != username:
+            await ws.send_str(json.dumps({"type": "garlic_error", "text": "Not the host."}))
+            return
+        if len(room["players"]) < 2:
+            await ws.send_str(json.dumps({"type": "garlic_error", "text": "Need at least 2 players."}))
+            return
+        n = len(room["players"])
+        room["status"] = "playing"
+        room["round"] = 0
+        room["total_rounds"] = n
+        room["chains"] = [[] for _ in range(n)]
+        room["submissions"] = {}
+        for i, player in enumerate(room["players"]):
+            try:
+                await player["ws"].send_str(json.dumps({
+                    "type": "garlic_prompt",
+                    "room_id": room_id,
+                    "round": 0,
+                    "prompt_type": "text",
+                    "prompt": None,
+                    "prompt_was_type": None,
+                    "players_count": n,
+                    "round_of": n
+                }))
+            except Exception:
+                pass
+        await garlic_broadcast_state(room)
+
+    elif action == "submit":
+        room_id = data.get("room_id", "")
+        room = garlic_rooms.get(room_id)
+        if not room or room["status"] != "playing":
+            return
+        content = data.get("content", "")
+        if not content:
+            return
+        room["submissions"][username] = content
+        await ws.send_str(json.dumps({"type": "garlic_submitted"}))
+        if len(room["submissions"]) >= len(room["players"]):
+            await garlic_advance_round(room)
+
+    elif action == "leave":
+        room_id = data.get("room_id", "")
+        if room_id in garlic_rooms:
+            room = garlic_rooms[room_id]
+            room["players"] = [p for p in room["players"] if p["username"] != username]
+            if not room["players"]:
+                del garlic_rooms[room_id]
+            else:
+                if room["host"] == username:
+                    room["host"] = room["players"][0]["username"]
+                await garlic_broadcast_state(room)
+
+
+async def garlic_handle_disconnect(username):
+    for room_id in list(garlic_rooms.keys()):
+        room = garlic_rooms.get(room_id)
+        if not room:
+            continue
+        if any(p["username"] == username for p in room["players"]):
+            room["players"] = [p for p in room["players"] if p["username"] != username]
+            if not room["players"]:
+                del garlic_rooms[room_id]
+            else:
+                if room["host"] == username:
+                    room["host"] = room["players"][0]["username"]
+                if room["status"] == "playing":
+                    room["submissions"].pop(username, None)
+                    if len(room["submissions"]) >= len(room["players"]):
+                        await garlic_advance_round(room)
+                    else:
+                        await garlic_broadcast_state(room)
+                else:
+                    await garlic_broadcast_state(room)
+
+
+async def handle_api_register(request):
+    try:
+        data = await request.json()
+    except Exception:
+        return web.Response(text=json.dumps({"error": "Invalid JSON"}), content_type="application/json", status=400)
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+    display_name = (data.get("display_name", "").strip() or username)[:30]
+    if not USERNAME_RE.match(username):
+        return web.Response(text=json.dumps({"error": "Username: 1-20 chars, letters/numbers/_/- only"}), content_type="application/json", status=400)
+    if RESERVED_RE.search(username):
+        return web.Response(text=json.dumps({"error": "Username cannot contain admin/mod/owner"}), content_type="application/json", status=400)
+    if len(password) < 6:
+        return web.Response(text=json.dumps({"error": "Password must be at least 6 characters"}), content_type="application/json", status=400)
+    result = await db_register(username, password, display_name)
+    if "error" in result:
+        return web.Response(text=json.dumps(result), content_type="application/json", status=400)
+    return web.Response(text=json.dumps(result), content_type="application/json")
+
+
+async def handle_api_login(request):
+    try:
+        data = await request.json()
+    except Exception:
+        return web.Response(text=json.dumps({"error": "Invalid JSON"}), content_type="application/json", status=400)
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+    result = await db_login(username, password)
+    if "error" in result:
+        return web.Response(text=json.dumps(result), content_type="application/json", status=401)
+    return web.Response(text=json.dumps(result), content_type="application/json")
+
+
+async def handle_api_profile_get(request):
+    token = request.headers.get("X-Session-Token", "")
+    user = await db_validate_session(token)
+    if not user:
+        return web.Response(text=json.dumps({"error": "Unauthorized"}), content_type="application/json", status=401)
+    return web.Response(text=json.dumps(user), content_type="application/json")
+
+
+async def handle_api_profile_update(request):
+    token = request.headers.get("X-Session-Token", "")
+    try:
+        data = await request.json()
+    except Exception:
+        return web.Response(text=json.dumps({"error": "Invalid JSON"}), content_type="application/json", status=400)
+    result = await db_update_profile(
+        token,
+        display_name=data.get("display_name"),
+        bio=data.get("bio"),
+        pfp_data=data.get("pfp_data")
+    )
+    if "error" in result:
+        return web.Response(text=json.dumps(result), content_type="application/json", status=400)
+    return web.Response(text=json.dumps(result), content_type="application/json")
+
+
+async def handle_api_changelog_seen(request):
+    token = request.headers.get("X-Session-Token", "")
+    if request.method == "GET":
+        should_show = await db_mark_changelog_seen(token, check_only=True)
+        return web.Response(text=json.dumps({"show": should_show}), content_type="application/json")
+    else:
+        await db_mark_changelog_seen(token)
+        return web.Response(text=json.dumps({"ok": True}), content_type="application/json")
+
+
 async def main():
     load_logs()
+    await init_db()
 
-    app = web.Application()
+    app = web.Application(client_max_size=1024 * 1024 * 5)
     app.router.add_get("/", handle_chat_page)
     app.router.add_get("/admin", handle_admin_page)
     app.router.add_post("/admin", handle_admin_page)
     app.router.add_get("/owner-ws", handle_owner_ws)
     app.router.add_get("/staff-ws", handle_staff_ws)
     app.router.add_get("/ws", handle_client_ws)
+    app.router.add_post("/api/register", handle_api_register)
+    app.router.add_post("/api/login", handle_api_login)
+    app.router.add_get("/api/profile", handle_api_profile_get)
+    app.router.add_post("/api/profile", handle_api_profile_update)
+    app.router.add_get("/api/changelog-seen", handle_api_changelog_seen)
+    app.router.add_post("/api/changelog-seen", handle_api_changelog_seen)
 
     runner = web.AppRunner(app)
     await runner.setup()

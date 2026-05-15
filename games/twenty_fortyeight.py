@@ -4,65 +4,21 @@ function init2048(container) {
   var size = 4;
   var grid = [];
   var score = 0;
-  var highScore = 0;
+  var highScore = parseInt(localStorage.getItem('2048-high') || '0');
   var gameOver = false;
   var won = false;
   var keepPlaying = false;
 
-  var tileColors = {
-    0: '#cdc1b4',
-    2: '#eee4da',
-    4: '#ede0c8',
-    8: '#f2b179',
-    16: '#f59563',
-    32: '#f67c5f',
-    64: '#f65e3b',
-    128: '#edcf72',
-    256: '#edcc61',
-    512: '#edc850',
-    1024: '#edc53f',
-    2048: '#edc22e'
-  };
-
-  var tileTextColors = {
-    0: 'transparent',
-    2: '#776e65',
-    4: '#776e65',
-    8: '#f9f6f2',
-    16: '#f9f6f2',
-    32: '#f9f6f2',
-    64: '#f9f6f2',
-    128: '#f9f6f2',
-    256: '#f9f6f2',
-    512: '#f9f6f2',
-    1024: '#f9f6f2',
-    2048: '#f9f6f2'
-  };
-
-  function getTileColor(val) {
-    return tileColors[val] || '#3c3a32';
-  }
-  function getTileTextColor(val) {
-    return tileTextColors[val] || '#f9f6f2';
-  }
-  function getTileFontSize(val) {
-    if (val < 100) return '32px';
-    if (val < 1000) return '26px';
-    if (val < 10000) return '20px';
-    return '16px';
-  }
-
   var header = document.createElement('div');
-  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;width:100%;max-width:340px;margin-bottom:8px;gap:8px;flex-wrap:wrap;';
+  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;';
 
   var titleEl = document.createElement('div');
-  titleEl.style.cssText = 'font-size:28px;font-weight:800;color:#776e65;';
+  titleEl.style.cssText = 'font-size:28px;font-weight:800;color:#f5a623;';
   titleEl.textContent = '2048';
-  titleEl.setAttribute('data-testid', 'text-2048-title');
   header.appendChild(titleEl);
 
   var scoresWrap = document.createElement('div');
-  scoresWrap.style.cssText = 'display:flex;gap:6px;';
+  scoresWrap.style.cssText = 'display:flex;gap:8px;';
 
   var scoreBox = document.createElement('div');
   scoreBox.style.cssText = 'background:#bbada0;border-radius:4px;padding:4px 12px;text-align:center;min-width:60px;';
@@ -199,6 +155,17 @@ function init2048(container) {
     grid[cell.r][cell.c] = Math.random() < 0.9 ? 2 : 4;
   }
 
+  function getTileColor(v) {
+    var colors = {0:'transparent',2:'#eee4da',4:'#ede0c8',8:'#f2b179',16:'#f59563',32:'#f67c5f',64:'#f65e3b',128:'#edcf72',256:'#edcc61',512:'#edc850',1024:'#edc53f',2048:'#edc22e'};
+    return colors[v] || '#3c3a32';
+  }
+  function getTileTextColor(v) { return (v <= 4) ? '#776e65' : '#f9f6f2'; }
+  function getTileFontSize(v) {
+    if (v >= 1024) return '20px';
+    if (v >= 128) return '26px';
+    return '32px';
+  }
+
   function render() {
     for (var r = 0; r < size; r++) {
       for (var c = 0; c < size; c++) {
@@ -208,11 +175,7 @@ function init2048(container) {
         tile.style.background = getTileColor(val);
         tile.style.color = getTileTextColor(val);
         tile.style.fontSize = getTileFontSize(val);
-        if (val > 0) {
-          tile.style.transform = 'scale(1)';
-        } else {
-          tile.style.transform = 'scale(0)';
-        }
+        tile.style.transform = val > 0 ? 'scale(1)' : 'scale(0)';
       }
     }
     scoreVal.textContent = score;
@@ -290,7 +253,7 @@ function init2048(container) {
 
     if (moved) {
       score += totalPts;
-      if (score > highScore) highScore = score;
+      if (score > highScore) { highScore = score; localStorage.setItem('2048-high', highScore); }
       addRandomTile();
       render();
       checkGameState();
@@ -343,7 +306,7 @@ function init2048(container) {
     render();
   }
 
-  document.addEventListener('keydown', function(e) {
+  function keyHandler(e) {
     var key = e.key;
     var dir = null;
     if (key === 'ArrowLeft') dir = 'left';
@@ -354,7 +317,8 @@ function init2048(container) {
       e.preventDefault();
       move(dir);
     }
-  });
+  }
+  document.addEventListener('keydown', keyHandler);
 
   var touchStartX = 0, touchStartY = 0;
   boardWrap.addEventListener('touchstart', function(e) {
@@ -381,6 +345,10 @@ function init2048(container) {
   leftBtn.addEventListener('click', function() { move('left'); });
   rightBtn.addEventListener('click', function() { move('right'); });
   newGameBtn.addEventListener('click', newGame);
+
+  window._gameCleanup = function() {
+    document.removeEventListener('keydown', keyHandler);
+  };
 
   newGame();
 }
