@@ -433,6 +433,11 @@ function initGeneticCars(container) {
     resizeObs.observe(container);
   }
 
+  window._gameCleanup = function() {
+    stop();
+    if (resizeObs) { resizeObs.disconnect(); resizeObs = null; }
+  };
+
   start();
 }
 """

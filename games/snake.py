@@ -16,12 +16,11 @@ function initSnake(area) {
   canvas.width = canvasSize;
   canvas.height = canvasSize;
   canvas.setAttribute('data-testid', 'canvas-snake');
-  canvas.tabIndex = 0;
   area.appendChild(canvas);
 
   var hint = document.createElement('div');
   hint.className = 'snake-hint';
-  hint.textContent = 'Use arrow keys or WASD to move. Click canvas to focus.';
+  hint.textContent = 'Arrow keys or WASD to move.';
   area.appendChild(hint);
 
   var resetBtn = document.createElement('button');
@@ -43,7 +42,6 @@ function initSnake(area) {
     running = true;
     if (interval) clearInterval(interval);
     interval = setInterval(tick, 120);
-    canvas.focus();
   }
 
   function placeFood() {
@@ -78,7 +76,6 @@ function initSnake(area) {
 
   function draw() {
     var bgColor = rootStyle.getPropertyValue('--bg-secondary').trim() || '#2b2d31';
-    var borderColor = rootStyle.getPropertyValue('--border').trim() || '#3f4147';
     var accentColor = rootStyle.getPropertyValue('--accent').trim() || '#5865f2';
     var greenColor = rootStyle.getPropertyValue('--green').trim() || '#23a559';
     ctx.fillStyle = bgColor;
@@ -91,16 +88,23 @@ function initSnake(area) {
     });
   }
 
-  canvas.addEventListener('keydown', function(e) {
+  function keyHandler(e) {
     var key = e.key.toLowerCase();
-    if ((key === 'arrowup' || key === 'w') && dir.y !== 1) dir = {x:0,y:-1};
-    else if ((key === 'arrowdown' || key === 's') && dir.y !== -1) dir = {x:0,y:1};
-    else if ((key === 'arrowleft' || key === 'a') && dir.x !== 1) dir = {x:-1,y:0};
-    else if ((key === 'arrowright' || key === 'd') && dir.x !== -1) dir = {x:1,y:0};
-    if (['arrowup','arrowdown','arrowleft','arrowright'].indexOf(key) !== -1) e.preventDefault();
-  });
-  canvas.addEventListener('click', function() { canvas.focus(); });
+    if ((key === 'arrowup' || key === 'w') && dir.y !== 1) { dir = {x:0,y:-1}; e.preventDefault(); }
+    else if ((key === 'arrowdown' || key === 's') && dir.y !== -1) { dir = {x:0,y:1}; e.preventDefault(); }
+    else if ((key === 'arrowleft' || key === 'a') && dir.x !== 1) { dir = {x:-1,y:0}; e.preventDefault(); }
+    else if ((key === 'arrowright' || key === 'd') && dir.x !== -1) { dir = {x:1,y:0}; e.preventDefault(); }
+  }
+  document.addEventListener('keydown', keyHandler);
+
   resetBtn.addEventListener('click', reset);
+
+  window._gameCleanup = function() {
+    running = false;
+    if (interval) clearInterval(interval);
+    document.removeEventListener('keydown', keyHandler);
+  };
+
   reset();
 }
 """
@@ -108,4 +112,3 @@ function initSnake(area) {
 
 def get_css():
     return ""
-
