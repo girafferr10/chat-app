@@ -461,6 +461,11 @@ function initSolitaire(container) {
     render();
   }
 
+  window._gameCleanup = function() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  };
+
   newGame();
 }
 """
