@@ -6,6 +6,7 @@ import secrets
 import re
 import random
 import string
+import uuid
 import aiohttp
 from aiohttp import web
 import time as _time
@@ -22,6 +23,7 @@ except ImportError:
 connected = {}       # ws -> {"username": str, "ws": ws}
 banned_users = set() # set of banned usernames
 admin_ws = None      # owner websocket connection
+msg_reactions = {}   # msg_id -> {emoji: set(usernames)}
 staff_connected = {} # staff ws -> {"username": str, "admin_key": str}
 admin_connections = {}  # ws -> {"name": str, "key": str}
 dm_store = {}        # (sorted_user_a, sorted_user_b) -> [{"sender":..., "recipient":..., "text":..., "ts":...}]
@@ -1538,7 +1540,8 @@ body.theme-rose {
   <header>
     <h1 data-testid="text-header">Chat</h1>
     <div class="header-right">
-      <div class="status"><div class="dot"></div> Connected</div>
+      <div class="status" id="chatStatus"><div class="dot" id="chatStatusDot"></div><span id="chatStatusText">Connected</span></div>
+      <button class="theme-btn" id="updatesBtn" data-testid="button-updates" title="What's New" style="font-size:13px;padding:4px 9px;font-weight:600;">&#x1F195;</button>
       <button class="theme-btn" id="profileBtn" data-testid="button-profile" title="Your Profile" style="padding:2px;width:30px;height:30px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">&#x1F464;</button>
       <button class="theme-btn" id="settingsBtn" data-testid="button-settings" title="Settings" style="font-size:16px;padding:4px 8px;">&#x2699;</button>
       <button class="theme-btn" id="themeBtn" data-testid="button-theme">Dark</button>
@@ -2081,7 +2084,8 @@ function avatarColor(name) {
 var msgReactions = {}; // key -> {emoji: count, ..., mine: [emoji,...]}
 
 function getMsgKey(m) {
-  return (m.sender || '') + '|' + (m.time || '') + '|' + (m.text || '').substring(0, 30);
+  if (m.msg_id) return m.msg_id;
+  return (m.sender||'') + '|' + (m.time||'') + '|' + (m.text||'').substring(0,30);
 }
 
 function addReaction(msgKey, emoji) {
@@ -2096,6 +2100,9 @@ function addReaction(msgKey, emoji) {
     r.counts[emoji] = (r.counts[emoji] || 0) + 1;
   }
   renderMessages();
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({type: 'react', msg_id: msgKey, emoji: emoji}));
+  }
 }
 
 var _replyTo = null;
@@ -2318,9 +2325,25 @@ function updateTotalUnread() {
   var total = 0;
   Object.keys(dmUnread).forEach(function(k) { total += dmUnread[k] || 0; });
   Object.keys(gcUnread).forEach(function(k) { total += gcUnread[k] || 0; });
-  // Update the chat tab badge if it exists
   var chatTab = document.querySelector('.tab-btn[data-tab-id="chat"] .tab-badge, .tab-btn .tab-badge');
   if (chatTab) { chatTab.style.display = total > 0 ? '' : 'none'; chatTab.textContent = total > 0 ? total : ''; }
+  document.title = total > 0 ? '(' + total + ') Chat' : 'Chat';
+}
+
+function setConnectionStatus(state) {
+  var dot = document.getElementById('chatStatusDot');
+  var txt = document.getElementById('chatStatusText');
+  if (!dot || !txt) return;
+  if (state === 'connected') {
+    dot.style.background = '';
+    txt.textContent = 'Connected';
+  } else if (state === 'reconnecting') {
+    dot.style.background = '#f0b232';
+    txt.textContent = 'Reconnecting…';
+  } else {
+    dot.style.background = 'var(--red,#f04747)';
+    txt.textContent = 'Disconnected';
+  }
 }
 
 var _dmSearchQuery = '';
@@ -3238,9 +3261,23 @@ function handleMessage(data) {
     }
   } else if (data.type === 'garlic_state' || data.type === 'garlic_error' || data.type === 'garlic_draw' || data.type === 'garlic_guess' || data.type === 'garlic_reveal' || data.type === 'garlic_lobby') {
     if (typeof window._garlicMessageHandler === 'function') window._garlicMessageHandler(data);
+  } else if (data.type === 'react') {
+    var mid = data.msg_id;
+    if (mid) {
+      if (!msgReactions[mid]) msgReactions[mid] = {counts: {}, mine: []};
+      var allReactors = data.reactions || {};
+      var newCounts = {};
+      Object.keys(allReactors).forEach(function(em) { newCounts[em] = allReactors[em].length; });
+      var newMine = [];
+      Object.keys(allReactors).forEach(function(em) {
+        if (allReactors[em].indexOf(myUsername) >= 0 || allReactors[em].indexOf(myDisplayName) >= 0) newMine.push(em);
+      });
+      msgReactions[mid] = {counts: newCounts, mine: newMine};
+      renderMessages();
+    }
   } else if (data.type === 'chat') {
     var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    generalMessages.push({sender: data.sender, display_name: data.display_name || data.sender, pfp: data.pfp || '', text: data.text, admin: data.admin || false, time: time});
+    generalMessages.push({sender: data.sender, display_name: data.display_name || data.sender, pfp: data.pfp || '', text: data.text, admin: data.admin || false, time: time, msg_id: data.msg_id||'', reply_sender: data.reply_sender||'', reply_text: data.reply_text||''});
     if (currentChannel === 'general') { renderMessages(); if (data.sender !== myUsername && typeof window._notifyScrollBtn === 'function') window._notifyScrollBtn(); }
     if (data.sender !== myUsername) playNotifSound();
   } else if (data.type === 'system') {
@@ -3266,7 +3303,7 @@ function handleMessage(data) {
     }
     if (!dmMessages[other]) { dmMessages[other] = []; }
     var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    dmMessages[other].push({sender: data.sender, display_name: data.display_name || data.sender, pfp: data.pfp || '', text: data.text, admin: data.admin || false, isDm: true, time: time});
+    dmMessages[other].push({sender: data.sender, display_name: data.display_name || data.sender, pfp: data.pfp || '', text: data.text, admin: data.admin || false, isDm: true, time: time, msg_id: data.msg_id||'', reply_sender: data.reply_sender||'', reply_text: data.reply_text||''});
     if (data.sender !== myUsername && currentChannel !== 'dm:' + other && !dmPanelTarget) {
       var _dname = data.display_name || data.sender;
       showToast('💬 ' + escapeHtml(_dname) + ': ' + (data.text || '').substring(0,60), 'info');
@@ -3284,7 +3321,7 @@ function handleMessage(data) {
     var target = data.target;
     dmMessages[target] = [];
     (data.messages || []).forEach(function(m) {
-      dmMessages[target].push({sender: m.sender, display_name: m.display_name || m.sender, pfp: m.pfp || '', text: m.text, admin: m.admin || false, isDm: true, time: m.time || ''});
+      dmMessages[target].push({sender: m.sender, display_name: m.display_name || m.sender, pfp: m.pfp || '', text: m.text, admin: m.admin || false, isDm: true, time: m.time || '', msg_id: m.msg_id||'', reply_sender: m.reply_sender||'', reply_text: m.reply_text||''});
     });
     if (dmPanelTarget === target) {
       renderDmPanel();
@@ -3353,7 +3390,7 @@ function handleMessage(data) {
     var gcId = data.gc_id;
     if (!gcMessages[gcId]) gcMessages[gcId] = [];
     var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    gcMessages[gcId].push({sender: data.sender, text: data.text, admin: data.admin || false, time: time});
+    gcMessages[gcId].push({sender: data.sender, display_name: data.display_name || data.sender, pfp: data.pfp||'', text: data.text, admin: data.admin || false, time: time, msg_id: data.msg_id||'', reply_sender: data.reply_sender||'', reply_text: data.reply_text||''});
     if (currentChannel === 'gc:' + gcId) {
       renderMessages();
     } else {
@@ -3364,7 +3401,7 @@ function handleMessage(data) {
     var gcId = data.gc_id;
     gcMessages[gcId] = [];
     (data.messages || []).forEach(function(m) {
-      gcMessages[gcId].push({sender: m.sender, text: m.text, admin: m.admin || false, time: m.time || ''});
+      gcMessages[gcId].push({sender: m.sender, display_name: m.display_name||m.sender, pfp: m.pfp||'', text: m.text, admin: m.admin || false, time: m.time || '', msg_id: m.msg_id||'', reply_sender: m.reply_sender||'', reply_text: m.reply_text||''});
     });
     if (currentChannel === 'gc:' + gcId) renderMessages();
   } else if (data.type === 'error') {
@@ -3407,6 +3444,7 @@ function connectOwner(token) {
     document.getElementById('manageAdminsBtn').style.display = 'flex';
     document.getElementById('msgInput').focus();
   };
+  var _ownerReconnectDelay = 2000;
   ws.onclose = function() {
     if (!adminConnected) {
       var err = document.getElementById('adminError');
@@ -3417,7 +3455,14 @@ function connectOwner(token) {
     }
     document.getElementById('sendBtn').disabled = true;
     document.getElementById('msgInput').disabled = true;
+    setConnectionStatus('reconnecting');
+    showToast('Connection lost. Reconnecting in ' + (_ownerReconnectDelay/1000) + 's…', 'error');
+    setTimeout(function() {
+      _ownerReconnectDelay = Math.min(_ownerReconnectDelay * 1.5, 30000);
+      connectOwner(token);
+    }, _ownerReconnectDelay);
   };
+  ws.onopen = function() { _ownerReconnectDelay = 2000; setConnectionStatus('connected'); };
   ws.onerror = function() {};
   ws.onmessage = function(event) { handleMessage(JSON.parse(event.data)); };
 }
@@ -3444,6 +3489,7 @@ function connectStaffAdmin(key) {
     document.getElementById('suggestBoxSection').style.display = 'block';
     document.getElementById('msgInput').focus();
   };
+  var _staffReconnectDelay = 2000;
   ws.onclose = function() {
     if (!staffConnected) {
       var err = document.getElementById('staffAdminError');
@@ -3454,6 +3500,12 @@ function connectStaffAdmin(key) {
     }
     document.getElementById('sendBtn').disabled = true;
     document.getElementById('msgInput').disabled = true;
+    setConnectionStatus('reconnecting');
+    showToast('Connection lost. Reconnecting in ' + (_staffReconnectDelay/1000) + 's…', 'error');
+    setTimeout(function() {
+      _staffReconnectDelay = Math.min(_staffReconnectDelay * 1.5, 30000);
+      connectStaffAdmin(key);
+    }, _staffReconnectDelay);
   };
   ws.onerror = function() {};
   ws.onmessage = function(event) { handleMessage(JSON.parse(event.data)); };
@@ -3462,16 +3514,27 @@ function connectStaffAdmin(key) {
 function connectGuest(username) {
   var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(protocol + '//' + location.host + '/ws');
-  ws.onopen = function() {
-    ws.send(JSON.stringify({ type: 'join', username: username, session_token: mySessionToken || '' }));
-    document.getElementById('suggestBoxSection').style.display = 'block';
-  };
   ws.onmessage = function(event) { handleMessage(JSON.parse(event.data)); };
+  var _guestReconnectDelay = 2000;
   ws.onclose = function() {
     if (myUsername) {
       document.getElementById('sendBtn').disabled = true;
       document.getElementById('msgInput').disabled = true;
+      setConnectionStatus('reconnecting');
+      showToast('Connection lost. Reconnecting in ' + (_guestReconnectDelay/1000) + 's…', 'error');
+      setTimeout(function() {
+        _guestReconnectDelay = Math.min(_guestReconnectDelay * 1.5, 30000);
+        connectGuest(username);
+      }, _guestReconnectDelay);
     }
+  };
+  ws.onopen = function() {
+    _guestReconnectDelay = 2000;
+    setConnectionStatus('connected');
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('msgInput').disabled = false;
+    ws.send(JSON.stringify({ type: 'join', username: username, session_token: mySessionToken || '' }));
+    document.getElementById('suggestBoxSection').style.display = 'block';
   };
 }
 
@@ -3702,6 +3765,9 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
 function showChangelog() {
   document.getElementById('changelogModal').style.display = 'flex';
 }
+document.getElementById('updatesBtn').addEventListener('click', function() {
+  document.getElementById('changelogModal').style.display = 'flex';
+});
 document.getElementById('changelogCloseBtn').addEventListener('click', function() {
   document.getElementById('changelogModal').style.display = 'none';
   fetch('/api/changelog-seen', {method:'POST',headers:{'X-Session-Token':mySessionToken}}).catch(function(){});
@@ -5192,6 +5258,17 @@ function convertTabToEmbedded(tabId) {
     newTabBtn.style.cssText = 'padding:5px 12px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;';
     newTabBtn.addEventListener('click', function() { window.open(game.url, '_blank'); });
     toolbar.appendChild(newTabBtn);
+    var fsBtn = document.createElement('button');
+    fsBtn.title = 'Fullscreen';
+    fsBtn.textContent = '⛶';
+    fsBtn.style.cssText = 'padding:5px 10px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;';
+    fsBtn.addEventListener('click', function() {
+      var target = wrap || frame;
+      if (target.requestFullscreen) target.requestFullscreen();
+      else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
+      else if (frame.requestFullscreen) frame.requestFullscreen();
+    });
+    toolbar.appendChild(fsBtn);
     gameContainer.appendChild(toolbar);
     var frame = document.createElement('iframe');
     frame.src = gameProxyUrl(game.url);
@@ -5539,7 +5616,8 @@ function convertTabToBrowser(tabId) {
       url = 'https://lite.duckduckgo.com/lite/?q=' + ddgSearch[1];
     }
     urlInput.value = url;
-    frame.src = url;
+    var loadUrl = vpnEnabled ? 'https://corsproxy.io/?' + encodeURIComponent(url) : url;
+    frame.src = loadUrl;
     frame.style.display = 'block';
     homePage.style.display = 'none';
     blockedMsg.style.display = 'none';
@@ -6023,13 +6101,29 @@ async def handle_owner_ws(request):
                     await send_to_admin({"type": "banned_list", "list": list(banned_users)})
                     print(f"[OWNER] Unbanned: {target}")
 
+                elif data["type"] == "react":
+                    mid = data.get("msg_id", "")
+                    emoji = data.get("emoji", "")
+                    if mid and emoji and len(emoji) <= 8:
+                        name = data.get("name", "").strip() or "Owner"
+                        if mid not in msg_reactions:
+                            msg_reactions[mid] = {}
+                        reactors = msg_reactions[mid].setdefault(emoji, set())
+                        if name in reactors:
+                            reactors.discard(name)
+                        else:
+                            reactors.add(name)
+                        react_state = {e: list(u) for e, u in msg_reactions[mid].items() if u}
+                        await broadcast_all({"type": "react", "msg_id": mid, "reactions": react_state})
+
                 elif data["type"] == "chat":
                     text = data.get("text", "").strip()
                     name = data.get("name", "").strip() or "Owner"
                     if text:
                         reply_sender = data.get("reply_sender", "")
                         reply_text = data.get("reply_text", "")
-                        msg = {"type": "chat", "sender": name, "text": text, "admin": True}
+                        mid = str(uuid.uuid4())[:12]
+                        msg = {"type": "chat", "sender": name, "text": text, "admin": True, "msg_id": mid}
                         if reply_sender: msg["reply_sender"] = reply_sender[:80]
                         if reply_text: msg["reply_text"] = reply_text[:80]
                         await broadcast_all(msg)
@@ -6196,12 +6290,27 @@ async def handle_staff_ws(request):
                             break
                     print(f"[STAFF:{staff_name}] Kicked: {target}")
 
+                elif data["type"] == "react":
+                    mid = data.get("msg_id", "")
+                    emoji = data.get("emoji", "")
+                    if mid and emoji and len(emoji) <= 8:
+                        if mid not in msg_reactions:
+                            msg_reactions[mid] = {}
+                        reactors = msg_reactions[mid].setdefault(emoji, set())
+                        if staff_name in reactors:
+                            reactors.discard(staff_name)
+                        else:
+                            reactors.add(staff_name)
+                        react_state = {e: list(u) for e, u in msg_reactions[mid].items() if u}
+                        await broadcast_all({"type": "react", "msg_id": mid, "reactions": react_state})
+
                 elif data["type"] == "chat":
                     text = data.get("text", "").strip()
                     if text:
                         reply_sender = data.get("reply_sender", "")
                         reply_text = data.get("reply_text", "")
-                        msg = {"type": "chat", "sender": staff_name, "text": text, "admin": True}
+                        mid = str(uuid.uuid4())[:12]
+                        msg = {"type": "chat", "sender": staff_name, "text": text, "admin": True, "msg_id": mid}
                         if reply_sender: msg["reply_sender"] = reply_sender[:80]
                         if reply_text: msg["reply_text"] = reply_text[:80]
                         await broadcast_all(msg)
@@ -6621,6 +6730,21 @@ async def handle_client_ws(request):
                     await broadcast_all({"type": "system", "text": f"{display_name} joined the chat"})
                     await send_user_list()
 
+                elif data.get("type") == "react":
+                    mid = data.get("msg_id", "")
+                    emoji = data.get("emoji", "")
+                    if mid and emoji and len(emoji) <= 8:
+                        disp = connected[ws].get("display_name", username)
+                        if mid not in msg_reactions:
+                            msg_reactions[mid] = {}
+                        reactors = msg_reactions[mid].setdefault(emoji, set())
+                        if disp in reactors:
+                            reactors.discard(disp)
+                        else:
+                            reactors.add(disp)
+                        react_state = {e: list(u) for e, u in msg_reactions[mid].items() if u}
+                        await broadcast_all({"type": "react", "msg_id": mid, "reactions": react_state})
+
                 elif data.get("type") == "chat":
                     text = data.get("text", "").strip()
                     if text:
@@ -6628,7 +6752,8 @@ async def handle_client_ws(request):
                         pfp = connected[ws].get("pfp_data", "")
                         reply_sender = data.get("reply_sender", "")
                         reply_text = data.get("reply_text", "")
-                        msg = {"type": "chat", "sender": username, "display_name": disp, "pfp": pfp, "text": text}
+                        mid = str(uuid.uuid4())[:12]
+                        msg = {"type": "chat", "sender": username, "display_name": disp, "pfp": pfp, "text": text, "msg_id": mid}
                         if reply_sender: msg["reply_sender"] = reply_sender[:80]
                         if reply_text: msg["reply_text"] = reply_text[:80]
                         await broadcast_all(msg)
