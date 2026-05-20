@@ -1434,6 +1434,32 @@ body.theme-rose {
   </div>
 </div>
 
+<!-- PFP Viewer Modal -->
+<div id="pfpViewerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:3100;align-items:center;justify-content:center;cursor:pointer;" onclick="this.style.display='none'">
+  <div style="position:relative;max-width:90vw;max-height:90vh;" onclick="event.stopPropagation()">
+    <img id="pfpViewerImg" style="max-width:90vw;max-height:80vh;border-radius:12px;object-fit:contain;display:block;" src="" alt="" />
+    <div id="pfpViewerName" style="text-align:center;color:#fff;font-size:15px;font-weight:600;margin-top:10px;"></div>
+    <button onclick="document.getElementById('pfpViewerModal').style.display='none'" style="position:absolute;top:-14px;right:-14px;background:rgba(0,0,0,0.6);border:none;color:#fff;font-size:20px;width:32px;height:32px;border-radius:50%;cursor:pointer;line-height:1;">&#x2715;</button>
+  </div>
+</div>
+
+<!-- DM Panel (right-side overlay) -->
+<div id="dmPanel" style="display:none;position:fixed;top:50px;right:0;bottom:0;width:360px;max-width:100vw;background:var(--bg-secondary);border-left:1px solid var(--border);z-index:600;flex-direction:column;box-shadow:-4px 0 20px rgba(0,0,0,0.3);">
+  <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0;">
+    <div id="dmPanelAvatar" style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;background-size:cover;background-position:center;"></div>
+    <div style="flex:1;min-width:0;">
+      <div id="dmPanelName" style="font-size:14px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+      <div style="font-size:11px;color:var(--text-muted);">Direct Message</div>
+    </div>
+    <button onclick="closeDmPanel()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:2px 6px;line-height:1;">&#x2715;</button>
+  </div>
+  <div id="dmPanelMessages" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:2px;"></div>
+  <div style="padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:8px;align-items:center;">
+    <input type="text" id="dmPanelInput" placeholder="Message..." style="flex:1;padding:8px 12px;border:none;border-radius:6px;background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;" />
+    <button id="dmPanelSendBtn" style="padding:8px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">Send</button>
+  </div>
+</div>
+
 <!-- Changelog Modal -->
 <div id="changelogModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2001;align-items:center;justify-content:center;">
   <div style="background:var(--bg-primary);border-radius:10px;padding:28px;max-width:440px;width:90%;position:relative;">
@@ -1808,7 +1834,9 @@ function makeFullMessageDiv(m) {
     avatar.style.backgroundImage = 'url(' + m.pfp + ')';
     avatar.style.backgroundSize = 'cover';
     avatar.style.backgroundPosition = 'center';
-    avatar.style.background = '';
+    avatar.style.cursor = 'pointer';
+    avatar.title = 'View photo';
+    avatar.addEventListener('click', function() { showPfpViewer(m.pfp, m.display_name || m.sender); });
   } else {
     avatar.style.background = avatarColor(displaySender);
     avatar.textContent = displaySender.substring(0, 2).toUpperCase();
@@ -1931,7 +1959,9 @@ function renderDmChannels() {
       badge.textContent = dmUnread[target];
       item.appendChild(badge);
     }
-    item.addEventListener('click', function() { switchChannel('dm:' + target); });
+    item.addEventListener('click', function() {
+      openDmPanel(target, getUserObj(target));
+    });
     list.appendChild(item);
   });
 }
@@ -2524,7 +2554,18 @@ var statusColors = { online: 'var(--green)', idle: '#f0b232', dnd: 'var(--red)',
 var typingUsers = {};
 var typingTimers = {};
 
+var lastUserList = [];
+
+function getUserObj(username) {
+  for (var i = 0; i < lastUserList.length; i++) {
+    var u = lastUserList[i];
+    if ((typeof u === 'string' ? u : u.name) === username) return u;
+  }
+  return {name: username};
+}
+
 function renderUsers(list) {
+  lastUserList = list;
   onlineUsers = list.map(function(u) { return typeof u === 'string' ? u : u.name; });
   document.getElementById('userCount').textContent = list.length;
   var ul = document.getElementById('userList');
@@ -2562,7 +2603,7 @@ function renderUsers(list) {
       div.title = 'Click to DM ' + name;
       div.addEventListener('click', function(e) {
         if (e.target.tagName === 'BUTTON') return;
-        openDm(name);
+        openDmPanel(name, user);
       });
     }
     if (isOwner && name !== myUsername) {
@@ -2759,8 +2800,10 @@ function handleMessage(data) {
     }
     if (!dmMessages[other]) { dmMessages[other] = []; }
     var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    dmMessages[other].push({sender: data.sender, text: data.text, admin: data.admin || false, isDm: true, time: time});
-    if (currentChannel === 'dm:' + other) {
+    dmMessages[other].push({sender: data.sender, display_name: data.display_name || data.sender, text: data.text, admin: data.admin || false, isDm: true, time: time});
+    if (dmPanelTarget === other) {
+      renderDmPanel();
+    } else if (currentChannel === 'dm:' + other) {
       renderMessages();
     } else {
       dmUnread[other] = (dmUnread[other] || 0) + 1;
@@ -2771,9 +2814,13 @@ function handleMessage(data) {
     var target = data.target;
     dmMessages[target] = [];
     (data.messages || []).forEach(function(m) {
-      dmMessages[target].push({sender: m.sender, text: m.text, admin: m.admin || false, isDm: true, time: m.time || ''});
+      dmMessages[target].push({sender: m.sender, display_name: m.display_name || m.sender, text: m.text, admin: m.admin || false, isDm: true, time: m.time || ''});
     });
-    if (currentChannel === 'dm:' + target) renderMessages();
+    if (dmPanelTarget === target) {
+      renderDmPanel();
+    } else if (currentChannel === 'dm:' + target) {
+      renderMessages();
+    }
   } else if (data.type === 'dm_spy') {
     var pair = data.pair;
     dmMessages['spy:' + pair] = [];
@@ -3095,6 +3142,89 @@ function showChangelog() {
 document.getElementById('changelogCloseBtn').addEventListener('click', function() {
   document.getElementById('changelogModal').style.display = 'none';
   fetch('/api/changelog-seen', {method:'POST',headers:{'X-Session-Token':mySessionToken}}).catch(function(){});
+});
+
+function showPfpViewer(url, name) {
+  document.getElementById('pfpViewerImg').src = url;
+  document.getElementById('pfpViewerName').textContent = name || '';
+  document.getElementById('pfpViewerModal').style.display = 'flex';
+}
+
+var dmPanelTarget = null;
+var dmPanelUser = null;
+
+function openDmPanel(target, userObj) {
+  dmPanelTarget = target;
+  dmPanelUser = userObj || {};
+  var panel = document.getElementById('dmPanel');
+  var nameEl = document.getElementById('dmPanelName');
+  var avatarEl = document.getElementById('dmPanelAvatar');
+  var displayName = typeof userObj === 'object' && userObj ? (userObj.display_name || userObj.name || target) : target;
+  var pfpUrl = typeof userObj === 'object' && userObj ? (userObj.pfp || '') : '';
+  nameEl.textContent = displayName;
+  if (pfpUrl) {
+    avatarEl.style.backgroundImage = 'url(' + pfpUrl + ')';
+    avatarEl.style.backgroundSize = 'cover';
+    avatarEl.style.backgroundPosition = 'center';
+    avatarEl.textContent = '';
+  } else {
+    avatarEl.style.backgroundImage = '';
+    avatarEl.style.background = avatarColor(displayName);
+    avatarEl.textContent = displayName.substring(0,2).toUpperCase();
+  }
+  panel.style.display = 'flex';
+  if (!dmMessages[target]) dmMessages[target] = [];
+  renderDmPanel();
+  ws.send(JSON.stringify({type: 'dm_open', target: target}));
+  var inp = document.getElementById('dmPanelInput');
+  if (inp) { setTimeout(function() { inp.focus(); }, 100); }
+}
+
+function closeDmPanel() {
+  document.getElementById('dmPanel').style.display = 'none';
+  dmPanelTarget = null;
+}
+
+function renderDmPanel() {
+  var el = document.getElementById('dmPanelMessages');
+  if (!el || !dmPanelTarget) return;
+  var msgs = dmMessages[dmPanelTarget] || [];
+  el.innerHTML = '';
+  if (msgs.length === 0) {
+    var empty = document.createElement('div');
+    empty.style.cssText = 'text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;';
+    empty.textContent = 'No messages yet. Say hello!';
+    el.appendChild(empty);
+    return;
+  }
+  msgs.forEach(function(m) {
+    var isMine = m.sender === myUsername || m.sender === myDisplayName;
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;flex-direction:column;' + (isMine ? 'align-items:flex-end;' : 'align-items:flex-start;') + 'gap:2px;margin-bottom:4px;';
+    var bubble = document.createElement('div');
+    bubble.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:' + (isMine ? '14px 14px 4px 14px' : '14px 14px 14px 4px') + ';font-size:13px;line-height:1.4;word-break:break-word;' + (isMine ? 'background:var(--accent);color:#fff;' : 'background:var(--bg-tertiary);color:var(--text-primary);');
+    bubble.textContent = m.text || '';
+    var meta = document.createElement('div');
+    meta.style.cssText = 'font-size:11px;color:var(--text-muted);margin:0 2px;';
+    meta.textContent = (m.display_name || m.sender || '') + (m.time ? '  ' + m.time : '');
+    row.appendChild(bubble);
+    row.appendChild(meta);
+    el.appendChild(row);
+  });
+  el.scrollTop = el.scrollHeight;
+}
+
+document.getElementById('dmPanelSendBtn').addEventListener('click', function() {
+  var inp = document.getElementById('dmPanelInput');
+  var text = inp ? inp.value.trim() : '';
+  if (!text || !dmPanelTarget || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({type: 'dm_message', target: dmPanelTarget, text: text}));
+  inp.value = '';
+  inp.focus();
+});
+document.getElementById('dmPanelInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('dmPanelSendBtn').click();
+  e.stopPropagation();
 });
 
 document.getElementById('adminCreatorBtn').addEventListener('click', function() {
@@ -4142,23 +4272,23 @@ function convertTabToEmbedded(tabId) {
   container.style.cssText = 'display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg-primary);';
 
   var header = document.createElement('div');
-  header.style.cssText = 'padding:14px 18px 0;flex-shrink:0;';
+  header.style.cssText = 'padding:8px 14px 0;flex-shrink:0;';
   var title = document.createElement('div');
-  title.style.cssText = 'font-size:20px;font-weight:700;color:var(--text-primary);margin-bottom:10px;';
+  title.style.cssText = 'font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:8px;';
   title.textContent = '🎮 Embedded Games';
   header.appendChild(title);
 
   var searchRow = document.createElement('div');
-  searchRow.style.cssText = 'display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;';
+  searchRow.style.cssText = 'display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;';
   var searchInput = document.createElement('input');
   searchInput.type = 'text';
   searchInput.placeholder = 'Search 200+ games...';
-  searchInput.style.cssText = 'flex:1;min-width:150px;padding:8px 12px;border:none;border-radius:6px;background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;';
+  searchInput.style.cssText = 'flex:1;min-width:150px;padding:7px 12px;border:none;border-radius:6px;background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;';
   searchRow.appendChild(searchInput);
   header.appendChild(searchRow);
 
   var catRow = document.createElement('div');
-  catRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;';
+  catRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;';
   embeddedGamesCats.forEach(function(cat) {
     var btn = document.createElement('button');
     btn.textContent = embeddedCatLabels[cat];
@@ -4170,7 +4300,7 @@ function convertTabToEmbedded(tabId) {
   container.appendChild(header);
 
   var listContainer = document.createElement('div');
-  listContainer.style.cssText = 'flex:1;overflow-y:auto;padding:0 18px 18px;';
+  listContainer.style.cssText = 'flex:1;overflow-y:auto;padding:0 14px 14px;';
   container.appendChild(listContainer);
 
   var activeCat = 'all';
@@ -4190,6 +4320,10 @@ function convertTabToEmbedded(tabId) {
     if (idx >= 0) arr.splice(idx,1); else arr.push(name);
     localStorage.setItem('embed_favorites', JSON.stringify(arr));
     return arr;
+  }
+
+  function gameProxyUrl(url) {
+    return '/proxy?url=' + encodeURIComponent(url);
   }
 
   function openEmbeddedGame(game) {
@@ -4224,7 +4358,7 @@ function convertTabToEmbedded(tabId) {
     toolbar.appendChild(newTabBtn);
     gameContainer.appendChild(toolbar);
     var frame = document.createElement('iframe');
-    frame.src = game.url;
+    frame.src = gameProxyUrl(game.url);
     frame.style.cssText = 'flex:1;width:100%;border:none;';
     frame.allow = 'fullscreen; autoplay; gamepad; payment';
     frame.setAttribute('allowfullscreen', '');
@@ -4474,7 +4608,7 @@ function convertTabToBrowser(tabId) {
       else url = 'https://www.google.com/search?q=' + encodeURIComponent(url);
     }
     urlInput.value = url;
-    var proxied = vpnEnabled ? 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url) : url;
+    var proxied = '/proxy?url=' + encodeURIComponent(url);
     frame.src = proxied;
     frame.style.display = 'block';
     homePage.style.display = 'none';
@@ -5946,6 +6080,48 @@ async def handle_api_changelog_seen(request):
         return web.Response(text=json.dumps({"ok": True}), content_type="application/json")
 
 
+async def handle_proxy(request):
+    import urllib.parse as _up
+    url = request.rel_url.query.get('url', '').strip()
+    if not url or not (url.startswith('http://') or url.startswith('https://')):
+        return web.Response(text='Bad URL', status=400, content_type='text/plain')
+    try:
+        parsed = _up.urlparse(url)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        req_headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'identity',
+        }
+        timeout = aiohttp.ClientTimeout(total=20)
+        connector = aiohttp.TCPConnector(ssl=False)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            async with session.get(url, headers=req_headers, allow_redirects=True, timeout=timeout) as resp:
+                content_type = resp.headers.get('Content-Type', 'text/html; charset=utf-8')
+                body = await resp.read()
+                if 'html' in content_type.lower():
+                    try:
+                        text = body.decode('utf-8', errors='replace')
+                        base_tag = f'<base href="{base_url}/">'
+                        lower = text.lower()
+                        head_pos = lower.find('<head>')
+                        if head_pos >= 0:
+                            ins = head_pos + 6
+                            text = text[:ins] + base_tag + text[ins:]
+                        else:
+                            text = base_tag + text
+                        body = text.encode('utf-8')
+                    except Exception:
+                        pass
+                resp_obj = web.Response(body=body, status=resp.status)
+                resp_obj.content_type = content_type.split(';')[0].strip()
+                resp_obj.headers['Access-Control-Allow-Origin'] = '*'
+                return resp_obj
+    except Exception as e:
+        return web.Response(text=f'Proxy error: {e}', status=502, content_type='text/plain')
+
+
 async def main():
     load_logs()
     await init_db()
@@ -5963,6 +6139,7 @@ async def main():
     app.router.add_post("/api/profile", handle_api_profile_update)
     app.router.add_get("/api/changelog-seen", handle_api_changelog_seen)
     app.router.add_post("/api/changelog-seen", handle_api_changelog_seen)
+    app.router.add_get("/proxy", handle_proxy)
 
     runner = web.AppRunner(app)
     await runner.setup()
