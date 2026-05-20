@@ -103,22 +103,24 @@ _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 db_pool = None
-CURRENT_VERSION = "2.2"
+CURRENT_VERSION = "2.3"
 CHANGELOG_NOTES = (
-    "<b>What's new in v2.2</b><br><br>"
-    "&#x2022; <b>DM Redesign</b> — DMs open in the main view with the other person's profile &amp; bio on the right<br>"
-    "&#x2022; <b>DM Pop-out</b> — &#x2197; button in the profile panel opens the quick slide-in overlay for multitasking<br>"
-    "&#x2022; <b>DM Attachments</b> — Images attach in DMs just like in General<br>"
-    "&#x2022; <b>Shared Images</b> — View all images shared in a DM from the profile panel<br>"
-    "&#x2022; <b>Emoji Reactions</b> — Hover any message and pick a quick reaction (&#x1F44D; &#x2764; &#x1F602; &#x1F525;)<br>"
-    "&#x2022; <b>Lightbox Viewer</b> — Click any image in chat to open it full-screen<br>"
-    "&#x2022; <b>Click-to-DM</b> — Click a sender name in chat or a user in the sidebar to open their DM<br>"
-    "&#x2022; <b>DM Sidebar Avatars</b> — DM list now shows avatars, display names, and online status<br>"
-    "&#x2022; <b>PFP Cross-device</b> — Profile pictures now sync properly across devices for account users<br>"
-    "&#x2022; <b>Games Fixed</b> — Games load directly without the broken proxy<br>"
-    "&#x2022; <b>Browser Search</b> — Searches now use DuckDuckGo Lite; YouTube shows a helpful embed guide<br>"
-    "&#x2022; <b>Toast Notifications</b> — Subtle pop-up toasts replace alert boxes<br>"
-    "&#x2022; <b>Peer Notes</b> — Jot a private note about anyone in their DM profile panel<br>"
+    "<b>What's new in v2.3</b><br><br>"
+    "&#x2022; <b>Reply to Messages</b> — Hit ↩ on any message to quote-reply; preview bar shows above the input<br>"
+    "&#x2022; <b>Markdown Formatting</b> — **bold**, _italic_, ~~strikethrough~~, `code`, ```code blocks```<br>"
+    "&#x2022; <b>Copy Button</b> — One-click 📋 copy on every message hover bar<br>"
+    "&#x2022; <b>@Mention Autocomplete</b> — Type @ and pick from online users with arrow keys or Tab<br>"
+    "&#x2022; <b>Ctrl+B / Ctrl+I</b> — Keyboard shortcuts to wrap selected text in bold or italic<br>"
+    "&#x2022; <b>Image Paste</b> — Paste an image from your clipboard directly into the chat input<br>"
+    "&#x2022; <b>Escape Key</b> — Clears reply preview; closes emoji picker; dismisses mention dropdown<br>"
+    "&#x2022; <b>DM Search</b> — Filter your DM list by name with the search box in the sidebar<br>"
+    "&#x2022; <b>Mark All Read</b> — ✓ button in the DMs section clears all unread badges at once<br>"
+    "&#x2022; <b>Browser Games</b> — Renamed from 'Embedded Games'; broken URLs fixed (Slope, Run 3, Retro Bowl, etc.)<br>"
+    "&#x2022; <b>Game Loading Spinner</b> — Spinner + 12-second timeout with fallback error panel for slow games<br>"
+    "&#x2022; <b>Game Tab Label</b> — Browser game tabs update their label to the game name when opened<br>"
+    "&#x2022; <b>DM Toast Notifications</b> — Incoming DMs show a toast when you're in a different channel<br>"
+    "<br><b>Previously in v2.2</b><br>"
+    "&#x2022; DM redesign, emoji reactions, lightbox viewer, click-to-DM, toast notifications, peer notes<br>"
     "<br><b>Previously in v2.1</b><br>"
     "&#x2022; PFP crop tool, scroll-to-bottom button, smart auto-scroll, browser &amp; game improvements<br>"
     "<br><b>Previously in v2.0</b><br>"
@@ -1080,7 +1082,9 @@ header h1 { font-size: 16px; font-weight: 600; }
 
 .input-bar {
   padding: 8px 16px 12px; display: flex; flex-direction: column; gap: 0; flex-shrink: 0;
+  position: relative;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 .input-bar-row {
   display: flex; gap: 8px; align-items: flex-end;
 }
@@ -1525,7 +1529,7 @@ body.theme-rose {
   <div style="background:var(--bg-primary);border-radius:10px;padding:28px;max-width:440px;width:90%;position:relative;">
     <h2 style="font-size:18px;font-weight:700;margin-bottom:6px;">&#x1F389; What's New</h2>
     <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Version """ + CURRENT_VERSION + """</p>
-    <div style="font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:20px;">""" + CHANGELOG_NOTES + """</div>
+    <div style="font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:20px;max-height:52vh;overflow-y:auto;padding-right:8px;scrollbar-width:thin;">""" + CHANGELOG_NOTES + """</div>
     <button id="changelogCloseBtn" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;">Got it!</button>
   </div>
 </div>
@@ -1604,6 +1608,8 @@ body.theme-rose {
             </div>
             <div class="input-bar" id="inputBar">
               <div class="image-preview-bar" id="imagePreviewBar" style="display:none;"></div>
+              <div id="replyPreviewBar" style="display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--bg-tertiary);border-left:3px solid var(--accent);border-radius:4px;margin-bottom:4px;font-size:12px;color:var(--text-secondary);max-width:100%;overflow:hidden;"></div>
+              <div id="mentionDropdown" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;box-shadow:0 -4px 20px rgba(0,0,0,0.25);max-height:180px;overflow-y:auto;z-index:200;margin:0 16px 4px;"></div>
               <div class="input-bar-row">
                 <input type="text" id="nameInput" data-testid="input-admin-name" placeholder="Your name" value="Admin" style="display:none;width:140px;flex:unset;" />
                 <button class="attach-btn" id="attachBtn" data-testid="button-attach" type="button" title="Attach image">&#x1F4CE;</button>
@@ -1991,6 +1997,32 @@ function isImageUrl(url) {
   return false;
 }
 
+var _RE_CODEBLOCK = new RegExp('\x60\x60\x60([\\s\\S]*?)\x60\x60\x60', 'g');
+var _RE_CODEINLINE = new RegExp('\x60([^\x60\\n]+)\x60', 'g');
+function applyMarkdown(text) {
+  // Code blocks (```...```)
+  text = text.replace(_RE_CODEBLOCK, function(m, code) {
+    return '<code style="display:block;background:var(--bg-tertiary);padding:8px 10px;border-radius:5px;font-family:monospace;font-size:12px;white-space:pre-wrap;margin:4px 0;">' + escapeHtml(code.trim()) + '</code>';
+  });
+  // Inline code
+  text = text.replace(_RE_CODEINLINE, function(m, code) {
+    return '<code style="background:var(--bg-tertiary);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px;">' + escapeHtml(code) + '</code>';
+  });
+  // Bold **text**
+  text = text.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  // Italic _text_
+  text = text.replace(/_([^_\n]+)_/g, '<em>$1</em>');
+  // Strikethrough ~~text~~
+  text = text.replace(/~~([^~\n]+)~~/g, '<s>$1</s>');
+  // @mention highlight
+  if (myUsername) {
+    var safe = myUsername.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    var reMention = new RegExp('@(' + safe + ')\\b', 'gi');
+    text = text.replace(reMention, '<span style="background:rgba(88,101,242,0.25);color:var(--accent);border-radius:3px;padding:0 3px;font-weight:600;">@$1</span>');
+  }
+  return text;
+}
+
 function renderRichText(text) {
   var container = document.createElement('span');
   container.className = 'msg-body';
@@ -2015,7 +2047,7 @@ function renderRichText(text) {
         img2.src = part;
         img2.alt = 'Image';
         img2.loading = 'lazy';
-        img2.addEventListener('click', function() { window.open(this.src, '_blank'); });
+        img2.addEventListener('click', function() { openLightbox(this.src); });
         img2.addEventListener('error', function() {
           var link = document.createElement('a');
           link.href = this.src; link.target = '_blank'; link.rel = 'noopener noreferrer';
@@ -2027,11 +2059,12 @@ function renderRichText(text) {
         var link = document.createElement('a');
         link.href = part; link.target = '_blank'; link.rel = 'noopener noreferrer';
         link.textContent = part;
+        link.style.cssText = 'color:var(--accent);text-decoration:underline;';
         container.appendChild(link);
       }
     } else {
       var span = document.createElement('span');
-      span.textContent = part;
+      span.innerHTML = applyMarkdown(escapeHtml(part));
       container.appendChild(span);
     }
   }
@@ -2065,7 +2098,24 @@ function addReaction(msgKey, emoji) {
   renderMessages();
 }
 
-function buildReactionBar(msgKey) {
+var _replyTo = null;
+
+function setReplyTo(m) {
+  _replyTo = m;
+  var bar = document.getElementById('replyPreviewBar');
+  if (!bar) return;
+  var sender = m.display_name || m.sender || '?';
+  var preview = (m.text || '').substring(0, 80);
+  bar.innerHTML = '<span style="color:var(--accent);font-weight:600;">Replying to ' + escapeHtml(sender) + '</span><span style="color:var(--text-muted);margin-left:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">' + escapeHtml(preview) + '</span>';
+  var closeBtn = document.createElement('button');
+  closeBtn.innerHTML = '&#x2715;';
+  closeBtn.style.cssText = 'background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;flex-shrink:0;padding:0 4px;';
+  closeBtn.onclick = function() { _replyTo = null; bar.style.display = 'none'; };
+  bar.appendChild(closeBtn);
+  bar.style.display = 'flex';
+}
+
+function buildReactionBar(msgKey, m) {
   var quickEmoji = ['👍','❤️','😂','😮','😢','🔥'];
   var bar = document.createElement('div');
   bar.className = 'msg-hover-actions';
@@ -2077,6 +2127,35 @@ function buildReactionBar(msgKey) {
     btn.onclick = function(e) { e.stopPropagation(); addReaction(msgKey, em); };
     bar.appendChild(btn);
   });
+  // Copy button
+  var copyBtn = document.createElement('button');
+  copyBtn.className = 'msg-reaction-btn';
+  copyBtn.textContent = '📋';
+  copyBtn.title = 'Copy message';
+  copyBtn.onclick = function(e) {
+    e.stopPropagation();
+    if (m && m.text) {
+      navigator.clipboard.writeText(m.text).then(function() { showToast('Message copied!', 'success'); }).catch(function() {
+        var t = document.createElement('textarea');
+        t.value = m.text;
+        document.body.appendChild(t);
+        t.select();
+        document.execCommand('copy');
+        document.body.removeChild(t);
+        showToast('Message copied!', 'success');
+      });
+    }
+  };
+  bar.appendChild(copyBtn);
+  // Reply button
+  if (m) {
+    var replyBtn = document.createElement('button');
+    replyBtn.className = 'msg-reaction-btn';
+    replyBtn.textContent = '↩';
+    replyBtn.title = 'Reply';
+    replyBtn.onclick = function(e) { e.stopPropagation(); setReplyTo(m); document.getElementById('msgInput').focus(); };
+    bar.appendChild(replyBtn);
+  }
   return bar;
 }
 
@@ -2142,14 +2221,24 @@ function makeFullMessageDiv(m) {
   var timeEl = document.createElement('span');
   timeEl.className = 'msg-timestamp';
   timeEl.textContent = m.time || new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  timeEl.title = m.time || '';
+  timeEl.style.cursor = 'default';
   header.appendChild(timeEl);
   content.appendChild(header);
+  // Reply-to context
+  if (m.reply_sender) {
+    var replyCtxEl = document.createElement('div');
+    replyCtxEl.style.cssText = 'border-left:3px solid var(--accent);padding:2px 8px;margin-bottom:3px;font-size:12px;color:var(--text-muted);background:var(--bg-tertiary);border-radius:0 4px 4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;';
+    replyCtxEl.innerHTML = '<strong style="color:var(--text-secondary);">↩ ' + escapeHtml(m.reply_sender) + '</strong>: ' + escapeHtml((m.reply_text || '').substring(0, 80));
+    content.appendChild(replyCtxEl);
+  }
   var body = renderRichText(m.text || '');
   content.appendChild(body);
   var pills = buildReactionPills(msgKey);
   if (pills) content.appendChild(pills);
   row.appendChild(content);
-  row.appendChild(buildReactionBar(msgKey));
+  row.appendChild(buildReactionBar(msgKey, m));
+  row.addEventListener('dblclick', function(e) { e.preventDefault(); addReaction(msgKey, '👍'); });
   return row;
 }
 
@@ -2162,7 +2251,8 @@ function makeGroupedMessageDiv(m) {
   row.appendChild(body);
   var pills = buildReactionPills(msgKey);
   if (pills) { pills.style.paddingLeft = '52px'; row.appendChild(pills); }
-  row.appendChild(buildReactionBar(msgKey));
+  row.appendChild(buildReactionBar(msgKey, m));
+  row.addEventListener('dblclick', function(e) { e.preventDefault(); addReaction(msgKey, '👍'); });
   return row;
 }
 
@@ -2224,6 +2314,16 @@ function renderSidebar() {
   generalEl.className = 'channel-item' + (currentChannel === 'general' ? ' active' : '');
 }
 
+function updateTotalUnread() {
+  var total = 0;
+  Object.keys(dmUnread).forEach(function(k) { total += dmUnread[k] || 0; });
+  Object.keys(gcUnread).forEach(function(k) { total += gcUnread[k] || 0; });
+  // Update the chat tab badge if it exists
+  var chatTab = document.querySelector('.tab-btn[data-tab-id="chat"] .tab-badge, .tab-btn .tab-badge');
+  if (chatTab) { chatTab.style.display = total > 0 ? '' : 'none'; chatTab.textContent = total > 0 ? total : ''; }
+}
+
+var _dmSearchQuery = '';
 function renderDmChannels() {
   var section = document.getElementById('dmChannelsSection');
   var list = document.getElementById('dmChannelsList');
@@ -2231,7 +2331,40 @@ function renderDmChannels() {
   var dmKeys = Object.keys(dmMessages).filter(function(k) { return !k.startsWith('spy:'); });
   if (dmKeys.length === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
-  dmKeys.forEach(function(target) {
+  // Search + mark-all-read header
+  if (!document.getElementById('dmSearchInput')) {
+    var sectionHeader = document.querySelector('#dmChannelsSection .sidebar-section-header');
+    if (sectionHeader) {
+      var markAllBtn = document.createElement('button');
+      markAllBtn.title = 'Mark all read';
+      markAllBtn.textContent = '✓';
+      markAllBtn.style.cssText = 'background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:3px;';
+      markAllBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        Object.keys(dmUnread).forEach(function(k) { dmUnread[k] = 0; });
+        Object.keys(gcUnread).forEach(function(k) { gcUnread[k] = 0; });
+        renderDmChannels(); renderGcChannels();
+        updateTotalUnread();
+      });
+      sectionHeader.appendChild(markAllBtn);
+      var searchInput = document.createElement('input');
+      searchInput.id = 'dmSearchInput';
+      searchInput.type = 'text';
+      searchInput.placeholder = 'Search DMs…';
+      searchInput.style.cssText = 'width:100%;margin:4px 0 2px;padding:5px 8px;border:none;border-radius:5px;background:var(--input-bg);color:var(--text-primary);font-size:12px;outline:none;box-sizing:border-box;';
+      searchInput.addEventListener('input', function() {
+        _dmSearchQuery = this.value.toLowerCase();
+        renderDmChannels();
+      });
+      section.insertBefore(searchInput, document.getElementById('dmChannelsList'));
+    }
+  }
+  var filteredKeys = _dmSearchQuery ? dmKeys.filter(function(target) {
+    var uObj = getUserObj(target);
+    var dname = typeof uObj === 'string' ? uObj : (uObj.display_name || uObj.name || target);
+    return dname.toLowerCase().indexOf(_dmSearchQuery) >= 0;
+  }) : dmKeys;
+  filteredKeys.forEach(function(target) {
     var uObj = getUserObj(target);
     var dname = typeof uObj === 'string' ? uObj : (uObj.display_name || uObj.name || target);
     var pfp = typeof uObj === 'string' ? '' : (uObj.pfp || '');
@@ -2905,6 +3038,7 @@ function renderUsers(list) {
     var div = document.createElement('div');
     div.className = 'user-item';
     div.setAttribute('data-testid', 'user-item-' + name);
+    div.setAttribute('data-username', name);
     var avatarWrap = document.createElement('div');
     avatarWrap.style.cssText = 'position:relative;flex-shrink:0;';
     var avatar = document.createElement('div');
@@ -3132,7 +3266,11 @@ function handleMessage(data) {
     }
     if (!dmMessages[other]) { dmMessages[other] = []; }
     var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    dmMessages[other].push({sender: data.sender, display_name: data.display_name || data.sender, text: data.text, admin: data.admin || false, isDm: true, time: time});
+    dmMessages[other].push({sender: data.sender, display_name: data.display_name || data.sender, pfp: data.pfp || '', text: data.text, admin: data.admin || false, isDm: true, time: time});
+    if (data.sender !== myUsername && currentChannel !== 'dm:' + other && !dmPanelTarget) {
+      var _dname = data.display_name || data.sender;
+      showToast('💬 ' + escapeHtml(_dname) + ': ' + (data.text || '').substring(0,60), 'info');
+    }
     if (dmPanelTarget === other) {
       renderDmPanel();
     } else if (currentChannel === 'dm:' + other) {
@@ -3146,7 +3284,7 @@ function handleMessage(data) {
     var target = data.target;
     dmMessages[target] = [];
     (data.messages || []).forEach(function(m) {
-      dmMessages[target].push({sender: m.sender, display_name: m.display_name || m.sender, text: m.text, admin: m.admin || false, isDm: true, time: m.time || ''});
+      dmMessages[target].push({sender: m.sender, display_name: m.display_name || m.sender, pfp: m.pfp || '', text: m.text, admin: m.admin || false, isDm: true, time: m.time || ''});
     });
     if (dmPanelTarget === target) {
       renderDmPanel();
@@ -3356,8 +3494,8 @@ document.getElementById('settingsBtn').addEventListener('click', function() {
 });
 
 document.getElementById('profileBtn').addEventListener('click', function() {
-  if (myIsGuest && !mySessionToken && !isAdmin && !isOwner) {
-    alert('You need an account to edit your profile. Log in or sign up!');
+  if (!mySessionToken && !isAdmin && !isOwner) {
+    showToast('You need an account to edit your profile. Log in or sign up!', 'info');
     return;
   }
   showProfileModal();
@@ -3719,6 +3857,7 @@ document.getElementById('joinBtn').addEventListener('click', function() {
   if (!/^[a-zA-Z0-9_-]{1,20}$/.test(name)) { err.textContent = 'Letters, numbers, _ and - only (1-20 chars).'; err.style.display = 'block'; return; }
   if (RESERVED.test(name)) { err.textContent = 'Username cannot contain "admin" or "mod".'; err.style.display = 'block'; return; }
   myUsername = name;
+  myIsGuest = true;
   document.getElementById('joinScreen').style.display = 'none';
   document.getElementById('chatScreen').style.display = 'flex';
   connectGuest(name);
@@ -3751,40 +3890,182 @@ document.getElementById('staffAdminKeyInput').addEventListener('keydown', functi
   if (e.key === 'Enter') document.getElementById('staffAdminLoginBtn').click();
 });
 
+// ── Reply state ──────────────────────────────────────────────────────
+var _replyTo = null;
+function setReplyTo(m) {
+  _replyTo = m;
+  var bar = document.getElementById('replyPreviewBar');
+  if (!m) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML = '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">↩ Replying to <strong>' + escapeHtml(m.display_name || m.sender || '?') + '</strong>: ' + escapeHtml((m.text || '').substring(0, 60)) + ((m.text||'').length > 60 ? '…' : '') + '</span>';
+  var cls = document.createElement('button');
+  cls.textContent = '✕';
+  cls.style.cssText = 'background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0 2px;font-size:13px;flex-shrink:0;';
+  cls.onclick = function() { setReplyTo(null); };
+  bar.appendChild(cls);
+}
+
+// ── @mention autocomplete ─────────────────────────────────────────────
+var _mentionQuery = null;
+var _mentionSelectedIdx = -1;
+function updateMentionDropdown() {
+  var input = document.getElementById('msgInput');
+  var val = input.value;
+  var pos = input.selectionStart;
+  var before = val.substring(0, pos);
+  var match = before.match(/@(\w*)$/);
+  var dd = document.getElementById('mentionDropdown');
+  if (!match) { dd.style.display = 'none'; _mentionQuery = null; return; }
+  _mentionQuery = match[1].toLowerCase();
+  var onlineUsers = [];
+  document.querySelectorAll('#userList .user-item').forEach(function(li) {
+    var name = li.getAttribute('data-username') || li.textContent.trim().replace(/^[^\w]*/,'').split(' ')[0];
+    if (name && name.toLowerCase().indexOf(_mentionQuery) === 0) onlineUsers.push(name);
+  });
+  if (onlineUsers.length === 0) { dd.style.display = 'none'; return; }
+  dd.style.display = 'block';
+  dd.innerHTML = '';
+  _mentionSelectedIdx = -1;
+  onlineUsers.slice(0, 8).forEach(function(name, i) {
+    var item = document.createElement('div');
+    item.style.cssText = 'padding:8px 14px;cursor:pointer;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:8px;';
+    item.innerHTML = '<div style="width:24px;height:24px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">' + escapeHtml(name.charAt(0).toUpperCase()) + '</div>' + escapeHtml(name);
+    item.addEventListener('mouseenter', function() {
+      dd.querySelectorAll('div').forEach(function(d) { d.style.background = ''; });
+      item.style.background = 'var(--bg-tertiary)';
+      _mentionSelectedIdx = i;
+    });
+    item.addEventListener('click', function() {
+      completeMention(name);
+    });
+    dd.appendChild(item);
+  });
+}
+function completeMention(name) {
+  var input = document.getElementById('msgInput');
+  var val = input.value;
+  var pos = input.selectionStart;
+  var before = val.substring(0, pos);
+  var after = val.substring(pos);
+  var newBefore = before.replace(/@(\w*)$/, '@' + name + ' ');
+  input.value = newBefore + after;
+  input.selectionStart = input.selectionEnd = newBefore.length;
+  document.getElementById('mentionDropdown').style.display = 'none';
+  _mentionQuery = null;
+  input.focus();
+}
+
 document.getElementById('sendBtn').addEventListener('click', function() {
   var input = document.getElementById('msgInput');
   var text = input.value.trim();
   if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  var replyCtx = _replyTo ? { reply_sender: _replyTo.display_name || _replyTo.sender, reply_text: (_replyTo.text || '').substring(0, 80) } : {};
   if (currentChannel === 'general') {
     if (isAdmin) {
       var name = document.getElementById('nameInput').value.trim() || 'Admin';
-      ws.send(JSON.stringify({ type: 'chat', text: text, name: name }));
+      ws.send(JSON.stringify(Object.assign({ type: 'chat', text: text, name: name }, replyCtx)));
     } else {
-      ws.send(JSON.stringify({ type: 'chat', text: text }));
+      ws.send(JSON.stringify(Object.assign({ type: 'chat', text: text }, replyCtx)));
     }
   } else if (currentChannel.startsWith('dm:')) {
     var target = currentChannel.substring(3);
     if (isAdmin) {
       var name = document.getElementById('nameInput').value.trim() || 'Admin';
-      ws.send(JSON.stringify({ type: 'dm_message', target: target, text: text, name: name }));
+      ws.send(JSON.stringify(Object.assign({ type: 'dm_message', target: target, text: text, name: name }, replyCtx)));
     } else {
-      ws.send(JSON.stringify({ type: 'dm_message', target: target, text: text }));
+      ws.send(JSON.stringify(Object.assign({ type: 'dm_message', target: target, text: text }, replyCtx)));
     }
   } else if (currentChannel.startsWith('gc:')) {
     var gcId = currentChannel.substring(3);
     if (isAdmin) {
       var name = document.getElementById('nameInput').value.trim() || 'Admin';
-      ws.send(JSON.stringify({ type: 'gc_message', gc_id: gcId, text: text, name: name }));
+      ws.send(JSON.stringify(Object.assign({ type: 'gc_message', gc_id: gcId, text: text, name: name }, replyCtx)));
     } else {
-      ws.send(JSON.stringify({ type: 'gc_message', gc_id: gcId, text: text }));
+      ws.send(JSON.stringify(Object.assign({ type: 'gc_message', gc_id: gcId, text: text }, replyCtx)));
     }
   }
+  setReplyTo(null);
   input.value = '';
   input.focus();
+  document.getElementById('mentionDropdown').style.display = 'none';
 });
 
+document.getElementById('msgInput').addEventListener('input', function() {
+  updateMentionDropdown();
+});
 document.getElementById('msgInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') document.getElementById('sendBtn').click();
+  var dd = document.getElementById('mentionDropdown');
+  var items = dd.querySelectorAll('div');
+  if (dd.style.display !== 'none' && items.length > 0) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _mentionSelectedIdx = Math.min(_mentionSelectedIdx + 1, items.length - 1);
+      items.forEach(function(d, i) { d.style.background = i === _mentionSelectedIdx ? 'var(--bg-tertiary)' : ''; });
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _mentionSelectedIdx = Math.max(_mentionSelectedIdx - 1, 0);
+      items.forEach(function(d, i) { d.style.background = i === _mentionSelectedIdx ? 'var(--bg-tertiary)' : ''; });
+      return;
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      if (_mentionSelectedIdx >= 0 && items[_mentionSelectedIdx]) {
+        e.preventDefault();
+        items[_mentionSelectedIdx].click();
+        return;
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        items[0].click();
+        return;
+      }
+    }
+    if (e.key === 'Escape') { dd.style.display = 'none'; _mentionQuery = null; return; }
+  }
+  if (e.key === 'Enter' && !e.shiftKey) { document.getElementById('sendBtn').click(); return; }
+  if (e.key === 'Escape') { setReplyTo(null); return; }
+  // Ctrl+B bold, Ctrl+I italic
+  if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+    e.preventDefault();
+    wrapSelection(this, '**', '**');
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+    e.preventDefault();
+    wrapSelection(this, '_', '_');
+  }
+});
+// Wrap selection helper
+function wrapSelection(inp, before, after) {
+  var start = inp.selectionStart, end = inp.selectionEnd;
+  var val = inp.value;
+  if (start === end) {
+    inp.value = val.substring(0, start) + before + after + val.substring(end);
+    inp.selectionStart = inp.selectionEnd = start + before.length;
+  } else {
+    inp.value = val.substring(0, start) + before + val.substring(start, end) + after + val.substring(end);
+    inp.selectionStart = start + before.length;
+    inp.selectionEnd = end + before.length;
+  }
+}
+// Image paste from clipboard
+document.getElementById('msgInput').addEventListener('paste', function(e) {
+  var items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      e.preventDefault();
+      var file = items[i].getAsFile();
+      if (file) handleFileSelection([file]);
+      break;
+    }
+  }
+});
+// Global Escape: close emoji panel
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    var panel = document.getElementById('emojiPanel');
+    if (panel && panel.classList.contains('open')) panel.classList.remove('open');
+  }
 });
 
 var _e = function(cp) { return String.fromCodePoint(cp); };
@@ -4390,7 +4671,7 @@ var embeddedGamesList = [
   {name:'Venge.io',url:'https://venge.io',cat:'multiplayer',emoji:'🔫'},
   {name:'Ev.io',url:'https://ev.io',cat:'multiplayer',emoji:'👾'},
   {name:'Sketchful.io',url:'https://sketchful.io',cat:'multiplayer',emoji:'✏️'},
-  {name:'Pokemon Showdown',url:'https://pokemonshowdown.com',cat:'strategy',emoji:'⚡'},
+  {name:'Pokemon Showdown',url:'https://www.crazygames.com/embed/pokemon-showdown',cat:'strategy',emoji:'⚡'},
   {name:'Agar.io',url:'https://agar.io',cat:'multiplayer',emoji:'🔵'},
   {name:'Paper.io',url:'https://paper-io.com',cat:'multiplayer',emoji:'📄'},
   {name:'Splix.io',url:'https://splix.io',cat:'multiplayer',emoji:'🟩'},
@@ -4444,10 +4725,10 @@ var embeddedGamesList = [
   {name:'Drawasaurus',url:'https://www.drawasaurus.org',cat:'multiplayer',emoji:'🦕'},
   {name:'skribbl.io (alt)',url:'https://sketchful.io',cat:'multiplayer',emoji:'🎨'},
   // === CLASSIC GAMES (old sites, likely embeddable) ===
-  {name:'Slope',url:'https://slope.game',cat:'action',emoji:'🎿'},
-  {name:'Run 3',url:'https://www.google.com/search?q=run+3+game',cat:'action',emoji:'🏃'},
-  {name:'Retro Bowl',url:'https://retrobowl.me',cat:'sports',emoji:'🏈'},
-  {name:'Smash Karts (alt)',url:'https://smashkarts.io',cat:'racing',emoji:'🚗'},
+  {name:'Slope',url:'https://www.crazygames.com/embed/slope',cat:'action',emoji:'🎿'},
+  {name:'Run 3',url:'https://www.crazygames.com/embed/run-3',cat:'action',emoji:'🏃'},
+  {name:'Retro Bowl (Classic)',url:'https://www.crazygames.com/embed/retro-bowl-classic',cat:'sports',emoji:'🏈'},
+  {name:'Smash Karts',url:'https://www.crazygames.com/embed/smash-karts',cat:'racing',emoji:'🚗'},
   // === MUSIC / CREATIVE ===
   {name:'Chrome Music Lab',url:'https://musiclab.chromeexperiments.com',cat:'action',emoji:'🎹'},
   {name:'AutoDraw',url:'https://www.autodraw.com',cat:'action',emoji:'✏️'},
@@ -4597,7 +4878,7 @@ var _REMOVE_OLD_LIST_ = (function() { var x = [
   {name:'Sonic Classic',url:'https://www.crazygames.com/embed/sonic-classic',cat:'action',emoji:'💨'},
   {name:'Super Mario 64 Online',url:'https://www.crazygames.com/embed/super-mario-64',cat:'adventure',emoji:'🍄'},
   {name:'Super Smash Flash 2',url:'https://www.crazygames.com/embed/super-smash-flash-2',cat:'action',emoji:'👊'},
-  {name:'Pokemon Showdown',url:'https://pokemonshowdown.com',cat:'strategy',emoji:'⚡'},
+  {name:'Pokemon Showdown',url:'https://www.crazygames.com/embed/pokemon-showdown',cat:'strategy',emoji:'⚡'},
   {name:'Retro Bowl',url:'https://www.crazygames.com/embed/retro-bowl',cat:'sports',emoji:'🏈'},
   {name:'Retro Bowl College',url:'https://www.crazygames.com/embed/retro-bowl-college',cat:'sports',emoji:'🏈'},
   {name:'Burrito Bison',url:'https://www.crazygames.com/embed/burrito-bison',cat:'action',emoji:'🌯'},
@@ -4638,7 +4919,7 @@ var _REMOVE_OLD_LIST_ = (function() { var x = [
   {name:'World Craft',url:'https://www.crazygames.com/embed/worldcraft',cat:'adventure',emoji:'⛏️'},
   {name:'Minecraft Classic',url:'https://classic.minecraft.net',cat:'adventure',emoji:'⛏️'},
   {name:'Paper Minecraft',url:'https://www.crazygames.com/embed/paper-minecraft',cat:'adventure',emoji:'📄'},
-  {name:'Roblox',url:'https://www.roblox.com',cat:'multiplayer',emoji:'🟦'},
+  {name:'Roblox (open)',url:'https://www.crazygames.com/embed/roblox',cat:'multiplayer',emoji:'🟦'},
   {name:'Townscaper',url:'https://oskarstalberg.com/Townscaper/',cat:'adventure',emoji:'🏘️'},
   {name:'Little Alchemy 2',url:'https://www.crazygames.com/embed/little-alchemy-2',cat:'puzzle',emoji:'⚗️'},
   {name:'Dumb Ways to Die',url:'https://www.crazygames.com/embed/dumb-ways-to-die',cat:'action',emoji:'💀'},
@@ -4830,7 +5111,7 @@ function convertTabToEmbedded(tabId) {
   header.style.cssText = 'padding:8px 14px 0;flex-shrink:0;';
   var title = document.createElement('div');
   title.style.cssText = 'font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:8px;';
-  title.textContent = '🎮 Embedded Games';
+  title.textContent = '🎮 Browser Games';
   header.appendChild(title);
 
   var searchRow = document.createElement('div');
@@ -4933,7 +5214,29 @@ function convertTabToEmbedded(tabId) {
     wrap.appendChild(frame);
     wrap.appendChild(errOverlay);
     gameContainer.appendChild(wrap);
-    frame.addEventListener('error', function() { errOverlay.style.display='flex'; });
+    // Spinner while loading
+    var spinner = document.createElement('div');
+    spinner.style.cssText = 'position:absolute;inset:0;background:var(--bg-primary);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:5;';
+    spinner.innerHTML = '<div style="width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div><div style="font-size:13px;color:var(--text-muted);">Loading ' + escapeHtml(game.name) + '...</div>';
+    wrap.appendChild(spinner);
+    var loadTimeout = setTimeout(function() {
+      spinner.style.display = 'none';
+      errOverlay.style.display = 'flex';
+      errOverlay.querySelector('div:nth-child(2)').textContent = 'Game failed to load';
+    }, 12000);
+    frame.addEventListener('load', function() {
+      clearTimeout(loadTimeout);
+      spinner.style.display = 'none';
+    });
+    frame.addEventListener('error', function() {
+      clearTimeout(loadTimeout);
+      spinner.style.display = 'none';
+      errOverlay.style.display = 'flex';
+    });
+    // Update tab label with game name
+    for (var _ti = 0; _ti < tabs.length; _ti++) {
+      if (tabs[_ti].id === tabId) { tabs[_ti].label = game.emoji + ' ' + game.name; break; }
+    }
     el.appendChild(gameContainer);
     renderTabBar();
   }
@@ -5188,7 +5491,7 @@ function convertTabToBrowser(tabId) {
 
     if (ytMatch) {
       urlInput.value = url;
-      frame.src = 'https://www.youtube.com/embed/' + ytMatch[1] + '?autoplay=0&rel=0';
+      frame.src = 'https://www.youtube-nocookie.com/embed/' + ytMatch[1] + '?autoplay=0&rel=0';
       frame.style.display = 'block';
       homePage.style.display = 'none';
       blockedMsg.style.display = 'none';
@@ -5724,7 +6027,12 @@ async def handle_owner_ws(request):
                     text = data.get("text", "").strip()
                     name = data.get("name", "").strip() or "Owner"
                     if text:
-                        await broadcast_all({"type": "chat", "sender": name, "text": text, "admin": True})
+                        reply_sender = data.get("reply_sender", "")
+                        reply_text = data.get("reply_text", "")
+                        msg = {"type": "chat", "sender": name, "text": text, "admin": True}
+                        if reply_sender: msg["reply_sender"] = reply_sender[:80]
+                        if reply_text: msg["reply_text"] = reply_text[:80]
+                        await broadcast_all(msg)
                         add_log("chat", sender=name, text=text, admin=True)
                         print(f"[{name} (Owner)] {text}")
 
@@ -5891,7 +6199,12 @@ async def handle_staff_ws(request):
                 elif data["type"] == "chat":
                     text = data.get("text", "").strip()
                     if text:
-                        await broadcast_all({"type": "chat", "sender": staff_name, "text": text, "admin": True})
+                        reply_sender = data.get("reply_sender", "")
+                        reply_text = data.get("reply_text", "")
+                        msg = {"type": "chat", "sender": staff_name, "text": text, "admin": True}
+                        if reply_sender: msg["reply_sender"] = reply_sender[:80]
+                        if reply_text: msg["reply_text"] = reply_text[:80]
+                        await broadcast_all(msg)
                         add_log("chat", sender=staff_name, text=text, admin=True)
                         print(f"[{staff_name} (Admin)] {text}")
 
@@ -6293,7 +6606,8 @@ async def handle_client_ws(request):
                     connected[ws] = {
                         "username": username, "ws": ws,
                         "display_name": display_name,
-                        "pfp_data": pfp_data, "bio": bio
+                        "pfp_data": pfp_data, "bio": bio,
+                        "is_guest": not bool(session_token)
                     }
                     print(f"[+] {username} ({display_name}) joined  ({len(connected)} online)")
 
@@ -6312,7 +6626,12 @@ async def handle_client_ws(request):
                     if text:
                         disp = connected[ws].get("display_name", username)
                         pfp = connected[ws].get("pfp_data", "")
-                        await broadcast_all({"type": "chat", "sender": username, "display_name": disp, "pfp": pfp, "text": text})
+                        reply_sender = data.get("reply_sender", "")
+                        reply_text = data.get("reply_text", "")
+                        msg = {"type": "chat", "sender": username, "display_name": disp, "pfp": pfp, "text": text}
+                        if reply_sender: msg["reply_sender"] = reply_sender[:80]
+                        if reply_text: msg["reply_text"] = reply_text[:80]
+                        await broadcast_all(msg)
                         add_log("chat", sender=disp, text=text)
                         print(f"[{disp}] {text}")
 
@@ -6429,10 +6748,11 @@ async def handle_client_ws(request):
                     new_dn = data.get("display_name", "").strip()[:30]
                     if new_dn and ws in connected:
                         connected[ws]["display_name"] = new_dn
-                        if "pfp_data" in data:
-                            connected[ws]["pfp_data"] = data.get("pfp_data", "")
-                        if "bio" in data:
-                            connected[ws]["bio"] = data.get("bio", "")
+                        if not connected[ws].get("is_guest", True):
+                            if "pfp_data" in data:
+                                connected[ws]["pfp_data"] = data.get("pfp_data", "")
+                            if "bio" in data:
+                                connected[ws]["bio"] = data.get("bio", "")
                         await send_user_list()
 
             except Exception as e:
