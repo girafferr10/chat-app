@@ -128,13 +128,23 @@ async def init_db():
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
                     username VARCHAR(20) UNIQUE NOT NULL,
-                    password_hash VARCHAR(64) NOT NULL,
-                    display_name VARCHAR(30) NOT NULL,
+                    password_hash VARCHAR(64) NOT NULL DEFAULT '',
+                    display_name VARCHAR(30) NOT NULL DEFAULT '',
                     bio TEXT DEFAULT '',
                     pfp_data TEXT DEFAULT '',
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
+            for col, defn in [
+                ("password_hash", "VARCHAR(64) NOT NULL DEFAULT ''"),
+                ("display_name",  "VARCHAR(30) NOT NULL DEFAULT ''"),
+                ("bio",           "TEXT DEFAULT ''"),
+                ("pfp_data",      "TEXT DEFAULT ''"),
+            ]:
+                try:
+                    await conn.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {defn}")
+                except Exception:
+                    pass
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS sessions (
                     token VARCHAR(64) PRIMARY KEY,
@@ -169,7 +179,7 @@ async def db_register(username, password, display_name):
                 "INSERT INTO sessions (token, username) VALUES ($1, $2)",
                 token, username
             )
-            return {"token": token, "username": username, "display_name": display_name,
+            return {"session_token": token, "username": username, "display_name": display_name,
                     "bio": "", "pfp_data": "", "show_changelog": True}
     except Exception as e:
         if "unique" in str(e).lower():
@@ -195,7 +205,7 @@ async def db_login(username, password):
             username, CURRENT_VERSION
         )
         return {
-            "token": token,
+            "session_token": token,
             "username": username,
             "display_name": user["display_name"],
             "bio": user["bio"] or "",
@@ -2861,7 +2871,17 @@ function connectOwner(token) {
     isAdmin = true;
     isOwner = true;
     myRole = 'owner';
+    var savedOwner = JSON.parse(localStorage.getItem('owner_profile') || 'null');
+    if (savedOwner) {
+      myDisplayName = savedOwner.display_name || 'Owner';
+      myBio = savedOwner.bio || '';
+      myPfpData = savedOwner.pfp_data || '';
+    } else {
+      myDisplayName = 'Owner';
+    }
+    updateProfileBtn();
     document.getElementById('nameInput').style.display = 'block';
+    document.getElementById('nameInput').value = myDisplayName;
     document.getElementById('joinScreen').style.display = 'none';
     document.getElementById('chatScreen').style.display = 'flex';
     document.getElementById('logsSection').style.display = 'block';
@@ -2894,6 +2914,13 @@ function connectStaffAdmin(key) {
     isAdmin = true;
     isStaffAdmin = true;
     myRole = 'admin';
+    var savedAdmin = JSON.parse(localStorage.getItem('admin_profile') || 'null');
+    if (savedAdmin) {
+      myDisplayName = savedAdmin.display_name || myDisplayName || 'Admin';
+      myBio = savedAdmin.bio || '';
+      myPfpData = savedAdmin.pfp_data || '';
+      updateProfileBtn();
+    }
     document.getElementById('joinScreen').style.display = 'none';
     document.getElementById('chatScreen').style.display = 'flex';
     document.getElementById('logsSection').style.display = 'block';
@@ -2950,7 +2977,7 @@ document.getElementById('settingsBtn').addEventListener('click', function() {
 });
 
 document.getElementById('profileBtn').addEventListener('click', function() {
-  if (myIsGuest || !mySessionToken) {
+  if (myIsGuest && !mySessionToken && !isAdmin && !isOwner) {
     alert('You need an account to edit your profile. Log in or sign up!');
     return;
   }
@@ -3013,6 +3040,22 @@ document.getElementById('saveProfileBtn').addEventListener('click', function() {
   var errEl = document.getElementById('profileError');
   errEl.style.display = 'none';
   if (!dn) { errEl.textContent = 'Display name cannot be empty.'; errEl.style.display = 'block'; return; }
+
+  if ((isAdmin || isOwner) && !mySessionToken) {
+    var roleKey = isOwner ? 'owner_profile' : 'admin_profile';
+    var saved = {display_name: dn, bio: bio, pfp_data: _profilePfpPending || myPfpData || ''};
+    localStorage.setItem(roleKey, JSON.stringify(saved));
+    myDisplayName = dn;
+    myBio = bio;
+    if (_profilePfpPending) { myPfpData = _profilePfpPending; _profilePfpPending = null; }
+    updateProfileBtn();
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({type:'update_display_name', display_name: dn, pfp_data: myPfpData}));
+    }
+    document.getElementById('profileModal').style.display = 'none';
+    return;
+  }
+
   var payload = {display_name: dn, bio: bio};
   if (_profilePfpPending) payload.pfp_data = _profilePfpPending;
   fetch('/api/profile', {method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':mySessionToken},body:JSON.stringify(payload)})
@@ -3024,7 +3067,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', function() {
       if (_profilePfpPending) { myPfpData = _profilePfpPending; _profilePfpPending = null; }
       updateProfileBtn();
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({type:'update_display_name', display_name: dn}));
+        ws.send(JSON.stringify({type:'update_display_name', display_name: dn, pfp_data: myPfpData}));
       }
       document.getElementById('profileModal').style.display = 'none';
     }).catch(function(){ errEl.textContent='Failed to save. Please try again.'; errEl.style.display='block'; });
@@ -3459,6 +3502,8 @@ function closeTab(id) {
 var allNewTabItems = [
   { id: 'chat', type: 'chat', name: 'Chat', desc: 'Group chat and direct messages', badge: '' },
   { id: 'games', type: 'games', name: 'Games', desc: 'Browse and play mini-games', badge: '' },
+  { id: 'embedded', type: 'embedded', name: 'Embedded Games', desc: '200+ popular unblocked games playable in-browser', badge: 'NEW' },
+  { id: 'browser', type: 'browser', name: 'Browser', desc: 'Built-in web browser with proxy support', badge: 'NEW' },
 ];
 
 function openNewTab() {
@@ -3523,6 +3568,10 @@ function openNewTab() {
           var gamesTab = findTabByType('games');
           if (gamesTab) { closeTab(id); switchTab(gamesTab.id); }
           else { convertTabToGames(id); }
+        } else if (item.type === 'embedded') {
+          convertTabToEmbedded(id);
+        } else if (item.type === 'browser') {
+          convertTabToBrowser(id);
         }
       });
       listDiv.appendChild(row);
@@ -3731,6 +3780,749 @@ function convertTabToGames(tabId) {
   var el = document.getElementById('tabContent-' + tabId);
   el.innerHTML = '';
   buildGamesHub(el);
+  renderTabBar();
+}
+
+var embeddedGamesList = [
+  {name:'Slope',url:'https://www.crazygames.com/embed/slope',cat:'action',emoji:'🎿'},
+  {name:'Run 3',url:'https://www.crazygames.com/embed/run-3',cat:'action',emoji:'🏃'},
+  {name:'OvO',url:'https://www.crazygames.com/embed/ovo',cat:'action',emoji:'💫'},
+  {name:'Stickman Hook',url:'https://www.crazygames.com/embed/stickman-hook',cat:'action',emoji:'🪝'},
+  {name:'Smash Karts',url:'https://www.crazygames.com/embed/smash-karts',cat:'multiplayer',emoji:'🚗'},
+  {name:'Drift Boss',url:'https://www.crazygames.com/embed/drift-boss',cat:'racing',emoji:'🚗'},
+  {name:'Paper.io 2',url:'https://www.crazygames.com/embed/paper-io-2',cat:'multiplayer',emoji:'📄'},
+  {name:'Getaway Shootout',url:'https://www.crazygames.com/embed/getaway-shootout',cat:'multiplayer',emoji:'🔫'},
+  {name:'Monkey Mart',url:'https://www.crazygames.com/embed/monkey-mart',cat:'idle',emoji:'🐒'},
+  {name:'Eggy Car',url:'https://www.crazygames.com/embed/eggy-car',cat:'action',emoji:'🥚'},
+  {name:'Idle Breakout',url:'https://www.crazygames.com/embed/idle-breakout',cat:'idle',emoji:'🎯'},
+  {name:'Cookie Clicker 3',url:'https://www.crazygames.com/embed/cookie-clicker-3',cat:'idle',emoji:'🍪'},
+  {name:'Blumgi Castle',url:'https://www.crazygames.com/embed/blumgi-castle',cat:'puzzle',emoji:'🏰'},
+  {name:'Basket Random',url:'https://www.crazygames.com/embed/basket-random',cat:'sports',emoji:'🏀'},
+  {name:'Soccer Random',url:'https://www.crazygames.com/embed/soccer-random',cat:'sports',emoji:'⚽'},
+  {name:'Moto X3M',url:'https://www.crazygames.com/embed/moto-x3m',cat:'racing',emoji:'🏍️'},
+  {name:'Moto X3M Pool Party',url:'https://www.crazygames.com/embed/moto-x3m-pool-party',cat:'racing',emoji:'🏍️'},
+  {name:'Moto X3M Winter',url:'https://www.crazygames.com/embed/moto-x3m-winter',cat:'racing',emoji:'🏍️'},
+  {name:'Moto X3M Spooky Land',url:'https://www.crazygames.com/embed/moto-x3m-spooky-land',cat:'racing',emoji:'🏍️'},
+  {name:'Bob the Robber',url:'https://www.crazygames.com/embed/bob-the-robber',cat:'adventure',emoji:'🕵️'},
+  {name:'Bob the Robber 2',url:'https://www.crazygames.com/embed/bob-the-robber-2',cat:'adventure',emoji:'🕵️'},
+  {name:'Bob the Robber 4',url:'https://www.crazygames.com/embed/bob-the-robber-4',cat:'adventure',emoji:'🕵️'},
+  {name:'Fireboy & Watergirl',url:'https://www.crazygames.com/embed/fireboy-and-watergirl',cat:'puzzle',emoji:'🔥'},
+  {name:'Fireboy & Watergirl 2',url:'https://www.crazygames.com/embed/fireboy-and-watergirl-2-light-temple',cat:'puzzle',emoji:'🔥'},
+  {name:'Fireboy & Watergirl 3',url:'https://www.crazygames.com/embed/fireboy-and-watergirl-3',cat:'puzzle',emoji:'🔥'},
+  {name:'Fireboy & Watergirl 4',url:'https://www.crazygames.com/embed/fireboy-and-watergirl-4-crystal-temple',cat:'puzzle',emoji:'🔥'},
+  {name:'Fireboy & Watergirl 5',url:'https://www.crazygames.com/embed/fireboy-and-watergirl-5-elements',cat:'puzzle',emoji:'🔥'},
+  {name:'Cut the Rope',url:'https://www.crazygames.com/embed/cut-the-rope',cat:'puzzle',emoji:'✂️'},
+  {name:'Cut the Rope 2',url:'https://www.crazygames.com/embed/cut-the-rope-2',cat:'puzzle',emoji:'✂️'},
+  {name:'2048',url:'https://www.crazygames.com/embed/2048',cat:'puzzle',emoji:'🔢'},
+  {name:'Wordle',url:'https://www.nytimes.com/games/wordle/index.html',cat:'puzzle',emoji:'📝'},
+  {name:'Wordscapes',url:'https://www.crazygames.com/embed/wordscapes',cat:'puzzle',emoji:'💬'},
+  {name:'TypeRacer',url:'https://play.typeracer.com',cat:'multiplayer',emoji:'⌨️'},
+  {name:'Monkeytype',url:'https://monkeytype.com',cat:'action',emoji:'⌨️'},
+  {name:'Shell Shockers',url:'https://shellshock.io',cat:'multiplayer',emoji:'🥚'},
+  {name:'Krunker.io',url:'https://krunker.io',cat:'multiplayer',emoji:'🔫'},
+  {name:'1v1.LOL',url:'https://1v1.lol',cat:'multiplayer',emoji:'🏗️'},
+  {name:'Agar.io',url:'https://agar.io',cat:'multiplayer',emoji:'🔵'},
+  {name:'Slither.io',url:'https://slither.io',cat:'multiplayer',emoji:'🐍'},
+  {name:'Diep.io',url:'https://diep.io',cat:'multiplayer',emoji:'💣'},
+  {name:'Surviv.io',url:'https://www.crazygames.com/embed/survivio',cat:'multiplayer',emoji:'🎯'},
+  {name:'Hole.io',url:'https://www.crazygames.com/embed/holeio',cat:'multiplayer',emoji:'🕳️'},
+  {name:'Tanki Online',url:'https://www.crazygames.com/embed/tanki-online',cat:'multiplayer',emoji:'🔫'},
+  {name:'Warbrokers.io',url:'https://warbrokers.io',cat:'multiplayer',emoji:'💂'},
+  {name:'Venge.io',url:'https://www.crazygames.com/embed/vengeio',cat:'multiplayer',emoji:'🔫'},
+  {name:'Defly.io',url:'https://www.crazygames.com/embed/defly-io',cat:'multiplayer',emoji:'✈️'},
+  {name:'Stabfish.io',url:'https://www.crazygames.com/embed/stabfish-io',cat:'multiplayer',emoji:'🐟'},
+  {name:'Battleship Online',url:'https://www.crazygames.com/embed/battleship-online',cat:'multiplayer',emoji:'⚓'},
+  {name:'Chess',url:'https://www.crazygames.com/embed/chess',cat:'strategy',emoji:'♟️'},
+  {name:'Checkers',url:'https://www.crazygames.com/embed/checkers-classic',cat:'strategy',emoji:'⚫'},
+  {name:'Mahjong Classic',url:'https://www.crazygames.com/embed/mahjong-classic',cat:'puzzle',emoji:'🀄'},
+  {name:'Mahjong Dark Dimensions',url:'https://www.crazygames.com/embed/mahjong-dark-dimensions',cat:'puzzle',emoji:'🀄'},
+  {name:'Solitaire Story',url:'https://www.crazygames.com/embed/solitaire-story-tripeaks',cat:'puzzle',emoji:'🃏'},
+  {name:'Spider Solitaire',url:'https://www.crazygames.com/embed/spider-solitaire',cat:'puzzle',emoji:'🕷️'},
+  {name:'FreeCell',url:'https://www.crazygames.com/embed/freecell',cat:'puzzle',emoji:'🃏'},
+  {name:'Hearts',url:'https://www.crazygames.com/embed/hearts',cat:'puzzle',emoji:'❤️'},
+  {name:'Bubble Shooter',url:'https://www.crazygames.com/embed/bubble-shooter',cat:'puzzle',emoji:'🫧'},
+  {name:'Bubble Shooter Pro',url:'https://www.crazygames.com/embed/bubble-shooter-pro',cat:'puzzle',emoji:'🫧'},
+  {name:'Jewel Blast',url:'https://www.crazygames.com/embed/jewel-blast',cat:'puzzle',emoji:'💎'},
+  {name:'Jewels Blitz 4',url:'https://www.crazygames.com/embed/jewels-blitz-4',cat:'puzzle',emoji:'💎'},
+  {name:'Jelly Truck',url:'https://www.crazygames.com/embed/jelly-truck',cat:'action',emoji:'🟩'},
+  {name:'Flip the Gun',url:'https://www.crazygames.com/embed/flip-the-gun',cat:'action',emoji:'🔫'},
+  {name:'Apple Shooter',url:'https://www.crazygames.com/embed/apple-shooter',cat:'action',emoji:'🍎'},
+  {name:'Earn to Die',url:'https://www.crazygames.com/embed/earn-to-die',cat:'action',emoji:'🧟'},
+  {name:'Earn to Die 2',url:'https://www.crazygames.com/embed/earn-to-die-2',cat:'action',emoji:'🧟'},
+  {name:'Happy Wheels',url:'https://www.crazygames.com/embed/happy-wheels',cat:'action',emoji:'🚲'},
+  {name:'Elastic Man',url:'https://www.crazygames.com/embed/elastic-man',cat:'action',emoji:'😮'},
+  {name:'Funny Shooter 2',url:'https://www.crazygames.com/embed/funny-shooter-2',cat:'action',emoji:'🔫'},
+  {name:'Pixel Shooter',url:'https://www.crazygames.com/embed/pixel-shooter',cat:'action',emoji:'👾'},
+  {name:'Head Soccer',url:'https://www.crazygames.com/embed/head-soccer',cat:'sports',emoji:'⚽'},
+  {name:'Head Football',url:'https://www.crazygames.com/embed/head-football',cat:'sports',emoji:'🏈'},
+  {name:'Basketball Stars',url:'https://www.crazygames.com/embed/basketball-stars',cat:'sports',emoji:'🏀'},
+  {name:'Penalty Kick Online',url:'https://www.crazygames.com/embed/penalty-kick-online',cat:'sports',emoji:'⚽'},
+  {name:'Football Legends',url:'https://www.crazygames.com/embed/football-legends-2021',cat:'sports',emoji:'⚽'},
+  {name:'Baseball Pro',url:'https://www.crazygames.com/embed/baseball-pro',cat:'sports',emoji:'⚾'},
+  {name:'Tennis Masters',url:'https://www.crazygames.com/embed/tennis-masters',cat:'sports',emoji:'🎾'},
+  {name:'Table Tennis World Tour',url:'https://www.crazygames.com/embed/table-tennis-world-tour',cat:'sports',emoji:'🏓'},
+  {name:'Bowling King',url:'https://www.crazygames.com/embed/bowling-king',cat:'sports',emoji:'🎳'},
+  {name:'Mini Golf Club',url:'https://www.crazygames.com/embed/mini-golf-club',cat:'sports',emoji:'⛳'},
+  {name:'Golf Orbit',url:'https://www.crazygames.com/embed/golf-orbit',cat:'sports',emoji:'⛳'},
+  {name:'Bike Mania',url:'https://www.crazygames.com/embed/bike-mania',cat:'racing',emoji:'🚲'},
+  {name:'Bike Mania 4',url:'https://www.crazygames.com/embed/bike-mania-4-microgravity',cat:'racing',emoji:'🚲'},
+  {name:'Extreme Car Driving',url:'https://www.crazygames.com/embed/extreme-car-driving-simulator',cat:'racing',emoji:'🏎️'},
+  {name:'Road Fury',url:'https://www.crazygames.com/embed/road-fury',cat:'racing',emoji:'🚗'},
+  {name:'Rocket League SideSwipe',url:'https://www.crazygames.com/embed/rocket-soccer-derby',cat:'racing',emoji:'🚀'},
+  {name:'Mini Royale Nations',url:'https://www.crazygames.com/embed/mini-royale-nations',cat:'multiplayer',emoji:'🎯'},
+  {name:'Zombs Royale',url:'https://zombsroyale.io',cat:'multiplayer',emoji:'💀'},
+  {name:'Friday Night Funkin',url:'https://www.crazygames.com/embed/friday-night-funkin',cat:'action',emoji:'🎵'},
+  {name:'Friday Night Funkin Week 7',url:'https://www.crazygames.com/embed/friday-night-funkin-week-7',cat:'action',emoji:'🎵'},
+  {name:'Among Us Online',url:'https://www.crazygames.com/embed/among-us-online-edition',cat:'multiplayer',emoji:'👨‍🚀'},
+  {name:'Squid Game Online',url:'https://www.crazygames.com/embed/squid-game',cat:'action',emoji:'🟥'},
+  {name:'Subway Surfers',url:'https://www.crazygames.com/embed/subway-surfers',cat:'action',emoji:'🏃'},
+  {name:'Temple Run 2',url:'https://www.crazygames.com/embed/temple-run-2',cat:'action',emoji:'🏃'},
+  {name:'Crossy Road',url:'https://www.crazygames.com/embed/crossy-road',cat:'action',emoji:'🐔'},
+  {name:'Stacky Bird',url:'https://www.crazygames.com/embed/stacky-bird',cat:'action',emoji:'🐦'},
+  {name:'Flappy Bird',url:'https://www.crazygames.com/embed/flappy-bird',cat:'action',emoji:'🐦'},
+  {name:'Jetpack Joyride',url:'https://www.crazygames.com/embed/jetpack-joyride',cat:'action',emoji:'🚀'},
+  {name:'Bloons TD 5',url:'https://www.crazygames.com/embed/bloons-tower-defense-5',cat:'strategy',emoji:'🎈'},
+  {name:'Bloons TD 6',url:'https://www.crazygames.com/embed/bloons-tower-defense-6',cat:'strategy',emoji:'🎈'},
+  {name:'Kingdom Rush',url:'https://www.crazygames.com/embed/kingdom-rush',cat:'strategy',emoji:'🏰'},
+  {name:'Kingdom Rush Frontiers',url:'https://www.crazygames.com/embed/kingdom-rush-frontiers',cat:'strategy',emoji:'🏰'},
+  {name:'Kingdom Rush Origins',url:'https://www.crazygames.com/embed/kingdom-rush-origins',cat:'strategy',emoji:'🏰'},
+  {name:'Plants vs Zombies',url:'https://www.crazygames.com/embed/plants-vs-zombies',cat:'strategy',emoji:'🌻'},
+  {name:'Clash of Clans Online',url:'https://www.crazygames.com/embed/clash-of-clans',cat:'strategy',emoji:'⚔️'},
+  {name:'Stick War Legacy',url:'https://www.crazygames.com/embed/stick-war-legacy',cat:'strategy',emoji:'🪖'},
+  {name:'Age of War',url:'https://www.crazygames.com/embed/age-of-war',cat:'strategy',emoji:'⚔️'},
+  {name:'Age of War 2',url:'https://www.crazygames.com/embed/age-of-war-2',cat:'strategy',emoji:'⚔️'},
+  {name:'Diggy',url:'https://www.crazygames.com/embed/diggy',cat:'adventure',emoji:'⛏️'},
+  {name:'Minesweeper',url:'https://www.crazygames.com/embed/minesweeper',cat:'puzzle',emoji:'💣'},
+  {name:'Sudoku',url:'https://www.crazygames.com/embed/daily-sudoku',cat:'puzzle',emoji:'🔢'},
+  {name:'Sudoku Classic',url:'https://www.crazygames.com/embed/sudoku-classic',cat:'puzzle',emoji:'🔢'},
+  {name:'Crossword Puzzle',url:'https://www.crazygames.com/embed/crossword-puzzle',cat:'puzzle',emoji:'📰'},
+  {name:'Word Hurdle',url:'https://www.crazygames.com/embed/word-hurdle',cat:'puzzle',emoji:'📝'},
+  {name:'Letter Scramble',url:'https://www.crazygames.com/embed/letter-scramble',cat:'puzzle',emoji:'🔤'},
+  {name:'Merge Fruits',url:'https://www.crazygames.com/embed/merge-fruits',cat:'puzzle',emoji:'🍉'},
+  {name:'Merge Cannon',url:'https://www.crazygames.com/embed/merge-cannon',cat:'puzzle',emoji:'💣'},
+  {name:'Cube Jump',url:'https://www.crazygames.com/embed/cube-jump',cat:'action',emoji:'📦'},
+  {name:'Jump King',url:'https://www.crazygames.com/embed/only-up',cat:'action',emoji:'👑'},
+  {name:'Only Up',url:'https://www.crazygames.com/embed/only-up-sketchbook',cat:'action',emoji:'⬆️'},
+  {name:'Getting Over It',url:'https://www.crazygames.com/embed/getting-over-it',cat:'action',emoji:'⛏️'},
+  {name:'Geometry Dash',url:'https://www.crazygames.com/embed/geometry-dash',cat:'action',emoji:'🔷'},
+  {name:'Geometry Dash Subzero',url:'https://www.crazygames.com/embed/geometry-dash-subzero',cat:'action',emoji:'🔷'},
+  {name:'Geometry Dash Meltdown',url:'https://www.crazygames.com/embed/geometry-dash-meltdown',cat:'action',emoji:'🔷'},
+  {name:'Geometry Dash Breeze',url:'https://www.crazygames.com/embed/geometry-dash-breeze',cat:'action',emoji:'🔷'},
+  {name:'Sonic Exe',url:'https://www.crazygames.com/embed/sonic-exe',cat:'action',emoji:'💨'},
+  {name:'Sonic Classic',url:'https://www.crazygames.com/embed/sonic-classic',cat:'action',emoji:'💨'},
+  {name:'Super Mario 64 Online',url:'https://www.crazygames.com/embed/super-mario-64',cat:'adventure',emoji:'🍄'},
+  {name:'Super Smash Flash 2',url:'https://www.crazygames.com/embed/super-smash-flash-2',cat:'action',emoji:'👊'},
+  {name:'Pokemon Showdown',url:'https://pokemonshowdown.com',cat:'strategy',emoji:'⚡'},
+  {name:'Retro Bowl',url:'https://www.crazygames.com/embed/retro-bowl',cat:'sports',emoji:'🏈'},
+  {name:'Retro Bowl College',url:'https://www.crazygames.com/embed/retro-bowl-college',cat:'sports',emoji:'🏈'},
+  {name:'Burrito Bison',url:'https://www.crazygames.com/embed/burrito-bison',cat:'action',emoji:'🌯'},
+  {name:'Learn to Fly 3',url:'https://www.crazygames.com/embed/learn-to-fly-3',cat:'action',emoji:'🐧'},
+  {name:'Doodle Jump',url:'https://www.crazygames.com/embed/doodle-jump',cat:'action',emoji:'🌀'},
+  {name:'Kugel',url:'https://www.crazygames.com/embed/kugel',cat:'puzzle',emoji:'🔵'},
+  {name:'Color Road',url:'https://www.crazygames.com/embed/color-road',cat:'action',emoji:'🌈'},
+  {name:'Color Switch',url:'https://www.crazygames.com/embed/color-switch',cat:'action',emoji:'🌈'},
+  {name:'Sprinter',url:'https://www.crazygames.com/embed/sprinter',cat:'sports',emoji:'🏃'},
+  {name:'Javelin Fighting',url:'https://www.crazygames.com/embed/javelin-fighting',cat:'action',emoji:'🏹'},
+  {name:'Copter.io',url:'https://www.crazygames.com/embed/copter-io',cat:'multiplayer',emoji:'🚁'},
+  {name:'Lordz.io',url:'https://www.crazygames.com/embed/lordz-io',cat:'strategy',emoji:'⚔️'},
+  {name:'Zombie Mission',url:'https://www.crazygames.com/embed/zombie-mission',cat:'action',emoji:'🧟'},
+  {name:'Zombie Mission 2',url:'https://www.crazygames.com/embed/zombie-mission-2',cat:'action',emoji:'🧟'},
+  {name:'Zombie Mission 3',url:'https://www.crazygames.com/embed/zombie-mission-3',cat:'action',emoji:'🧟'},
+  {name:'Zombie Mission 10',url:'https://www.crazygames.com/embed/zombie-mission-10',cat:'action',emoji:'🧟'},
+  {name:'Dungeon Escape',url:'https://www.crazygames.com/embed/dungeon-escape',cat:'adventure',emoji:'⚔️'},
+  {name:'Fortnite Online',url:'https://www.crazygames.com/embed/fortnite-online',cat:'multiplayer',emoji:'🏗️'},
+  {name:'Narrow One',url:'https://www.crazygames.com/embed/narrow-one',cat:'multiplayer',emoji:'🏹'},
+  {name:'Snowfall',url:'https://www.crazygames.com/embed/snowfall',cat:'action',emoji:'❄️'},
+  {name:'Drive Mad',url:'https://www.crazygames.com/embed/drive-mad',cat:'racing',emoji:'🚗'},
+  {name:'Car Rush',url:'https://www.crazygames.com/embed/car-rush',cat:'racing',emoji:'🚗'},
+  {name:'Rally Point 6',url:'https://www.crazygames.com/embed/rally-point-6',cat:'racing',emoji:'🏎️'},
+  {name:'Rocket Cars',url:'https://www.crazygames.com/embed/rocket-cars',cat:'racing',emoji:'🚀'},
+  {name:'Burnin Rubber 5',url:'https://www.crazygames.com/embed/burnin-rubber-5-hd',cat:'racing',emoji:'🏁'},
+  {name:'Burnin Rubber Crash n Burn',url:'https://www.crazygames.com/embed/burnin-rubber-crash-n-burn',cat:'racing',emoji:'🏁'},
+  {name:'Street Racing 3D',url:'https://www.crazygames.com/embed/street-racing-3d',cat:'racing',emoji:'🏎️'},
+  {name:'Crazy Cars',url:'https://www.crazygames.com/embed/crazy-cars',cat:'racing',emoji:'🚗'},
+  {name:'Stunt Car Extreme',url:'https://www.crazygames.com/embed/stunt-car-extreme',cat:'racing',emoji:'🚗'},
+  {name:'Trial Bike Epic Stunts',url:'https://www.crazygames.com/embed/trial-bike-epic-stunts',cat:'racing',emoji:'🏍️'},
+  {name:'Rooftop Snipers',url:'https://www.crazygames.com/embed/rooftop-snipers',cat:'action',emoji:'🎯'},
+  {name:'Rooftop Snipers 2',url:'https://www.crazygames.com/embed/rooftop-snipers-2',cat:'action',emoji:'🎯'},
+  {name:'Penalty Shooters 2',url:'https://www.crazygames.com/embed/penalty-shooters-2',cat:'sports',emoji:'⚽'},
+  {name:'Minigolf Adventures',url:'https://www.crazygames.com/embed/minigolf-adventures',cat:'sports',emoji:'⛳'},
+  {name:'Billiards',url:'https://www.crazygames.com/embed/8-ball-billiards-classic',cat:'sports',emoji:'🎱'},
+  {name:'8 Ball Pool',url:'https://www.crazygames.com/embed/8-ball-pool',cat:'sports',emoji:'🎱'},
+  {name:'Smash the Code',url:'https://www.crazygames.com/embed/smash-the-code',cat:'puzzle',emoji:'💻'},
+  {name:'World Craft',url:'https://www.crazygames.com/embed/worldcraft',cat:'adventure',emoji:'⛏️'},
+  {name:'Minecraft Classic',url:'https://classic.minecraft.net',cat:'adventure',emoji:'⛏️'},
+  {name:'Paper Minecraft',url:'https://www.crazygames.com/embed/paper-minecraft',cat:'adventure',emoji:'📄'},
+  {name:'Roblox',url:'https://www.roblox.com',cat:'multiplayer',emoji:'🟦'},
+  {name:'Townscaper',url:'https://oskarstalberg.com/Townscaper/',cat:'adventure',emoji:'🏘️'},
+  {name:'Little Alchemy 2',url:'https://www.crazygames.com/embed/little-alchemy-2',cat:'puzzle',emoji:'⚗️'},
+  {name:'Dumb Ways to Die',url:'https://www.crazygames.com/embed/dumb-ways-to-die',cat:'action',emoji:'💀'},
+  {name:'Dumb Ways to Die 2',url:'https://www.crazygames.com/embed/dumb-ways-to-die-2',cat:'action',emoji:'💀'},
+  {name:'Cat Ninja',url:'https://www.crazygames.com/embed/cat-ninja',cat:'action',emoji:'🐱'},
+  {name:'Plazma Burst 2',url:'https://www.crazygames.com/embed/plazma-burst-2',cat:'action',emoji:'🔫'},
+  {name:'Sniper Assassin',url:'https://www.crazygames.com/embed/sniper-assassin',cat:'action',emoji:'🎯'},
+  {name:'Box Tower',url:'https://www.crazygames.com/embed/box-tower',cat:'puzzle',emoji:'📦'},
+  {name:'Trollface Quest',url:'https://www.crazygames.com/embed/trollface-quest',cat:'puzzle',emoji:'😈'},
+  {name:'Trollface Quest Video Games',url:'https://www.crazygames.com/embed/trollface-quest-video-games',cat:'puzzle',emoji:'😈'},
+  {name:'I Am Fish',url:'https://www.crazygames.com/embed/i-am-fish',cat:'adventure',emoji:'🐟'},
+  {name:'Idle Factory Inc',url:'https://www.crazygames.com/embed/idle-factory-inc',cat:'idle',emoji:'🏭'},
+  {name:'AdVenture Capitalist',url:'https://www.crazygames.com/embed/adventure-capitalist',cat:'idle',emoji:'💰'},
+  {name:'Idle Miner',url:'https://www.crazygames.com/embed/idle-miner-clicker',cat:'idle',emoji:'⛏️'},
+  {name:'Bitcoin Miner',url:'https://www.crazygames.com/embed/bitcoin-miner',cat:'idle',emoji:'₿'},
+  {name:'Egg Farm Simulator',url:'https://www.crazygames.com/embed/egg-farm-simulator',cat:'idle',emoji:'🥚'},
+  {name:'Spacebar Clicker',url:'https://www.crazygames.com/embed/spacebar-clicker',cat:'idle',emoji:'⌨️'},
+  {name:'Number Clicker',url:'https://www.crazygames.com/embed/number-clicker',cat:'idle',emoji:'🔢'},
+  {name:'Raft Wars',url:'https://www.crazygames.com/embed/raft-wars',cat:'action',emoji:'🚣'},
+  {name:'Raft Wars 2',url:'https://www.crazygames.com/embed/raft-wars-2',cat:'action',emoji:'🚣'},
+  {name:'Battleship',url:'https://www.crazygames.com/embed/battleship',cat:'strategy',emoji:'⚓'},
+  {name:'Risk',url:'https://www.crazygames.com/embed/risk',cat:'strategy',emoji:'🗺️'},
+  {name:'Ludo Club',url:'https://www.crazygames.com/embed/ludo-club',cat:'strategy',emoji:'🎲'},
+  {name:'Uno Online',url:'https://www.crazygames.com/embed/uno-online',cat:'multiplayer',emoji:'🃏'},
+  {name:'Checkers Legend',url:'https://www.crazygames.com/embed/checkers-legend',cat:'strategy',emoji:'⚫'},
+  {name:'Backgammon',url:'https://www.crazygames.com/embed/backgammon',cat:'strategy',emoji:'🎲'},
+  {name:'Reversi',url:'https://www.crazygames.com/embed/reversi',cat:'strategy',emoji:'⚫'},
+  {name:'Gobang',url:'https://www.crazygames.com/embed/gobang',cat:'strategy',emoji:'⚫'},
+  {name:'Tetris',url:'https://www.crazygames.com/embed/tetris',cat:'puzzle',emoji:'🧱'},
+  {name:'Tetris Unblocked',url:'https://www.crazygames.com/embed/tetris-unblocked',cat:'puzzle',emoji:'🧱'},
+  {name:'Tetris.io',url:'https://jstris.jezevec10.com',cat:'multiplayer',emoji:'🧱'},
+  {name:'Klondike Solitaire',url:'https://www.crazygames.com/embed/solitaire-classic',cat:'puzzle',emoji:'🃏'},
+  {name:'Blackjack',url:'https://www.crazygames.com/embed/blackjack-21',cat:'puzzle',emoji:'🃏'},
+  {name:'Poker',url:'https://www.crazygames.com/embed/video-poker',cat:'puzzle',emoji:'🃏'},
+  {name:'Jackpot Slots',url:'https://www.crazygames.com/embed/jackpot-slots',cat:'puzzle',emoji:'🎰'},
+  {name:'Tanki X',url:'https://www.crazygames.com/embed/tanki-x',cat:'multiplayer',emoji:'💣'},
+  {name:'Hordes.io',url:'https://hordes.io',cat:'multiplayer',emoji:'⚔️'},
+  {name:'Starblast.io',url:'https://starblast.io',cat:'multiplayer',emoji:'🚀'},
+  {name:'Evowars.io',url:'https://www.crazygames.com/embed/evowars-io',cat:'multiplayer',emoji:'⚔️'},
+  {name:'Splix.io',url:'https://www.crazygames.com/embed/splixio',cat:'multiplayer',emoji:'📄'},
+  {name:'Snake.io',url:'https://www.crazygames.com/embed/snake-io',cat:'multiplayer',emoji:'🐍'},
+  {name:'Zapper.io',url:'https://www.crazygames.com/embed/zapper-io',cat:'multiplayer',emoji:'⚡'},
+  {name:'Hexar.io',url:'https://www.crazygames.com/embed/hexar-io',cat:'multiplayer',emoji:'🔷'},
+  {name:'Wings.io',url:'https://www.crazygames.com/embed/wings-io',cat:'multiplayer',emoji:'✈️'},
+  {name:'Lordz2.io',url:'https://www.crazygames.com/embed/lordz2-io',cat:'strategy',emoji:'⚔️'},
+  {name:'Wormate.io',url:'https://www.crazygames.com/embed/wormateio',cat:'multiplayer',emoji:'🐛'},
+  {name:'Build Royale',url:'https://www.crazygames.com/embed/build-royale',cat:'multiplayer',emoji:'🏗️'},
+  {name:'Territorial.io',url:'https://territorial.io',cat:'strategy',emoji:'🗺️'},
+  {name:'Generals.io',url:'https://generals.io',cat:'strategy',emoji:'🗺️'},
+  {name:'Spore Online',url:'https://www.crazygames.com/embed/spore',cat:'strategy',emoji:'🦠'},
+  {name:'Stacky Dash',url:'https://www.crazygames.com/embed/stacky-dash',cat:'action',emoji:'🧱'},
+  {name:'Falling Balls',url:'https://www.crazygames.com/embed/falling-balls',cat:'action',emoji:'🔵'},
+  {name:'Ball Blast',url:'https://www.crazygames.com/embed/ball-blast',cat:'action',emoji:'🔵'},
+  {name:'Stick Merge',url:'https://www.crazygames.com/embed/stick-merge',cat:'idle',emoji:'🕹️'},
+  {name:'Merge Cannon Ball Blast',url:'https://www.crazygames.com/embed/merge-cannon-ball-blast',cat:'idle',emoji:'💣'},
+  {name:'Anthill',url:'https://www.crazygames.com/embed/anthill',cat:'strategy',emoji:'🐜'},
+  {name:'Tower Defense Kingdom',url:'https://www.crazygames.com/embed/tower-defense-kingdom',cat:'strategy',emoji:'🗼'},
+  {name:'Ninja Hands',url:'https://www.crazygames.com/embed/ninja-hands',cat:'action',emoji:'🥷'},
+  {name:'Shadow Fight Arena',url:'https://www.crazygames.com/embed/shadow-fight-arena',cat:'action',emoji:'👊'},
+  {name:'Stickman Fight',url:'https://www.crazygames.com/embed/stickman-fighter-epic-battle',cat:'action',emoji:'🥊'},
+  {name:'Stickman Boost 2',url:'https://www.crazygames.com/embed/stickman-boost-2',cat:'action',emoji:'🕺'},
+  {name:'Stickman Parkour',url:'https://www.crazygames.com/embed/stickman-parkour',cat:'action',emoji:'🏃'},
+  {name:'Crazy Steve',url:'https://www.crazygames.com/embed/crazy-steve',cat:'action',emoji:'😵'},
+  {name:'Neon Blaster',url:'https://www.crazygames.com/embed/neon-blaster',cat:'action',emoji:'💥'},
+  {name:'Starfall.io',url:'https://www.crazygames.com/embed/starfall-io',cat:'multiplayer',emoji:'⭐'},
+  {name:'Goblin Rush',url:'https://www.crazygames.com/embed/goblin-rush',cat:'strategy',emoji:'👺'},
+  {name:'Tower Crush',url:'https://www.crazygames.com/embed/tower-crush',cat:'strategy',emoji:'🗼'},
+  {name:'Pigeon Pop',url:'https://www.crazygames.com/embed/pigeon-pop',cat:'puzzle',emoji:'🐦'},
+  {name:'Dig Dug',url:'https://www.crazygames.com/embed/dig-dug',cat:'action',emoji:'⛏️'},
+  {name:'Pac-Man',url:'https://www.crazygames.com/embed/pac-man',cat:'action',emoji:'👻'},
+  {name:'Ms. Pac-Man',url:'https://www.crazygames.com/embed/ms-pac-man',cat:'action',emoji:'👻'},
+  {name:'Donkey Kong',url:'https://www.crazygames.com/embed/donkey-kong',cat:'action',emoji:'🦍'},
+  {name:'Super Mario Bros',url:'https://www.crazygames.com/embed/super-mario-bros',cat:'adventure',emoji:'🍄'},
+  {name:'Galaga',url:'https://www.crazygames.com/embed/galaga',cat:'action',emoji:'👾'},
+  {name:'Space Invaders',url:'https://www.crazygames.com/embed/space-invaders',cat:'action',emoji:'👾'},
+  {name:'Pong',url:'https://www.crazygames.com/embed/pong',cat:'action',emoji:'🏓'},
+  {name:'Asteroids',url:'https://www.crazygames.com/embed/asteroids',cat:'action',emoji:'☄️'},
+  {name:'Breakout',url:'https://www.crazygames.com/embed/breakout',cat:'action',emoji:'🎮'},
+  {name:'Digger Machine',url:'https://www.crazygames.com/embed/digger-machine',cat:'action',emoji:'⛏️'},
+  {name:'Duck Hunt',url:'https://www.crazygames.com/embed/duck-hunt',cat:'action',emoji:'🦆'},
+  {name:'Snow Rider 3D',url:'https://www.crazygames.com/embed/snow-rider-3d',cat:'action',emoji:'🏔️'},
+  {name:'Powerline.io',url:'https://www.crazygames.com/embed/powerline-io',cat:'multiplayer',emoji:'⚡'},
+  {name:'Narwhale.io',url:'https://www.crazygames.com/embed/narwhale-io',cat:'multiplayer',emoji:'🐋'},
+  {name:'Planet Clicker',url:'https://www.crazygames.com/embed/planet-clicker',cat:'idle',emoji:'🌍'},
+  {name:'Planet Clicker 2',url:'https://www.crazygames.com/embed/planet-clicker-2',cat:'idle',emoji:'🌍'},
+  {name:'Coffee Clicker',url:'https://www.crazygames.com/embed/coffee-clicker',cat:'idle',emoji:'☕'},
+  {name:'Cats & Soup',url:'https://www.crazygames.com/embed/cats-and-soup',cat:'idle',emoji:'🐱'},
+  {name:'Town City Hotel Building',url:'https://www.crazygames.com/embed/town-city-hotel-building',cat:'idle',emoji:'🏙️'},
+  {name:'Tank Stars',url:'https://www.crazygames.com/embed/tank-stars',cat:'action',emoji:'💣'},
+  {name:'Minecraft Tower Defense',url:'https://www.crazygames.com/embed/minecraft-tower-defense',cat:'strategy',emoji:'🏰'},
+  {name:'Bomb It',url:'https://www.crazygames.com/embed/bomb-it',cat:'action',emoji:'💣'},
+  {name:'Bomb It 2',url:'https://www.crazygames.com/embed/bomb-it-2',cat:'action',emoji:'💣'},
+  {name:'Bomb It 7',url:'https://www.crazygames.com/embed/bomb-it-7',cat:'action',emoji:'💣'},
+  {name:'Battleship War',url:'https://www.crazygames.com/embed/battleship-war',cat:'strategy',emoji:'⚓'},
+  {name:'Worms Zone',url:'https://www.crazygames.com/embed/worms-zone-io',cat:'multiplayer',emoji:'🐛'},
+  {name:'Chompers.io',url:'https://www.crazygames.com/embed/chompers-io',cat:'multiplayer',emoji:'👄'},
+  {name:'Skribbl.io',url:'https://skribbl.io',cat:'multiplayer',emoji:'✏️'},
+  {name:'Gartic.io',url:'https://gartic.io',cat:'multiplayer',emoji:'🎨'},
+  {name:'Jackbox Games',url:'https://jackbox.tv',cat:'multiplayer',emoji:'🎮'},
+  {name:'Kart Fighter',url:'https://www.crazygames.com/embed/kart-fighter',cat:'racing',emoji:'🏎️'},
+  {name:'Turbo Dismount',url:'https://www.crazygames.com/embed/turbo-dismount',cat:'action',emoji:'🚗'},
+  {name:'Infinite Craft',url:'https://neal.fun/infinite-craft/',cat:'puzzle',emoji:'⚗️'},
+  {name:'Gravity Ninja',url:'https://www.crazygames.com/embed/gravity-ninja',cat:'action',emoji:'🥷'},
+  {name:'Ninja.io',url:'https://www.crazygames.com/embed/ninja-io',cat:'multiplayer',emoji:'🥷'},
+  {name:'Pixel War',url:'https://www.crazygames.com/embed/pixel-war',cat:'multiplayer',emoji:'🎨'},
+  {name:'Maze',url:'https://www.crazygames.com/embed/maze',cat:'puzzle',emoji:'🌀'},
+  {name:'Pipe Push Paradise',url:'https://www.crazygames.com/embed/pipe-push-paradise',cat:'puzzle',emoji:'🔧'},
+  {name:'Flow Free',url:'https://www.crazygames.com/embed/flow-free',cat:'puzzle',emoji:'🌊'},
+  {name:'Nonogram Puzzle',url:'https://www.crazygames.com/embed/nonogram-puzzle',cat:'puzzle',emoji:'🔢'},
+  {name:'Hexanaut.io',url:'https://www.crazygames.com/embed/hexanaut-io',cat:'multiplayer',emoji:'🔷'},
+  {name:'Forge of Empires',url:'https://www.crazygames.com/embed/forge-of-empires',cat:'strategy',emoji:'🏰'},
+  {name:'Tribal Wars',url:'https://www.crazygames.com/embed/tribal-wars',cat:'strategy',emoji:'⚔️'},
+  {name:'Football Heads',url:'https://www.crazygames.com/embed/football-heads',cat:'sports',emoji:'🏈'},
+  {name:'Cartoon Strike',url:'https://www.crazygames.com/embed/cartoon-strike',cat:'action',emoji:'🔫'},
+  {name:'Pixel Warfare',url:'https://www.crazygames.com/embed/pixel-warfare',cat:'action',emoji:'🔫'},
+  {name:'Army of Ages',url:'https://www.crazygames.com/embed/army-of-ages',cat:'strategy',emoji:'⚔️'},
+  {name:'Jacksmith',url:'https://www.crazygames.com/embed/jacksmith',cat:'adventure',emoji:'⚒️'},
+  {name:'Papas Pizzeria',url:'https://www.crazygames.com/embed/papas-pizzeria',cat:'idle',emoji:'🍕'},
+  {name:'Papas Burgeria',url:'https://www.crazygames.com/embed/papas-burgeria',cat:'idle',emoji:'🍔'},
+  {name:'Papas Cupcakeria',url:'https://www.crazygames.com/embed/papas-cupcakeria',cat:'idle',emoji:'🧁'},
+  {name:'Papas Freezeria',url:'https://www.crazygames.com/embed/papas-freezeria',cat:'idle',emoji:'🍦'},
+  {name:'Papas Pancakeria',url:'https://www.crazygames.com/embed/papas-pancakeria',cat:'idle',emoji:'🥞'},
+  {name:'Papas Donuteria',url:'https://www.crazygames.com/embed/papas-donuteria',cat:'idle',emoji:'🍩'},
+  {name:'Papas Hot Doggeria',url:'https://www.crazygames.com/embed/papas-hot-doggeria',cat:'idle',emoji:'🌭'},
+  {name:'Papas Sushiria',url:'https://www.crazygames.com/embed/papas-sushiria',cat:'idle',emoji:'🍣'},
+  {name:'Papas Pastaria',url:'https://www.crazygames.com/embed/papas-pastaria',cat:'idle',emoji:'🍝'},
+  {name:'Papas Taco Mia',url:'https://www.crazygames.com/embed/papas-taco-mia',cat:'idle',emoji:'🌮'},
+  {name:'Papas Wingeria',url:'https://www.crazygames.com/embed/papas-wingeria',cat:'idle',emoji:'🍗'},
+  {name:'Papas Bakeria',url:'https://www.crazygames.com/embed/papas-bakeria',cat:'idle',emoji:'🥧'},
+  {name:'Papas Cheeseria',url:'https://www.crazygames.com/embed/papas-cheeseria',cat:'idle',emoji:'🧀'},
+  {name:'Papas Cluckeria',url:'https://www.crazygames.com/embed/papas-cluckeria-to-go',cat:'idle',emoji:'🍗'},
+  {name:'Papas Mocharia',url:'https://www.crazygames.com/embed/papas-mocharia-to-go',cat:'idle',emoji:'☕'},
+  {name:'Papas Scooperia',url:'https://www.crazygames.com/embed/papas-scooperia-to-go',cat:'idle',emoji:'🍦'},
+  {name:'Papas Paleteria',url:'https://www.crazygames.com/embed/papas-paleteria-to-go',cat:'idle',emoji:'🍡'},
+  {name:'Parking Fury',url:'https://www.crazygames.com/embed/parking-fury',cat:'racing',emoji:'🅿️'},
+  {name:'Parking Fury 3D',url:'https://www.crazygames.com/embed/parking-fury-3d',cat:'racing',emoji:'🅿️'},
+  {name:'Euro Truck Driver',url:'https://www.crazygames.com/embed/euro-truck-driver',cat:'racing',emoji:'🚛'},
+  {name:'City Car Driving',url:'https://www.crazygames.com/embed/city-car-driving-3d',cat:'racing',emoji:'🚗'},
+  {name:'American Truck Simulator',url:'https://www.crazygames.com/embed/american-truck-simulator',cat:'racing',emoji:'🚛'},
+  {name:'Bricky',url:'https://www.crazygames.com/embed/bricky',cat:'puzzle',emoji:'🧱'},
+  {name:'Color Fill',url:'https://www.crazygames.com/embed/color-fill',cat:'puzzle',emoji:'🎨'},
+  {name:'Helix Jump',url:'https://www.crazygames.com/embed/helix-jump',cat:'action',emoji:'🌀'},
+  {name:'Stack',url:'https://www.crazygames.com/embed/stack',cat:'action',emoji:'📦'},
+  {name:'Rolling Ball 3D',url:'https://www.crazygames.com/embed/rolling-ball-3d',cat:'action',emoji:'🔵'},
+  {name:'Hole in the Wall',url:'https://www.crazygames.com/embed/hole-in-the-wall',cat:'action',emoji:'🕳️'},
+  {name:'Mr Beast World',url:'https://www.crazygames.com/embed/mr-beast-world',cat:'action',emoji:'😱'},
+  {name:'Baldis Basics',url:'https://www.crazygames.com/embed/baldis-basics',cat:'adventure',emoji:'📏'},
+  {name:'Five Nights at Freddys',url:'https://www.crazygames.com/embed/five-nights-at-freddys',cat:'adventure',emoji:'🐻'},
+  {name:'FNAF 2',url:'https://www.crazygames.com/embed/fnaf-2',cat:'adventure',emoji:'🐻'},
+  {name:'FNAF 3',url:'https://www.crazygames.com/embed/fnaf-3',cat:'adventure',emoji:'🐻'},
+  {name:'FNAF 4',url:'https://www.crazygames.com/embed/fnaf-4',cat:'adventure',emoji:'🐻'},
+  {name:'Into the Dead',url:'https://www.crazygames.com/embed/into-the-dead',cat:'action',emoji:'🧟'},
+  {name:'Dead Zed',url:'https://www.crazygames.com/embed/dead-zed',cat:'action',emoji:'🧟'},
+  {name:'Zombie Road',url:'https://www.crazygames.com/embed/zombie-road',cat:'action',emoji:'🧟'},
+  {name:'Z Escape',url:'https://www.crazygames.com/embed/z-escape',cat:'adventure',emoji:'🏃'},
+  {name:'Vex 3',url:'https://www.crazygames.com/embed/vex-3',cat:'action',emoji:'🏃'},
+  {name:'Vex 4',url:'https://www.crazygames.com/embed/vex-4',cat:'action',emoji:'🏃'},
+  {name:'Vex 5',url:'https://www.crazygames.com/embed/vex-5',cat:'action',emoji:'🏃'},
+  {name:'Vex 6',url:'https://www.crazygames.com/embed/vex-6',cat:'action',emoji:'🏃'},
+  {name:'Vex 7',url:'https://www.crazygames.com/embed/vex-7',cat:'action',emoji:'🏃'},
+  {name:'Red Ball 4',url:'https://www.crazygames.com/embed/red-ball-4',cat:'action',emoji:'🔴'},
+  {name:'Red Ball 6',url:'https://www.crazygames.com/embed/red-ball-6',cat:'action',emoji:'🔴'},
+  {name:'Bouncing Ball',url:'https://www.crazygames.com/embed/bouncing-ball',cat:'action',emoji:'🔵'},
+  {name:'Stick Golf',url:'https://www.crazygames.com/embed/stick-golf',cat:'sports',emoji:'⛳'},
+  {name:'Golf Battle',url:'https://www.crazygames.com/embed/golf-battle',cat:'sports',emoji:'⛳'},
+  {name:'Cyber Surfer',url:'https://www.crazygames.com/embed/cyber-surfer',cat:'action',emoji:'🛹'},
+  {name:'Hanger',url:'https://www.crazygames.com/embed/hanger',cat:'action',emoji:'🔗'},
+  {name:'Hanger 2',url:'https://www.crazygames.com/embed/hanger-2',cat:'action',emoji:'🔗'},
+  {name:'Elastoman',url:'https://www.crazygames.com/embed/elastoman',cat:'action',emoji:'🤸'},
+];
+
+var embeddedGamesCats = ['all','action','puzzle','racing','sports','strategy','idle','multiplayer','adventure'];
+var embeddedCatLabels = {all:'All',action:'Action',puzzle:'Puzzle',racing:'Racing',sports:'Sports',strategy:'Strategy',idle:'Idle/Clicker',multiplayer:'Multiplayer',adventure:'Adventure'};
+
+function convertTabToEmbedded(tabId) {
+  for (var i = 0; i < tabs.length; i++) {
+    if (tabs[i].id === tabId) {
+      tabs[i].type = 'embedded';
+      tabs[i].label = 'Embedded';
+      break;
+    }
+  }
+  var el = document.getElementById('tabContent-' + tabId);
+  el.innerHTML = '';
+  var container = document.createElement('div');
+  container.style.cssText = 'display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg-primary);';
+
+  var header = document.createElement('div');
+  header.style.cssText = 'padding:14px 18px 0;flex-shrink:0;';
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:20px;font-weight:700;color:var(--text-primary);margin-bottom:10px;';
+  title.textContent = '🎮 Embedded Games';
+  header.appendChild(title);
+
+  var searchRow = document.createElement('div');
+  searchRow.style.cssText = 'display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;';
+  var searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.placeholder = 'Search 200+ games...';
+  searchInput.style.cssText = 'flex:1;min-width:150px;padding:8px 12px;border:none;border-radius:6px;background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;';
+  searchRow.appendChild(searchInput);
+  header.appendChild(searchRow);
+
+  var catRow = document.createElement('div');
+  catRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;';
+  embeddedGamesCats.forEach(function(cat) {
+    var btn = document.createElement('button');
+    btn.textContent = embeddedCatLabels[cat];
+    btn.setAttribute('data-cat', cat);
+    btn.style.cssText = 'padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:' + (cat==='all'?'var(--accent)':'var(--bg-tertiary)') + ';color:' + (cat==='all'?'#fff':'var(--text-secondary)') + ';font-size:12px;cursor:pointer;transition:all 0.15s;';
+    catRow.appendChild(btn);
+  });
+  header.appendChild(catRow);
+  container.appendChild(header);
+
+  var listContainer = document.createElement('div');
+  listContainer.style.cssText = 'flex:1;overflow-y:auto;padding:0 18px 18px;';
+  container.appendChild(listContainer);
+
+  var activeCat = 'all';
+  var recentlyPlayed = JSON.parse(localStorage.getItem('embed_recent') || '[]');
+  var favorites = JSON.parse(localStorage.getItem('embed_favorites') || '[]');
+
+  function saveRecent(name) {
+    var arr = JSON.parse(localStorage.getItem('embed_recent') || '[]');
+    arr = arr.filter(function(n) { return n !== name; });
+    arr.unshift(name);
+    if (arr.length > 12) arr = arr.slice(0,12);
+    localStorage.setItem('embed_recent', JSON.stringify(arr));
+  }
+  function toggleFavorite(name) {
+    var arr = JSON.parse(localStorage.getItem('embed_favorites') || '[]');
+    var idx = arr.indexOf(name);
+    if (idx >= 0) arr.splice(idx,1); else arr.push(name);
+    localStorage.setItem('embed_favorites', JSON.stringify(arr));
+    return arr;
+  }
+
+  function openEmbeddedGame(game) {
+    saveRecent(game.name);
+    container.innerHTML = '';
+    var gameContainer = document.createElement('div');
+    gameContainer.style.cssText = 'display:flex;flex-direction:column;height:100%;background:#000;';
+    var toolbar = document.createElement('div');
+    toolbar.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-primary);border-bottom:1px solid var(--border);flex-shrink:0;';
+    var backBtn = document.createElement('button');
+    backBtn.textContent = '← Back';
+    backBtn.style.cssText = 'padding:5px 12px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:13px;';
+    backBtn.addEventListener('click', function() { convertTabToEmbedded(tabId); });
+    toolbar.appendChild(backBtn);
+    var nameSpan = document.createElement('span');
+    nameSpan.textContent = game.emoji + ' ' + game.name;
+    nameSpan.style.cssText = 'font-size:14px;font-weight:600;color:var(--text-primary);flex:1;';
+    toolbar.appendChild(nameSpan);
+    var favBtn = document.createElement('button');
+    var curFavs = JSON.parse(localStorage.getItem('embed_favorites') || '[]');
+    favBtn.textContent = curFavs.indexOf(game.name) >= 0 ? '★ Unfavorite' : '☆ Favorite';
+    favBtn.style.cssText = 'padding:5px 12px;background:var(--bg-tertiary);color:var(--yellow,#f0b232);border:none;border-radius:4px;cursor:pointer;font-size:13px;';
+    favBtn.addEventListener('click', function() {
+      var fav = toggleFavorite(game.name);
+      favBtn.textContent = fav.indexOf(game.name) >= 0 ? '★ Unfavorite' : '☆ Favorite';
+    });
+    toolbar.appendChild(favBtn);
+    var newTabBtn = document.createElement('button');
+    newTabBtn.textContent = '↗ Open in New Tab';
+    newTabBtn.style.cssText = 'padding:5px 12px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;';
+    newTabBtn.addEventListener('click', function() { window.open(game.url, '_blank'); });
+    toolbar.appendChild(newTabBtn);
+    gameContainer.appendChild(toolbar);
+    var frame = document.createElement('iframe');
+    frame.src = game.url;
+    frame.style.cssText = 'flex:1;width:100%;border:none;';
+    frame.allow = 'fullscreen; autoplay; gamepad; payment';
+    frame.setAttribute('allowfullscreen', '');
+    var errOverlay = document.createElement('div');
+    errOverlay.style.cssText = 'display:none;position:absolute;inset:0;background:rgba(0,0,0,0.85);color:#fff;align-items:center;justify-content:center;flex-direction:column;gap:14px;text-align:center;padding:24px;';
+    var wrap = document.createElement('div');
+    wrap.style.position = 'relative';
+    wrap.style.flex = '1';
+    wrap.style.overflow = 'hidden';
+    errOverlay.style.position = 'absolute';
+    errOverlay.innerHTML = '<div style="font-size:32px;">🚫</div><div style="font-size:18px;font-weight:700;">Game blocked by browser</div><div style="font-size:13px;color:#ccc;">This game does not allow embedding.<br>Open it directly instead.</div>';
+    var errOpenBtn = document.createElement('button');
+    errOpenBtn.textContent = 'Open in New Tab';
+    errOpenBtn.style.cssText = 'padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;';
+    errOpenBtn.addEventListener('click', function() { window.open(game.url, '_blank'); });
+    errOverlay.appendChild(errOpenBtn);
+    wrap.appendChild(frame);
+    wrap.appendChild(errOverlay);
+    gameContainer.appendChild(wrap);
+    frame.addEventListener('error', function() { errOverlay.style.display='flex'; });
+    el.appendChild(gameContainer);
+    renderTabBar();
+  }
+
+  function renderGames(q, cat) {
+    listContainer.innerHTML = '';
+    var faves = JSON.parse(localStorage.getItem('embed_favorites') || '[]');
+    var recent = JSON.parse(localStorage.getItem('embed_recent') || '[]');
+    var filtered = embeddedGamesList.filter(function(g) {
+      if (cat !== 'all' && g.cat !== cat) return false;
+      if (q && g.name.toLowerCase().indexOf(q.toLowerCase()) === -1) return false;
+      return true;
+    });
+    function makeGameCard(g) {
+      var card = document.createElement('div');
+      card.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background 0.1s;margin-bottom:2px;';
+      card.setAttribute('data-testid', 'embed-game-' + g.name.replace(/\s/g,'_'));
+      card.addEventListener('mouseenter', function() { card.style.background='var(--bg-message-hover)'; });
+      card.addEventListener('mouseleave', function() { card.style.background=''; });
+      card.addEventListener('click', function() { openEmbeddedGame(g); });
+      var emoji = document.createElement('div');
+      emoji.textContent = g.emoji;
+      emoji.style.cssText = 'font-size:22px;width:36px;text-align:center;flex-shrink:0;';
+      card.appendChild(emoji);
+      var info = document.createElement('div');
+      info.style.cssText = 'flex:1;min-width:0;';
+      var nameEl = document.createElement('div');
+      nameEl.style.cssText = 'font-size:14px;font-weight:500;color:var(--text-primary);';
+      nameEl.textContent = g.name;
+      info.appendChild(nameEl);
+      var catEl = document.createElement('div');
+      catEl.style.cssText = 'font-size:11px;color:var(--text-muted);text-transform:capitalize;margin-top:1px;';
+      catEl.textContent = embeddedCatLabels[g.cat] || g.cat;
+      info.appendChild(catEl);
+      card.appendChild(info);
+      if (faves.indexOf(g.name) >= 0) {
+        var star = document.createElement('span');
+        star.textContent = '★';
+        star.style.cssText = 'color:var(--yellow,#f0b232);font-size:14px;';
+        card.appendChild(star);
+      }
+      return card;
+    }
+    if (!q && cat === 'all') {
+      var recentGames = embeddedGamesList.filter(function(g) { return recent.indexOf(g.name) >= 0; })
+        .sort(function(a,b) { return recent.indexOf(a.name) - recent.indexOf(b.name); });
+      var faveGames = embeddedGamesList.filter(function(g) { return faves.indexOf(g.name) >= 0 && recent.indexOf(g.name) === -1; });
+      if (recentGames.length > 0) {
+        var rl = document.createElement('div');
+        rl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;padding:12px 2px 6px;';
+        rl.textContent = 'Recently Played';
+        listContainer.appendChild(rl);
+        recentGames.forEach(function(g) { listContainer.appendChild(makeGameCard(g)); });
+      }
+      if (faveGames.length > 0) {
+        var fl = document.createElement('div');
+        fl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;padding:12px 2px 6px;';
+        fl.textContent = 'Favorites';
+        listContainer.appendChild(fl);
+        faveGames.forEach(function(g) { listContainer.appendChild(makeGameCard(g)); });
+      }
+      var al = document.createElement('div');
+      al.style.cssText = 'font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;padding:12px 2px 6px;';
+      al.textContent = 'All Games (' + embeddedGamesList.length + ')';
+      listContainer.appendChild(al);
+      filtered.forEach(function(g) { listContainer.appendChild(makeGameCard(g)); });
+    } else {
+      if (filtered.length === 0) {
+        var empty = document.createElement('div');
+        empty.style.cssText = 'text-align:center;color:var(--text-muted);padding:40px;font-size:14px;';
+        empty.textContent = 'No games found.';
+        listContainer.appendChild(empty);
+      } else {
+        var al2 = document.createElement('div');
+        al2.style.cssText = 'font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;padding:12px 2px 6px;';
+        al2.textContent = filtered.length + ' games';
+        listContainer.appendChild(al2);
+        filtered.forEach(function(g) { listContainer.appendChild(makeGameCard(g)); });
+      }
+    }
+  }
+
+  catRow.querySelectorAll('button').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      activeCat = btn.getAttribute('data-cat');
+      catRow.querySelectorAll('button').forEach(function(b) {
+        var isActive = b.getAttribute('data-cat') === activeCat;
+        b.style.background = isActive ? 'var(--accent)' : 'var(--bg-tertiary)';
+        b.style.color = isActive ? '#fff' : 'var(--text-secondary)';
+      });
+      renderGames(searchInput.value.trim(), activeCat);
+    });
+  });
+  searchInput.addEventListener('input', function() { renderGames(this.value.trim(), activeCat); });
+  searchInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
+
+  el.appendChild(container);
+  renderGames('', 'all');
+  renderTabBar();
+}
+
+function convertTabToBrowser(tabId) {
+  for (var i = 0; i < tabs.length; i++) {
+    if (tabs[i].id === tabId) {
+      tabs[i].type = 'browser';
+      tabs[i].label = 'Browser';
+      break;
+    }
+  }
+  var el = document.getElementById('tabContent-' + tabId);
+  el.innerHTML = '';
+  var container = document.createElement('div');
+  container.style.cssText = 'display:flex;flex-direction:column;height:100%;background:var(--bg-primary);overflow:hidden;';
+
+  var toolbar = document.createElement('div');
+  toolbar.style.cssText = 'display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;';
+
+  var backBtn2 = document.createElement('button');
+  backBtn2.title = 'Back';
+  backBtn2.innerHTML = '&#x2190;';
+  backBtn2.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;';
+  toolbar.appendChild(backBtn2);
+  var fwdBtn = document.createElement('button');
+  fwdBtn.title = 'Forward';
+  fwdBtn.innerHTML = '&#x2192;';
+  fwdBtn.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;';
+  toolbar.appendChild(fwdBtn);
+  var refreshBtn2 = document.createElement('button');
+  refreshBtn2.title = 'Refresh';
+  refreshBtn2.innerHTML = '&#x21BB;';
+  refreshBtn2.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;';
+  toolbar.appendChild(refreshBtn2);
+  var homeBtn = document.createElement('button');
+  homeBtn.title = 'Home';
+  homeBtn.innerHTML = '&#x2302;';
+  homeBtn.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;';
+  toolbar.appendChild(homeBtn);
+
+  var urlInput = document.createElement('input');
+  urlInput.type = 'text';
+  urlInput.placeholder = 'Enter URL or search...';
+  urlInput.value = '';
+  urlInput.style.cssText = 'flex:1;padding:7px 12px;border:none;border-radius:6px;background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;';
+  toolbar.appendChild(urlInput);
+
+  var goBtn = document.createElement('button');
+  goBtn.textContent = 'Go';
+  goBtn.style.cssText = 'padding:5px 14px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:600;';
+  toolbar.appendChild(goBtn);
+
+  var newWindowBtn = document.createElement('button');
+  newWindowBtn.title = 'Open in new tab';
+  newWindowBtn.innerHTML = '&#x2197;';
+  newWindowBtn.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;';
+  toolbar.appendChild(newWindowBtn);
+
+  var vpnToggle = document.createElement('button');
+  vpnToggle.title = 'Toggle VPN proxy';
+  vpnToggle.textContent = '🔒 VPN';
+  vpnToggle.style.cssText = 'padding:5px 10px;background:var(--bg-tertiary);color:var(--green);border:1px solid var(--green);border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;';
+  var vpnEnabled = false;
+  toolbar.appendChild(vpnToggle);
+  container.appendChild(toolbar);
+
+  var proxyNote = document.createElement('div');
+  proxyNote.style.cssText = 'background:var(--accent);color:#fff;padding:6px 14px;font-size:12px;text-align:center;flex-shrink:0;display:none;';
+  proxyNote.textContent = '🔒 VPN Proxy Active — routing through proxy.corsfix.com';
+  container.appendChild(proxyNote);
+
+  var frameWrap = document.createElement('div');
+  frameWrap.style.cssText = 'flex:1;position:relative;overflow:hidden;';
+
+  var homePage = document.createElement('div');
+  homePage.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:var(--text-secondary);';
+  var hIcon = document.createElement('div');
+  hIcon.style.cssText = 'font-size:48px;';
+  hIcon.textContent = '🌐';
+  homePage.appendChild(hIcon);
+  var hTitle = document.createElement('div');
+  hTitle.style.cssText = 'font-size:22px;font-weight:700;color:var(--text-primary);';
+  hTitle.textContent = 'Browser';
+  homePage.appendChild(hTitle);
+  var hSub = document.createElement('div');
+  hSub.style.cssText = 'font-size:13px;color:var(--text-muted);text-align:center;max-width:320px;';
+  hSub.innerHTML = 'Enter a URL above or search to start browsing.<br>Enable VPN proxy to bypass restrictions.';
+  homePage.appendChild(hSub);
+  var quickLinks = document.createElement('div');
+  quickLinks.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;';
+  var bookmarks = [{n:'Google',u:'https://google.com'},{n:'YouTube',u:'https://youtube.com'},{n:'Wikipedia',u:'https://wikipedia.org'},{n:'Reddit',u:'https://reddit.com'},{n:'GitHub',u:'https://github.com'}];
+  bookmarks.forEach(function(bm) {
+    var btn = document.createElement('button');
+    btn.textContent = bm.n;
+    btn.style.cssText = 'padding:7px 14px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;';
+    btn.addEventListener('click', function() { urlInput.value = bm.u; navigate(bm.u); });
+    quickLinks.appendChild(btn);
+  });
+  homePage.appendChild(quickLinks);
+  frameWrap.appendChild(homePage);
+
+  var frame = document.createElement('iframe');
+  frame.id = 'browser-frame-' + tabId;
+  frame.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;display:none;';
+  frame.allow = 'fullscreen; autoplay; payment; camera; microphone; gamepad';
+  frame.setAttribute('allowfullscreen', '');
+  frameWrap.appendChild(frame);
+
+  var blockedMsg = document.createElement('div');
+  blockedMsg.style.cssText = 'display:none;position:absolute;inset:0;background:var(--bg-primary);align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;padding:24px;';
+  blockedMsg.innerHTML = '<div style="font-size:40px;">🚫</div><div style="font-size:18px;font-weight:700;color:var(--text-primary);">Site blocked embedding</div><div style="font-size:13px;color:var(--text-muted);">This site cannot be displayed inside a frame.<br>Try enabling VPN proxy or open in new tab.</div>';
+  var openExtBtn = document.createElement('button');
+  openExtBtn.textContent = '↗ Open in New Tab';
+  openExtBtn.style.cssText = 'margin-top:8px;padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;';
+  blockedMsg.appendChild(openExtBtn);
+  frameWrap.appendChild(blockedMsg);
+
+  container.appendChild(frameWrap);
+  el.appendChild(container);
+
+  urlInput.id = 'browser-urlinput-' + tabId;
+  goBtn.id = 'browser-go-' + tabId;
+
+  function navigate(rawUrl) {
+    var url = rawUrl.trim();
+    if (!url) return;
+    if (!url.match(/^https?:\/\//i)) {
+      if (url.indexOf('.') > 0 && url.indexOf(' ') === -1) url = 'https://' + url;
+      else url = 'https://www.google.com/search?q=' + encodeURIComponent(url);
+    }
+    urlInput.value = url;
+    var proxied = vpnEnabled ? 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url) : url;
+    frame.src = proxied;
+    frame.style.display = 'block';
+    homePage.style.display = 'none';
+    blockedMsg.style.display = 'none';
+    openExtBtn.onclick = function() { window.open(url, '_blank'); };
+    newWindowBtn.onclick = function() { window.open(url, '_blank'); };
+    var loadTimer = setTimeout(function() {
+      try {
+        var doc = frame.contentDocument || frame.contentWindow.document;
+        if (!doc || doc.readyState === 'complete') return;
+      } catch(e) {}
+    }, 3000);
+    frame.onload = function() { clearTimeout(loadTimer); };
+    frame.onerror = function() { blockedMsg.style.display = 'flex'; frame.style.display = 'none'; };
+  }
+
+  goBtn.addEventListener('click', function() { navigate(urlInput.value); });
+  urlInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') navigate(urlInput.value);
+    e.stopPropagation();
+  });
+  urlInput.addEventListener('click', function() { this.select(); });
+  backBtn2.addEventListener('click', function() {
+    try { frame.contentWindow.history.back(); } catch(e) { frame.src = 'about:blank'; frame.style.display='none'; homePage.style.display='flex'; }
+  });
+  fwdBtn.addEventListener('click', function() {
+    try { frame.contentWindow.history.forward(); } catch(e) {}
+  });
+  refreshBtn2.addEventListener('click', function() {
+    if (frame.src && frame.src !== 'about:blank') { var s = frame.src; frame.src=''; frame.src=s; }
+  });
+  homeBtn.addEventListener('click', function() {
+    frame.src = 'about:blank';
+    frame.style.display = 'none';
+    homePage.style.display = 'flex';
+    urlInput.value = '';
+    blockedMsg.style.display = 'none';
+  });
+  vpnToggle.addEventListener('click', function() {
+    vpnEnabled = !vpnEnabled;
+    vpnToggle.textContent = vpnEnabled ? '🔒 VPN ON' : '🔒 VPN';
+    vpnToggle.style.background = vpnEnabled ? 'var(--green)' : 'var(--bg-tertiary)';
+    vpnToggle.style.color = vpnEnabled ? '#fff' : 'var(--green)';
+    proxyNote.style.display = vpnEnabled ? 'block' : 'none';
+  });
+  newWindowBtn.addEventListener('click', function() {
+    if (frame.src && frame.src !== 'about:blank') window.open(frame.src, '_blank');
+  });
   renderTabBar();
 }
 
