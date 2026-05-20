@@ -2009,14 +2009,14 @@ function applyMarkdown(text) {
     return '<code style="background:var(--bg-tertiary);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px;">' + escapeHtml(code) + '</code>';
   });
   // Bold **text**
-  text = text.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/\*\*([^*\\n]+)\*\*/g, '<strong>$1</strong>');
   // Italic _text_
-  text = text.replace(/_([^_\n]+)_/g, '<em>$1</em>');
+  text = text.replace(/_([^_\\n]+)_/g, '<em>$1</em>');
   // Strikethrough ~~text~~
-  text = text.replace(/~~([^~\n]+)~~/g, '<s>$1</s>');
+  text = text.replace(/~~([^~\\n]+)~~/g, '<s>$1</s>');
   // @mention highlight
   if (myUsername) {
-    var safe = myUsername.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    var safe = myUsername.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&');
     var reMention = new RegExp('@(' + safe + ')\\b', 'gi');
     text = text.replace(reMention, '<span style="background:rgba(88,101,242,0.25);color:var(--accent);border-radius:3px;padding:0 3px;font-weight:600;">@$1</span>');
   }
