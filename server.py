@@ -103,16 +103,24 @@ _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 db_pool = None
-CURRENT_VERSION = "2.1"
+CURRENT_VERSION = "2.2"
 CHANGELOG_NOTES = (
-    "<b>What's new in v2.1</b><br><br>"
-    "&#x2022; <b>PFP Crop Tool</b> — Drag &amp; zoom to perfectly crop your profile picture<br>"
-    "&#x2022; <b>Scroll Button</b> — Jump-to-latest button with unread count badge<br>"
-    "&#x2022; <b>Smart Auto-scroll</b> — Chat no longer yanks you back when scrolled up<br>"
-    "&#x2022; <b>DM Side Panel</b> — Click any user to open a slide-in DM panel<br>"
-    "&#x2022; <b>Browser Tab</b> — YouTube videos now embed; Google searches redirect to DuckDuckGo<br>"
-    "&#x2022; <b>Games Library</b> — 100+ working games with categories; duplicates removed<br>"
-    "&#x2022; <b>Browser Homepage</b> — Quick-access bookmarks on the browser start page<br>"
+    "<b>What's new in v2.2</b><br><br>"
+    "&#x2022; <b>DM Redesign</b> — DMs open in the main view with the other person's profile &amp; bio on the right<br>"
+    "&#x2022; <b>DM Pop-out</b> — &#x2197; button in the profile panel opens the quick slide-in overlay for multitasking<br>"
+    "&#x2022; <b>DM Attachments</b> — Images attach in DMs just like in General<br>"
+    "&#x2022; <b>Shared Images</b> — View all images shared in a DM from the profile panel<br>"
+    "&#x2022; <b>Emoji Reactions</b> — Hover any message and pick a quick reaction (&#x1F44D; &#x2764; &#x1F602; &#x1F525;)<br>"
+    "&#x2022; <b>Lightbox Viewer</b> — Click any image in chat to open it full-screen<br>"
+    "&#x2022; <b>Click-to-DM</b> — Click a sender name in chat or a user in the sidebar to open their DM<br>"
+    "&#x2022; <b>DM Sidebar Avatars</b> — DM list now shows avatars, display names, and online status<br>"
+    "&#x2022; <b>PFP Cross-device</b> — Profile pictures now sync properly across devices for account users<br>"
+    "&#x2022; <b>Games Fixed</b> — Games load directly without the broken proxy<br>"
+    "&#x2022; <b>Browser Search</b> — Searches now use DuckDuckGo Lite; YouTube shows a helpful embed guide<br>"
+    "&#x2022; <b>Toast Notifications</b> — Subtle pop-up toasts replace alert boxes<br>"
+    "&#x2022; <b>Peer Notes</b> — Jot a private note about anyone in their DM profile panel<br>"
+    "<br><b>Previously in v2.1</b><br>"
+    "&#x2022; PFP crop tool, scroll-to-bottom button, smart auto-scroll, browser &amp; game improvements<br>"
     "<br><b>Previously in v2.0</b><br>"
     "&#x2022; Account system, persistent profiles, Garlic Phone game, changelog popups<br>"
 )
@@ -1147,6 +1155,32 @@ header h1 { font-size: 16px; font-weight: 600; }
 .msg-timestamp { font-size: 11px; color: var(--text-muted); }
 .msg-body { font-size: 14px; color: var(--text-secondary); word-break: break-word; line-height: 1.45; }
 
+.msg-hover-actions {
+  display: none; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px;
+  padding: 2px 4px; gap: 2px; align-items: center; z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.msg-full:hover .msg-hover-actions,
+.msg-grouped-row:hover .msg-hover-actions { display: flex; }
+.msg-reaction-btn {
+  background: none; border: none; font-size: 15px; cursor: pointer; padding: 3px 5px;
+  border-radius: 4px; line-height: 1; color: var(--text-secondary);
+  transition: background 0.12s, transform 0.08s;
+}
+.msg-reaction-btn:hover { background: var(--bg-tertiary); transform: scale(1.18); }
+.msg-reactions-row {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;
+}
+.msg-reaction-pill {
+  display: flex; align-items: center; gap: 3px; padding: 2px 7px; font-size: 12px;
+  background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 20px;
+  cursor: pointer; user-select: none; transition: background 0.12s;
+  font-weight: 500; color: var(--text-secondary);
+}
+.msg-reaction-pill:hover { background: var(--bg-message-hover); }
+.msg-reaction-pill.mine { border-color: var(--accent); color: var(--accent); background: rgba(var(--accent-rgb,88,101,242),0.08); }
+
 .empty { color: var(--text-muted); text-align: center; margin-top: 60px; font-size: 14px; }
 
 .chat-screen { display: none; height: 100vh; flex-direction: column; }
@@ -1557,8 +1591,8 @@ body.theme-rose {
         <button class="new-tab-btn" id="newTabBtn" data-testid="button-new-tab" title="New Tab">+</button>
       </div>
       <div id="tabContents">
-        <div class="tab-content active" id="tabContent-chat">
-          <div class="chat-area">
+        <div class="tab-content active" id="tabContent-chat" style="flex-direction:row;">
+          <div class="chat-area" style="flex:1;min-width:0;">
             <div class="channel-header" id="channelHeaderBar">
               <span class="channel-icon">#</span> <span id="channelName" data-testid="text-channel-name">General</span>
             </div>
@@ -1585,6 +1619,36 @@ body.theme-rose {
                 </div>
                 <button id="sendBtn" data-testid="button-send">Send</button>
               </div>
+            </div>
+          </div>
+          <!-- DM Profile Sidebar -->
+          <div id="dmProfileSidebar" style="display:none;width:260px;min-width:240px;flex-direction:column;border-left:1px solid var(--border);background:var(--bg-secondary);overflow-y:auto;flex-shrink:0;">
+            <div style="padding:14px 14px 0;display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);">Profile</span>
+              <div style="display:flex;gap:4px;">
+                <button id="dmPopOutBtn" title="Pop out DM" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:2px 5px;border-radius:4px;line-height:1;" title="Pop Out">&#x2197;</button>
+                <button id="dmSidebarCollapseBtn" title="Hide panel" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:2px 5px;border-radius:4px;line-height:1;">&#x2715;</button>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;padding:16px 16px 12px;">
+              <div id="dmPeerAvatarLarge" style="width:80px;height:80px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#fff;background-size:cover;background-position:center;box-shadow:0 4px 16px rgba(0,0,0,0.25);flex-shrink:0;margin-bottom:10px;"></div>
+              <div id="dmPeerDisplayName" style="font-size:15px;font-weight:700;color:var(--text-primary);text-align:center;"></div>
+              <div id="dmPeerUsername" style="font-size:12px;color:var(--text-muted);margin-top:2px;text-align:center;"></div>
+              <div id="dmPeerStatusBadge" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:var(--bg-tertiary);color:var(--text-secondary);"></div>
+            </div>
+            <div style="height:1px;background:var(--border);margin:0 14px;"></div>
+            <div style="padding:12px 14px;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:6px;">About Me</div>
+              <div id="dmPeerBio" style="font-size:13px;color:var(--text-secondary);line-height:1.55;"></div>
+            </div>
+            <div style="height:1px;background:var(--border);margin:0 14px;"></div>
+            <div style="padding:12px 14px;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:6px;">Note (private)</div>
+              <textarea id="dmPeerNoteArea" placeholder="Add a private note about this person..." style="width:100%;min-height:70px;padding:7px 9px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:12px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit;"></textarea>
+            </div>
+            <div style="height:1px;background:var(--border);margin:0 14px;"></div>
+            <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px;">
+              <button id="dmViewAttachmentsBtn" style="width:100%;padding:7px 10px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;text-align:left;display:flex;align-items:center;gap:6px;">&#x1F4CE; View Shared Images</button>
             </div>
           </div>
         </div>
@@ -1748,29 +1812,162 @@ function switchChannel(channel) {
   currentChannel = channel;
   renderMessages();
   renderSidebar();
-  var nameEl = document.getElementById('channelName');
   var headerBar = document.getElementById('channelHeaderBar');
+  var dmSidebar = document.getElementById('dmProfileSidebar');
   if (channel === 'general') {
     headerBar.innerHTML = '<span class="channel-icon">#</span> <span id="channelName" data-testid="text-channel-name">General</span>';
     document.getElementById('msgInput').placeholder = 'Message #General';
+    document.getElementById('msgInput').disabled = false;
+    if (dmSidebar) dmSidebar.style.display = 'none';
   } else if (channel.startsWith('dm:')) {
     var target = channel.substring(3);
-    headerBar.innerHTML = '<span class="channel-icon" style="color:var(--dm-color);">@</span> <span id="channelName" data-testid="text-channel-name" class="dm-label">' + escapeHtml(target) + '</span>';
-    document.getElementById('msgInput').placeholder = 'Message @' + target;
+    var uObj = getUserObj(target);
+    var dname = typeof uObj === 'string' ? uObj : (uObj.display_name || uObj.name || target);
+    var statusColors2 = {online:'#43b581',idle:'#faa61a',dnd:'#f04747',invisible:'#747f8d',offline:'#747f8d'};
+    var uStatus = typeof uObj === 'string' ? 'online' : (uObj.status || 'online');
+    var uPfp = typeof uObj === 'string' ? '' : (uObj.pfp || '');
+    var avatarHtml = uPfp
+      ? '<div style="width:22px;height:22px;border-radius:50%;background-image:url('+uPfp+');background-size:cover;background-position:center;flex-shrink:0;"></div>'
+      : '<div style="width:22px;height:22px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;">'+escapeHtml(dname.substring(0,2).toUpperCase())+'</div>';
+    var dotColor = statusColors2[uStatus] || statusColors2.online;
+    headerBar.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">'
+      + '<div style="position:relative;flex-shrink:0;">'
+      + avatarHtml
+      + '<div style="width:8px;height:8px;border-radius:50%;background:'+dotColor+';border:2px solid var(--bg-tertiary);position:absolute;bottom:-1px;right:-1px;"></div>'
+      + '</div>'
+      + '<span class="channel-icon" style="color:var(--dm-color);">@</span>'
+      + '<span id="channelName" data-testid="text-channel-name" class="dm-label" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(dname)+'</span>'
+      + '</div>'
+      + '<button id="dmShowProfileBtn" title="Toggle profile panel" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-muted);font-size:12px;padding:3px 9px;border-radius:5px;cursor:pointer;display:flex;align-items:center;gap:4px;">&#x1F464; Profile</button>';
+    document.getElementById('msgInput').placeholder = 'Message @' + dname;
+    document.getElementById('msgInput').disabled = false;
     if (dmUnread[target]) { dmUnread[target] = 0; renderDmChannels(); }
+    if (dmSidebar) updateDmProfileSidebar(target);
+    (function(t) {
+      var btn = document.getElementById('dmShowProfileBtn');
+      if (btn) btn.addEventListener('click', function() {
+        var s = document.getElementById('dmProfileSidebar');
+        if (s) {
+          if (s.style.display === 'none' || !s.style.display) { updateDmProfileSidebar(t); }
+          else { s.style.display = 'none'; }
+        }
+      });
+    })(target);
   } else if (channel.startsWith('gc:')) {
     var gcId = channel.substring(3);
     var gc = gcList[gcId];
     var gcName = gc ? gc.name : 'Group';
     headerBar.innerHTML = '<span class="channel-icon" style="color:var(--green);">#</span> <span id="channelName" data-testid="text-channel-name">' + escapeHtml(gcName) + '</span>';
     document.getElementById('msgInput').placeholder = 'Message #' + gcName;
+    document.getElementById('msgInput').disabled = false;
     if (gcUnread[gcId]) { gcUnread[gcId] = 0; renderGcChannels(); }
+    if (dmSidebar) dmSidebar.style.display = 'none';
   } else if (channel.startsWith('spy:')) {
     var parts = channel.substring(4);
     headerBar.innerHTML = '<span class="dm-spy-icon">SPY</span> <span id="channelName" data-testid="text-channel-name" style="color:var(--dm-color);">DM Spy: ' + escapeHtml(parts) + '</span>';
     document.getElementById('msgInput').placeholder = 'Viewing DMs (read-only)';
+    document.getElementById('msgInput').disabled = true;
+    if (dmSidebar) dmSidebar.style.display = 'none';
   }
   document.getElementById('msgInput').focus();
+}
+
+function updateDmProfileSidebar(target) {
+  var sidebar = document.getElementById('dmProfileSidebar');
+  if (!sidebar) return;
+  var uObj = getUserObj(target);
+  var displayName = typeof uObj === 'string' ? uObj : (uObj.display_name || uObj.name || target);
+  var pfp = typeof uObj === 'string' ? '' : (uObj.pfp || '');
+  var bio = typeof uObj === 'string' ? '' : (uObj.bio || '');
+  var status = typeof uObj === 'string' ? 'online' : (uObj.status || 'online');
+  var statusColorMap = {online:'#43b581',idle:'#faa61a',dnd:'#f04747',invisible:'#747f8d',offline:'#747f8d'};
+  var statusLabelMap = {online:'Online',idle:'Idle',dnd:'Do Not Disturb',invisible:'Invisible',offline:'Offline'};
+  var avatarEl = document.getElementById('dmPeerAvatarLarge');
+  if (avatarEl) {
+    if (pfp) {
+      avatarEl.style.backgroundImage = 'url(' + pfp + ')';
+      avatarEl.style.backgroundSize = 'cover';
+      avatarEl.style.backgroundPosition = 'center';
+      avatarEl.textContent = '';
+    } else {
+      avatarEl.style.backgroundImage = '';
+      avatarEl.style.backgroundSize = '';
+      avatarEl.textContent = displayName.substring(0,2).toUpperCase();
+    }
+  }
+  var dnEl = document.getElementById('dmPeerDisplayName');
+  if (dnEl) dnEl.textContent = displayName;
+  var unEl = document.getElementById('dmPeerUsername');
+  if (unEl) unEl.textContent = '@' + target;
+  var badge = document.getElementById('dmPeerStatusBadge');
+  if (badge) {
+    var sc = statusColorMap[status] || statusColorMap.online;
+    badge.innerHTML = '<div style="width:8px;height:8px;border-radius:50%;background:'+sc+';flex-shrink:0;"></div>' + (statusLabelMap[status] || 'Online');
+  }
+  var bioEl = document.getElementById('dmPeerBio');
+  if (bioEl) bioEl.textContent = bio || 'No bio set.';
+  var noteEl = document.getElementById('dmPeerNoteArea');
+  if (noteEl) {
+    var noteKey = 'peer_note_' + target;
+    noteEl.value = localStorage.getItem(noteKey) || '';
+    noteEl.oninput = function() { localStorage.setItem(noteKey, noteEl.value); };
+  }
+  var popOut = document.getElementById('dmPopOutBtn');
+  if (popOut) {
+    popOut.onclick = function() { openDmPanel(target, getUserObj(target)); };
+  }
+  var collapse = document.getElementById('dmSidebarCollapseBtn');
+  if (collapse) {
+    collapse.onclick = function() { sidebar.style.display = 'none'; };
+  }
+  var attachBtn2 = document.getElementById('dmViewAttachmentsBtn');
+  if (attachBtn2) {
+    attachBtn2.onclick = function() { showDmSharedImages(target); };
+  }
+  sidebar.style.display = 'flex';
+}
+
+function showDmSharedImages(target) {
+  var msgs = dmMessages[target] || [];
+  var imgs = msgs.filter(function(m) { return m.text && /^data:image\//i.test(m.text); });
+  if (imgs.length === 0) { showToast('No shared images in this DM yet.', 'info'); return; }
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:3000;display:flex;align-items:center;justify-content:center;';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--bg-primary);border-radius:10px;padding:18px;max-width:90vw;max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-width:280px;';
+  var header = document.createElement('div');
+  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;';
+  header.innerHTML = '<span style="font-weight:700;font-size:15px;color:var(--text-primary);">Shared Images ('+imgs.length+')</span>';
+  var closeBtn2 = document.createElement('button');
+  closeBtn2.textContent = '×';
+  closeBtn2.style.cssText = 'background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;';
+  closeBtn2.onclick = function() { document.body.removeChild(modal); };
+  header.appendChild(closeBtn2);
+  box.appendChild(header);
+  var grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px;';
+  imgs.forEach(function(m) {
+    var img = document.createElement('img');
+    img.src = m.text;
+    img.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer;';
+    img.onclick = function() { openLightbox(m.text); };
+    grid.appendChild(img);
+  });
+  box.appendChild(grid);
+  modal.appendChild(box);
+  modal.onclick = function(e) { if (e.target === modal) document.body.removeChild(modal); };
+  document.body.appendChild(modal);
+}
+
+function openLightbox(src) {
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:4000;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
+  var img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,0.5);';
+  modal.appendChild(img);
+  modal.onclick = function() { document.body.removeChild(modal); };
+  document.body.appendChild(modal);
 }
 
 function escapeHtml(s) {
@@ -1803,10 +2000,7 @@ function renderRichText(text) {
     img.className = 'msg-img-attachment';
     img.src = text;
     img.alt = 'Image';
-    img.addEventListener('click', function() {
-      var win = window.open('', '_blank');
-      win.document.write('<img src="' + text + '" style="max-width:100%;background:#111;" />');
-    });
+    img.addEventListener('click', function() { openLightbox(text); });
     container.appendChild(img);
     return container;
   }
@@ -1851,10 +2045,63 @@ function avatarColor(name) {
   return colors[Math.abs(h) % colors.length];
 }
 
+var msgReactions = {}; // key -> {emoji: count, ..., mine: [emoji,...]}
+
+function getMsgKey(m) {
+  return (m.sender || '') + '|' + (m.time || '') + '|' + (m.text || '').substring(0, 30);
+}
+
+function addReaction(msgKey, emoji) {
+  if (!msgReactions[msgKey]) msgReactions[msgKey] = {counts: {}, mine: []};
+  var r = msgReactions[msgKey];
+  if (r.mine.indexOf(emoji) >= 0) {
+    r.mine.splice(r.mine.indexOf(emoji), 1);
+    r.counts[emoji] = (r.counts[emoji] || 1) - 1;
+    if (r.counts[emoji] <= 0) delete r.counts[emoji];
+  } else {
+    r.mine.push(emoji);
+    r.counts[emoji] = (r.counts[emoji] || 0) + 1;
+  }
+  renderMessages();
+}
+
+function buildReactionBar(msgKey) {
+  var quickEmoji = ['👍','❤️','😂','😮','😢','🔥'];
+  var bar = document.createElement('div');
+  bar.className = 'msg-hover-actions';
+  quickEmoji.forEach(function(em) {
+    var btn = document.createElement('button');
+    btn.className = 'msg-reaction-btn';
+    btn.textContent = em;
+    btn.title = 'React ' + em;
+    btn.onclick = function(e) { e.stopPropagation(); addReaction(msgKey, em); };
+    bar.appendChild(btn);
+  });
+  return bar;
+}
+
+function buildReactionPills(msgKey) {
+  var data = msgReactions[msgKey];
+  if (!data || Object.keys(data.counts).length === 0) return null;
+  var row = document.createElement('div');
+  row.className = 'msg-reactions-row';
+  Object.keys(data.counts).forEach(function(em) {
+    if (data.counts[em] <= 0) return;
+    var pill = document.createElement('button');
+    pill.className = 'msg-reaction-pill' + (data.mine.indexOf(em) >= 0 ? ' mine' : '');
+    pill.innerHTML = em + ' <span style="font-size:11px;">' + data.counts[em] + '</span>';
+    pill.onclick = function(e) { e.stopPropagation(); addReaction(msgKey, em); };
+    row.appendChild(pill);
+  });
+  return row;
+}
+
 function makeFullMessageDiv(m) {
   var displaySender = m.display_name || m.sender || '?';
+  var msgKey = getMsgKey(m);
   var row = document.createElement('div');
   row.className = 'msg-full';
+  row.style.position = 'relative';
   var avatarCol = document.createElement('div');
   avatarCol.className = 'msg-avatar-col';
   var avatar = document.createElement('div');
@@ -1879,6 +2126,11 @@ function makeFullMessageDiv(m) {
   var nameEl = document.createElement('span');
   nameEl.className = 'msg-name' + (m.admin ? ' is-admin' : '');
   nameEl.textContent = displaySender;
+  nameEl.style.cursor = 'pointer';
+  nameEl.title = 'Click to DM';
+  nameEl.addEventListener('click', function() {
+    if (m.sender && m.sender !== myUsername) openDm(m.sender);
+  });
   header.appendChild(nameEl);
   if (m.admin) {
     var badge = document.createElement('span');
@@ -1894,15 +2146,23 @@ function makeFullMessageDiv(m) {
   content.appendChild(header);
   var body = renderRichText(m.text || '');
   content.appendChild(body);
+  var pills = buildReactionPills(msgKey);
+  if (pills) content.appendChild(pills);
   row.appendChild(content);
+  row.appendChild(buildReactionBar(msgKey));
   return row;
 }
 
 function makeGroupedMessageDiv(m) {
+  var msgKey = getMsgKey(m);
   var row = document.createElement('div');
   row.className = 'msg-grouped-row';
+  row.style.position = 'relative';
   var body = renderRichText(m.text || '');
   row.appendChild(body);
+  var pills = buildReactionPills(msgKey);
+  if (pills) { pills.style.paddingLeft = '52px'; row.appendChild(pills); }
+  row.appendChild(buildReactionBar(msgKey));
   return row;
 }
 
@@ -1972,16 +2232,29 @@ function renderDmChannels() {
   if (dmKeys.length === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
   dmKeys.forEach(function(target) {
+    var uObj = getUserObj(target);
+    var dname = typeof uObj === 'string' ? uObj : (uObj.display_name || uObj.name || target);
+    var pfp = typeof uObj === 'string' ? '' : (uObj.pfp || '');
+    var status = typeof uObj === 'string' ? 'online' : (uObj.status || 'offline');
+    var statusDotColor = {online:'#43b581',idle:'#faa61a',dnd:'#f04747',invisible:'#747f8d',offline:'#747f8d'}[status] || '#43b581';
     var item = document.createElement('div');
     item.className = 'channel-item' + (currentChannel === 'dm:' + target ? ' active' : '');
     item.setAttribute('data-testid', 'dm-channel-' + target);
-    var icon = document.createElement('span');
-    icon.className = 'channel-icon';
-    icon.style.color = 'var(--dm-color)';
-    icon.textContent = '@';
-    item.appendChild(icon);
+    item.style.cssText = 'padding:4px 8px;display:flex;align-items:center;gap:8px;border-radius:4px;cursor:pointer;';
+    var avatarWrap = document.createElement('div');
+    avatarWrap.style.cssText = 'position:relative;flex-shrink:0;';
+    var avatarEl = document.createElement('div');
+    avatarEl.style.cssText = 'width:26px;height:26px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;background-size:cover;background-position:center;';
+    if (pfp) { avatarEl.style.backgroundImage = 'url(' + pfp + ')'; }
+    else { avatarEl.textContent = dname.substring(0,2).toUpperCase(); }
+    var dot = document.createElement('div');
+    dot.style.cssText = 'position:absolute;bottom:-1px;right:-1px;width:8px;height:8px;border-radius:50%;border:2px solid var(--bg-secondary);background:'+statusDotColor+';';
+    avatarWrap.appendChild(avatarEl);
+    avatarWrap.appendChild(dot);
+    item.appendChild(avatarWrap);
     var nameSpan = document.createElement('span');
-    nameSpan.textContent = ' ' + target;
+    nameSpan.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;';
+    nameSpan.textContent = dname;
     item.appendChild(nameSpan);
     if (dmUnread[target] && dmUnread[target] > 0 && currentChannel !== 'dm:' + target) {
       var badge = document.createElement('span');
@@ -1990,7 +2263,7 @@ function renderDmChannels() {
       item.appendChild(badge);
     }
     item.addEventListener('click', function() {
-      openDmPanel(target, getUserObj(target));
+      openDm(target);
     });
     list.appendChild(item);
   });
@@ -2584,6 +2857,30 @@ var statusColors = { online: 'var(--green)', idle: '#f0b232', dnd: 'var(--red)',
 var typingUsers = {};
 var typingTimers = {};
 
+function showToast(msg, type) {
+  var container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+    document.body.appendChild(container);
+  }
+  var toast = document.createElement('div');
+  var bg = type === 'error' ? 'var(--red,#f04747)' : type === 'success' ? 'var(--green,#43b581)' : type === 'warn' ? '#f0b232' : 'var(--bg-tertiary)';
+  toast.style.cssText = 'padding:10px 16px;background:'+bg+';color:#fff;border-radius:8px;font-size:13px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,0.35);opacity:0;transform:translateY(8px);transition:opacity 0.2s,transform 0.2s;pointer-events:auto;max-width:300px;word-break:break-word;';
+  toast.textContent = msg;
+  container.appendChild(toast);
+  requestAnimationFrame(function() {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  });
+  setTimeout(function() {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(8px)';
+    setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 220);
+  }, 3200);
+}
+
 var lastUserList = [];
 
 function getUserObj(username) {
@@ -2633,7 +2930,7 @@ function renderUsers(list) {
       div.title = 'Click to DM ' + name;
       div.addEventListener('click', function(e) {
         if (e.target.tagName === 'BUTTON') return;
-        openDmPanel(name, user);
+        openDm(name);
       });
     }
     if (isOwner && name !== myUsername) {
@@ -2662,6 +2959,11 @@ function renderUsers(list) {
     }
     ul.appendChild(div);
   });
+  // Refresh DM profile sidebar if currently viewing a DM
+  if (currentChannel && currentChannel.startsWith('dm:')) {
+    var t = currentChannel.substring(3);
+    updateDmProfileSidebar(t);
+  }
 }
 
 function showTypingIndicator(username, channel) {
@@ -4576,7 +4878,7 @@ function convertTabToEmbedded(tabId) {
   }
 
   function gameProxyUrl(url) {
-    return '/proxy?url=' + encodeURIComponent(url);
+    return url;
   }
 
   function openEmbeddedGame(game) {
@@ -4869,46 +5171,78 @@ function convertTabToBrowser(tabId) {
     if (!url) return;
     if (!url.match(/^https?:\/\//i)) {
       if (url.indexOf('.') > 0 && url.indexOf(' ') === -1) url = 'https://' + url;
-      else url = 'https://www.google.com/search?q=' + encodeURIComponent(url);
+      else {
+        url = 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(url);
+      }
     }
+    // YouTube watch link → embed
     var ytMatch = url.match(/(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/)([a-zA-Z0-9_\-]{11})/);
-    var ytSearch = !ytMatch && url.match(/youtube\.com(?:\/results)?[?&]search_query=([^&]+)/);
-    var ytHome = !ytMatch && !ytSearch && url.match(/youtube\.com\/?$/);
+    // YouTube search
+    var ytSearch = !ytMatch && url.match(/youtube\.com(?:\/results)?\?(?:.*&)?search_query=([^&]+)/);
+    // YouTube home
+    var ytHome = !ytMatch && !ytSearch && /youtube\.com\/?$/.test(url);
+    // Google search → DDG lite
+    var gSearch = !ytMatch && !ytSearch && !ytHome && url.match(/google\.com\/search\?(?:.*&)?q=([^&]+)/);
+    // DDG normal → DDG lite
+    var ddgSearch = !ytMatch && !ytSearch && !ytHome && !gSearch && url.match(/duckduckgo\.com\/?\?(?:.*&)?q=([^&]+)/);
+
     if (ytMatch) {
       urlInput.value = url;
       frame.src = 'https://www.youtube.com/embed/' + ytMatch[1] + '?autoplay=0&rel=0';
       frame.style.display = 'block';
       homePage.style.display = 'none';
       blockedMsg.style.display = 'none';
+      openExtBtn.onclick = function() { window.open(url, '_blank'); };
+      newWindowBtn.onclick = function() { window.open(url, '_blank'); };
       return;
     }
-    if (ytSearch || ytHome) {
+    if (ytSearch) {
+      var q = ytSearch[1];
       urlInput.value = url;
       frame.src = 'https://www.youtube.com/embed/videoseries?list=PLbpi6ZahtOH6Ar_3GPy3workbIjZHz71b';
-      frame.style.display = 'block';
+      // Show a YouTube search helper instead of a broken embed
+      frame.style.display = 'none';
       homePage.style.display = 'none';
-      blockedMsg.style.display = 'none';
+      blockedMsg.innerHTML = '<div style="font-size:28px;">▶</div>'
+        + '<div style="font-size:16px;font-weight:700;color:var(--text-primary);">YouTube Search</div>'
+        + '<div style="font-size:13px;color:var(--text-muted);max-width:300px;text-align:center;">YouTube blocks embedding. Paste a direct video URL (youtube.com/watch?v=...) to embed it, or open YouTube in a new tab.</div>';
+      var searchExtBtn = document.createElement('button');
+      searchExtBtn.textContent = 'Search "' + decodeURIComponent(q) + '" on YouTube ↗';
+      searchExtBtn.style.cssText = 'margin-top:10px;padding:10px 18px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;';
+      searchExtBtn.onclick = function() { window.open('https://www.youtube.com/results?search_query=' + q, '_blank'); };
+      blockedMsg.appendChild(searchExtBtn);
+      blockedMsg.style.display = 'flex';
       return;
     }
-    var gSearch = url.match(/google\.com\/search\?(?:.*&)?q=([^&]+)/);
+    if (ytHome) {
+      urlInput.value = url;
+      frame.style.display = 'none';
+      homePage.style.display = 'none';
+      blockedMsg.innerHTML = '<div style="font-size:28px;">▶</div>'
+        + '<div style="font-size:16px;font-weight:700;color:var(--text-primary);">YouTube</div>'
+        + '<div style="font-size:13px;color:var(--text-muted);max-width:320px;text-align:center;">YouTube blocks embedding of its homepage. Paste a video link to watch it here, or search and open in a new tab.</div>';
+      var ytExtBtn = document.createElement('button');
+      ytExtBtn.textContent = 'Open YouTube ↗';
+      ytExtBtn.style.cssText = 'margin-top:10px;padding:10px 18px;background:#ff0000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;';
+      ytExtBtn.onclick = function() { window.open('https://www.youtube.com', '_blank'); };
+      blockedMsg.appendChild(ytExtBtn);
+      blockedMsg.style.display = 'flex';
+      return;
+    }
     if (gSearch) {
-      url = 'https://duckduckgo.com/?q=' + gSearch[1] + '&ia=web';
+      url = 'https://lite.duckduckgo.com/lite/?q=' + gSearch[1];
+    }
+    if (ddgSearch) {
+      url = 'https://lite.duckduckgo.com/lite/?q=' + ddgSearch[1];
     }
     urlInput.value = url;
-    var proxied = '/proxy?url=' + encodeURIComponent(url);
-    frame.src = proxied;
+    frame.src = url;
     frame.style.display = 'block';
     homePage.style.display = 'none';
     blockedMsg.style.display = 'none';
     openExtBtn.onclick = function() { window.open(url, '_blank'); };
     newWindowBtn.onclick = function() { window.open(url, '_blank'); };
-    var loadTimer = setTimeout(function() {
-      try {
-        var doc = frame.contentDocument || frame.contentWindow.document;
-        if (!doc || doc.readyState === 'complete') return;
-      } catch(e) {}
-    }, 3000);
-    frame.onload = function() { clearTimeout(loadTimer); };
+    frame.onload = function() {};
     frame.onerror = function() { blockedMsg.style.display = 'flex'; frame.style.display = 'none'; };
   }
 
@@ -5169,6 +5503,7 @@ def user_list():
             "name": info["username"],
             "display_name": info.get("display_name", info["username"]),
             "pfp": info.get("pfp_data", ""),
+            "bio": info.get("bio", ""),
             "status": info.get("status", "online")
         })
     for sinfo in staff_connected.values():
@@ -5177,6 +5512,7 @@ def user_list():
                 "name": sinfo["username"],
                 "display_name": sinfo.get("display_name", sinfo["username"]),
                 "pfp": "",
+                "bio": sinfo.get("bio", ""),
                 "status": sinfo.get("status", "online")
             })
     return users
@@ -6093,6 +6429,10 @@ async def handle_client_ws(request):
                     new_dn = data.get("display_name", "").strip()[:30]
                     if new_dn and ws in connected:
                         connected[ws]["display_name"] = new_dn
+                        if "pfp_data" in data:
+                            connected[ws]["pfp_data"] = data.get("pfp_data", "")
+                        if "bio" in data:
+                            connected[ws]["bio"] = data.get("bio", "")
                         await send_user_list()
 
             except Exception as e:
