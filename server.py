@@ -103,14 +103,18 @@ _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 db_pool = None
-CURRENT_VERSION = "2.0"
+CURRENT_VERSION = "2.1"
 CHANGELOG_NOTES = (
-    "<b>What's new in v2.0</b><br><br>"
-    "&#x2022; <b>Account System</b> — Sign up &amp; log in with a persistent account<br>"
-    "&#x2022; <b>Profile Customization</b> — Display name, bio, and profile picture<br>"
-    "&#x2022; <b>Garlic Phone</b> — New multiplayer drawing &amp; writing game<br>"
-    "&#x2022; <b>Game Fixes</b> — All games clean up properly; keyboard works everywhere<br>"
-    "&#x2022; <b>Changelog Popups</b> — See what's new on each update<br>"
+    "<b>What's new in v2.1</b><br><br>"
+    "&#x2022; <b>PFP Crop Tool</b> — Drag &amp; zoom to perfectly crop your profile picture<br>"
+    "&#x2022; <b>Scroll Button</b> — Jump-to-latest button with unread count badge<br>"
+    "&#x2022; <b>Smart Auto-scroll</b> — Chat no longer yanks you back when scrolled up<br>"
+    "&#x2022; <b>DM Side Panel</b> — Click any user to open a slide-in DM panel<br>"
+    "&#x2022; <b>Browser Tab</b> — YouTube videos now embed; Google searches redirect to DuckDuckGo<br>"
+    "&#x2022; <b>Games Library</b> — 100+ working games with categories; duplicates removed<br>"
+    "&#x2022; <b>Browser Homepage</b> — Quick-access bookmarks on the browser start page<br>"
+    "<br><b>Previously in v2.0</b><br>"
+    "&#x2022; Account system, persistent profiles, Garlic Phone game, changelog popups<br>"
 )
 
 
@@ -823,6 +827,7 @@ header h1 { font-size: 16px; font-weight: 600; }
   width: 28px; height: 28px; border-radius: 50%; background: var(--accent);
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 600; color: #fff; flex-shrink: 0;
+  background-size: cover; background-position: center;
 }
 .user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .user-actions { display: flex; gap: 4px; visibility: hidden; }
@@ -997,7 +1002,7 @@ header h1 { font-size: 16px; font-weight: 600; }
 }
 .channel-header .dm-label { color: var(--dm-color); }
 
-#messages { flex: 1; overflow-y: auto; padding: 16px 16px; min-height: 0; }
+#messages { flex: 1; overflow-y: auto; padding: 16px 16px; min-height: 0; position: relative; }
 .msg { padding: var(--msg-padding, 2px 8px); border-radius: 4px; line-height: 1.4; }
 .msg:hover { background: var(--bg-message-hover); }
 .msg-inline { padding: 4px 8px; display: flex; align-items: baseline; gap: 0; flex-wrap: wrap; }
@@ -1124,6 +1129,7 @@ header h1 { font-size: 16px; font-weight: 600; }
   width: 36px; height: 36px; border-radius: 50%; background: var(--accent);
   display: flex; align-items: center; justify-content: center;
   font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; user-select: none;
+  background-size: cover; background-position: center;
 }
 .msg-full {
   display: flex; align-items: flex-start; gap: 12px; padding: 4px 8px 2px;
@@ -1434,6 +1440,26 @@ body.theme-rose {
   </div>
 </div>
 
+<!-- PFP Crop Modal -->
+<div id="pfpCropModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:3500;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-primary);border-radius:14px;padding:24px;max-width:360px;width:95%;position:relative;">
+    <h3 style="margin:0 0 14px;font-size:16px;font-weight:700;color:var(--text-primary);">Crop Profile Picture</h3>
+    <div id="pfpCropArea" style="position:relative;width:240px;height:240px;margin:0 auto 10px;overflow:hidden;border-radius:50%;border:3px solid var(--accent);cursor:move;user-select:none;background:#111;touch-action:none;">
+      <img id="pfpCropImg" style="position:absolute;transform-origin:0 0;pointer-events:none;max-width:none;" src="" alt="" />
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <span style="font-size:13px;">🔍</span>
+      <input type="range" id="pfpCropZoom" min="0.5" max="4" step="0.01" value="1" style="flex:1;accent-color:var(--accent);" />
+      <span style="font-size:13px;">🔎</span>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);text-align:center;margin-bottom:14px;">Drag to reposition · Slider to zoom</div>
+    <div style="display:flex;gap:8px;">
+      <button id="pfpCropCancel" style="flex:1;padding:10px;background:var(--bg-tertiary);color:var(--text-secondary);border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">Cancel</button>
+      <button id="pfpCropApply" style="flex:2;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">✓ Apply</button>
+    </div>
+  </div>
+</div>
+
 <!-- PFP Viewer Modal -->
 <div id="pfpViewerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:3100;align-items:center;justify-content:center;cursor:pointer;" onclick="this.style.display='none'">
   <div style="position:relative;max-width:90vw;max-height:90vh;" onclick="event.stopPropagation()">
@@ -1536,8 +1562,11 @@ body.theme-rose {
             <div class="channel-header" id="channelHeaderBar">
               <span class="channel-icon">#</span> <span id="channelName" data-testid="text-channel-name">General</span>
             </div>
-            <div id="messages" data-testid="list-messages">
-              <div class="empty" id="emptyState">No messages yet</div>
+            <div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0;">
+              <div id="messages" data-testid="list-messages">
+                <div class="empty" id="emptyState">No messages yet</div>
+              </div>
+              <button id="scrollToBottomBtn" title="Jump to latest" style="display:none;position:absolute;bottom:12px;right:18px;z-index:90;background:var(--accent);color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,0.4);align-items:center;justify-content:center;padding:0;line-height:1;">↓</button>
             </div>
             <div class="input-bar" id="inputBar">
               <div class="image-preview-bar" id="imagePreviewBar" style="display:none;"></div>
@@ -1903,6 +1932,7 @@ function renderMessages() {
   }
   var lastSender = null;
   var lastTime = 0;
+  var wasAtBottom = (el.scrollHeight - el.scrollTop - el.clientHeight) < 80;
   msgs.forEach(function(m) {
     if (m.type === 'system') {
       var wrapper = document.createElement('div');
@@ -1924,7 +1954,7 @@ function renderMessages() {
       }
     }
   });
-  el.scrollTop = el.scrollHeight;
+  if (wasAtBottom) el.scrollTop = el.scrollHeight;
 }
 
 function renderSidebar() {
@@ -2775,11 +2805,11 @@ function handleMessage(data) {
   } else if (data.type === 'chat') {
     var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     generalMessages.push({sender: data.sender, display_name: data.display_name || data.sender, pfp: data.pfp || '', text: data.text, admin: data.admin || false, time: time});
-    if (currentChannel === 'general') renderMessages();
+    if (currentChannel === 'general') { renderMessages(); if (data.sender !== myUsername && typeof window._notifyScrollBtn === 'function') window._notifyScrollBtn(); }
     if (data.sender !== myUsername) playNotifSound();
   } else if (data.type === 'system') {
     generalMessages.push({type: 'system', text: data.text});
-    if (currentChannel === 'general') renderMessages();
+    if (currentChannel === 'general') { renderMessages(); if (typeof window._notifyScrollBtn === 'function') window._notifyScrollBtn(); }
   } else if (data.type === 'users') {
     renderUsers(data.list);
   } else if (data.type === 'banned_list') {
@@ -3068,17 +3098,110 @@ document.getElementById('profilePfpPreview').addEventListener('click', function(
 document.getElementById('pfpFileInput').addEventListener('change', function(e) {
   var file = e.target.files[0];
   if (!file) return;
-  if (file.size > 2 * 1024 * 1024) { alert('Image must be under 2MB.'); return; }
+  if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5MB.'); return; }
   var reader = new FileReader();
-  reader.onload = function(ev) {
-    _profilePfpPending = ev.target.result;
-    var preview = document.getElementById('profilePfpPreview');
-    preview.style.backgroundImage = 'url(' + _profilePfpPending + ')';
-    preview.style.backgroundSize = 'cover';
-    preview.style.backgroundPosition = 'center';
-    preview.textContent = '';
-  };
+  reader.onload = function(ev) { openPfpCrop(ev.target.result); };
   reader.readAsDataURL(file);
+  this.value = '';
+});
+
+var _pfpCrop = {x:0, y:0, scale:1, imgNatW:0, imgNatH:0, dragging:false, startMX:0, startMY:0, startX:0, startY:0};
+var CROP_SIZE = 240;
+
+function openPfpCrop(src) {
+  var modal = document.getElementById('pfpCropModal');
+  var img = document.getElementById('pfpCropImg');
+  var zoom = document.getElementById('pfpCropZoom');
+  zoom.value = 1;
+  _pfpCrop = {x:0, y:0, scale:1, imgNatW:0, imgNatH:0, dragging:false, startMX:0, startMY:0, startX:0, startY:0};
+  img.src = src;
+  modal.style.display = 'flex';
+  img.onload = function() {
+    _pfpCrop.imgNatW = img.naturalWidth;
+    _pfpCrop.imgNatH = img.naturalHeight;
+    var fit = CROP_SIZE / Math.min(_pfpCrop.imgNatW, _pfpCrop.imgNatH);
+    _pfpCrop.scale = fit;
+    zoom.min = Math.min(fit, 0.5).toFixed(3);
+    zoom.max = Math.max(fit * 4, 4).toFixed(3);
+    zoom.value = fit;
+    _pfpCrop.x = (CROP_SIZE - _pfpCrop.imgNatW * fit) / 2;
+    _pfpCrop.y = (CROP_SIZE - _pfpCrop.imgNatH * fit) / 2;
+    updateCropTransform();
+  };
+}
+
+function updateCropTransform() {
+  var img = document.getElementById('pfpCropImg');
+  img.style.left = _pfpCrop.x + 'px';
+  img.style.top = _pfpCrop.y + 'px';
+  img.style.width = (_pfpCrop.imgNatW * _pfpCrop.scale) + 'px';
+  img.style.height = (_pfpCrop.imgNatH * _pfpCrop.scale) + 'px';
+}
+
+var _cropArea = document.getElementById('pfpCropArea');
+_cropArea.addEventListener('mousedown', function(e) {
+  _pfpCrop.dragging = true;
+  _pfpCrop.startMX = e.clientX; _pfpCrop.startMY = e.clientY;
+  _pfpCrop.startX = _pfpCrop.x; _pfpCrop.startY = _pfpCrop.y;
+  e.preventDefault();
+});
+document.addEventListener('mousemove', function(e) {
+  if (!_pfpCrop.dragging) return;
+  _pfpCrop.x = _pfpCrop.startX + (e.clientX - _pfpCrop.startMX);
+  _pfpCrop.y = _pfpCrop.startY + (e.clientY - _pfpCrop.startMY);
+  updateCropTransform();
+});
+document.addEventListener('mouseup', function() { _pfpCrop.dragging = false; });
+_cropArea.addEventListener('touchstart', function(e) {
+  var t = e.touches[0];
+  _pfpCrop.dragging = true;
+  _pfpCrop.startMX = t.clientX; _pfpCrop.startMY = t.clientY;
+  _pfpCrop.startX = _pfpCrop.x; _pfpCrop.startY = _pfpCrop.y;
+  e.preventDefault();
+}, {passive:false});
+document.addEventListener('touchmove', function(e) {
+  if (!_pfpCrop.dragging) return;
+  var t = e.touches[0];
+  _pfpCrop.x = _pfpCrop.startX + (t.clientX - _pfpCrop.startMX);
+  _pfpCrop.y = _pfpCrop.startY + (t.clientY - _pfpCrop.startMY);
+  updateCropTransform();
+}, {passive:false});
+document.addEventListener('touchend', function() { _pfpCrop.dragging = false; });
+
+document.getElementById('pfpCropZoom').addEventListener('input', function() {
+  var newScale = parseFloat(this.value);
+  var cx = CROP_SIZE / 2, cy = CROP_SIZE / 2;
+  _pfpCrop.x = cx - (cx - _pfpCrop.x) * newScale / _pfpCrop.scale;
+  _pfpCrop.y = cy - (cy - _pfpCrop.y) * newScale / _pfpCrop.scale;
+  _pfpCrop.scale = newScale;
+  updateCropTransform();
+});
+
+document.getElementById('pfpCropCancel').addEventListener('click', function() {
+  document.getElementById('pfpCropModal').style.display = 'none';
+});
+
+document.getElementById('pfpCropApply').addEventListener('click', function() {
+  var canvas = document.createElement('canvas');
+  canvas.width = 200; canvas.height = 200;
+  var ctx = canvas.getContext('2d');
+  ctx.beginPath();
+  ctx.arc(100, 100, 100, 0, Math.PI * 2);
+  ctx.clip();
+  var img = document.getElementById('pfpCropImg');
+  var srcX = -_pfpCrop.x / _pfpCrop.scale;
+  var srcY = -_pfpCrop.y / _pfpCrop.scale;
+  var srcW = CROP_SIZE / _pfpCrop.scale;
+  var srcH = CROP_SIZE / _pfpCrop.scale;
+  ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, 200, 200);
+  var dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+  document.getElementById('pfpCropModal').style.display = 'none';
+  _profilePfpPending = dataUrl;
+  var preview = document.getElementById('profilePfpPreview');
+  preview.style.backgroundImage = 'url(' + dataUrl + ')';
+  preview.style.backgroundSize = 'cover';
+  preview.style.backgroundPosition = 'center';
+  preview.textContent = '';
 });
 
 document.getElementById('saveProfileBtn').addEventListener('click', function() {
@@ -3213,6 +3336,39 @@ function renderDmPanel() {
   });
   el.scrollTop = el.scrollHeight;
 }
+
+// === SCROLL TO BOTTOM BUTTON ===
+var _scrollUnread = 0;
+(function() {
+  var msgEl = document.getElementById('messages');
+  var btn = document.getElementById('scrollToBottomBtn');
+  if (!msgEl || !btn) return;
+  btn.innerHTML = '↓';
+  btn.addEventListener('click', function() {
+    msgEl.scrollTop = msgEl.scrollHeight;
+    _scrollUnread = 0;
+    btn.innerHTML = '↓';
+    btn.style.display = 'none';
+  });
+  msgEl.addEventListener('scroll', function() {
+    var distFromBottom = msgEl.scrollHeight - msgEl.scrollTop - msgEl.clientHeight;
+    if (distFromBottom < 60) {
+      _scrollUnread = 0;
+      btn.innerHTML = '↓';
+      btn.style.display = 'none';
+    } else {
+      btn.style.display = 'flex';
+    }
+  });
+  window._notifyScrollBtn = function() {
+    var distFromBottom = msgEl.scrollHeight - msgEl.scrollTop - msgEl.clientHeight;
+    if (distFromBottom > 60) {
+      _scrollUnread++;
+      btn.innerHTML = _scrollUnread > 0 ? '<span style="font-size:11px;font-weight:700;">' + (_scrollUnread > 99 ? '99+' : _scrollUnread) + '</span>' : '↓';
+      btn.style.display = 'flex';
+    }
+  };
+})();
 
 document.getElementById('dmPanelSendBtn').addEventListener('click', function() {
   var inp = document.getElementById('dmPanelInput');
@@ -3914,8 +4070,105 @@ function convertTabToGames(tabId) {
 }
 
 var embeddedGamesList = [
-  {name:'Slope',url:'https://www.crazygames.com/embed/slope',cat:'action',emoji:'🎿'},
-  {name:'Run 3',url:'https://www.crazygames.com/embed/run-3',cat:'action',emoji:'🏃'},
+  // === MULTIPLAYER .io (always work in iframes) ===
+  {name:'Krunker.io',url:'https://krunker.io',cat:'multiplayer',emoji:'🔫'},
+  {name:'Skribbl.io',url:'https://skribbl.io',cat:'multiplayer',emoji:'🎨'},
+  {name:'Slither.io',url:'https://slither.io',cat:'multiplayer',emoji:'🐍'},
+  {name:'Gartic.io',url:'https://gartic.io',cat:'multiplayer',emoji:'🖌️'},
+  {name:'1v1.LOL',url:'https://1v1.lol',cat:'multiplayer',emoji:'🏗️'},
+  {name:'Shell Shockers',url:'https://shellshock.io',cat:'multiplayer',emoji:'🥚'},
+  {name:'Zombs Royale',url:'https://zombsroyale.io',cat:'multiplayer',emoji:'💀'},
+  {name:'Warbrokers.io',url:'https://warbrokers.io',cat:'multiplayer',emoji:'💂'},
+  {name:'Diep.io',url:'https://diep.io',cat:'multiplayer',emoji:'💣'},
+  {name:'MooMoo.io',url:'https://moomoo.io',cat:'multiplayer',emoji:'🐄'},
+  {name:'Deeeep.io',url:'https://deeeep.io',cat:'multiplayer',emoji:'🐠'},
+  {name:'Stabfish.io',url:'https://stabfish.io',cat:'multiplayer',emoji:'🐟'},
+  {name:'Narrow One',url:'https://narrow.one',cat:'multiplayer',emoji:'🏹'},
+  {name:'Smash Karts',url:'https://smashkarts.io',cat:'multiplayer',emoji:'🚗'},
+  {name:'Venge.io',url:'https://venge.io',cat:'multiplayer',emoji:'🔫'},
+  {name:'Ev.io',url:'https://ev.io',cat:'multiplayer',emoji:'👾'},
+  {name:'Sketchful.io',url:'https://sketchful.io',cat:'multiplayer',emoji:'✏️'},
+  {name:'Pokemon Showdown',url:'https://pokemonshowdown.com',cat:'strategy',emoji:'⚡'},
+  {name:'Agar.io',url:'https://agar.io',cat:'multiplayer',emoji:'🔵'},
+  {name:'Paper.io',url:'https://paper-io.com',cat:'multiplayer',emoji:'📄'},
+  {name:'Splix.io',url:'https://splix.io',cat:'multiplayer',emoji:'🟩'},
+  {name:'Lordz.io',url:'https://www.lordz.io',cat:'multiplayer',emoji:'⚔️'},
+  {name:'Wings.io',url:'https://wings.io',cat:'multiplayer',emoji:'✈️'},
+  {name:'Superhex.io',url:'https://superhex.io',cat:'multiplayer',emoji:'🔷'},
+  {name:'Bruh.io',url:'https://bruh.io',cat:'multiplayer',emoji:'😐'},
+  // === TYPING ===
+  {name:'Monkeytype',url:'https://monkeytype.com',cat:'action',emoji:'⌨️'},
+  {name:'TypeRacer',url:'https://play.typeracer.com',cat:'action',emoji:'⌨️'},
+  {name:'10FastFingers',url:'https://10fastfingers.com',cat:'action',emoji:'⌨️'},
+  {name:'Keybr',url:'https://www.keybr.com',cat:'action',emoji:'⌨️'},
+  // === PUZZLE (GitHub Pages / indie - no X-Frame-Options) ===
+  {name:'2048',url:'https://gabrielecirulli.github.io/2048/',cat:'puzzle',emoji:'🔢'},
+  {name:'Jstris (Tetris)',url:'https://jstris.jezevec10.com',cat:'puzzle',emoji:'🧩'},
+  {name:'Infinite Craft',url:'https://neal.fun/infinite-craft/',cat:'puzzle',emoji:'✨'},
+  {name:'Password Game',url:'https://neal.fun/password-game/',cat:'puzzle',emoji:'🔐'},
+  {name:'Wordle',url:'https://wordplay.com',cat:'puzzle',emoji:'📝'},
+  {name:'Minesweeper Online',url:'https://minesweeper.online',cat:'puzzle',emoji:'💣'},
+  {name:'Sudoku',url:'https://sudoku.com',cat:'puzzle',emoji:'🔢'},
+  {name:'Connections',url:'https://connections.swellgarfo.com',cat:'puzzle',emoji:'🔗'},
+  {name:'Tictactoe',url:'https://playtictactoe.org',cat:'puzzle',emoji:'❌'},
+  {name:'Crossword',url:'https://www.xwords-game.com',cat:'puzzle',emoji:'📰'},
+  // === IDLE / CLICKER ===
+  {name:'Cookie Clicker',url:'https://orteil.dashnet.org/cookieclicker/',cat:'idle',emoji:'🍪'},
+  {name:'Universal Paperclips',url:'https://www.decisionproblem.com/paperclips/index2.html',cat:'idle',emoji:'📎'},
+  {name:'Candy Box 2',url:'https://candybox2.github.io',cat:'idle',emoji:'🍬'},
+  {name:'A Dark Room',url:'https://adarkroom.doublespeakgames.com',cat:'idle',emoji:'🕯️'},
+  // === ACTION / ADVENTURE (direct host, likely no X-Frame-Options) ===
+  {name:'Minecraft Classic',url:'https://classic.minecraft.net',cat:'adventure',emoji:'⛏️'},
+  {name:'Townscaper',url:'https://oskarstalberg.com/Townscaper/',cat:'adventure',emoji:'🏘️'},
+  {name:'Chrome Dino',url:'https://chromedino.com',cat:'action',emoji:'🦕'},
+  {name:'Line Rider',url:'https://www.linerider.com',cat:'action',emoji:'🛷'},
+  {name:'Dungeon Crawler',url:'https://browserquest.mozilla.org',cat:'adventure',emoji:'⚔️'},
+  // === NEAL.FUN ===
+  {name:'Neal: Traffic',url:'https://neal.fun/traffic/',cat:'puzzle',emoji:'🚗'},
+  {name:'Neal: Spend Gates Money',url:'https://neal.fun/spend/',cat:'idle',emoji:'💰'},
+  {name:'Neal: Absurd Trolley',url:'https://neal.fun/absurd-trolley-problems/',cat:'puzzle',emoji:'🚃'},
+  {name:'Neal: Universe Size',url:'https://neal.fun/universe/',cat:'adventure',emoji:'🌌'},
+  {name:'Neal: Life Stats',url:'https://neal.fun/life-stats/',cat:'puzzle',emoji:'📊'},
+  // === STRATEGY ===
+  {name:'Lichess (Chess)',url:'https://lichess.org',cat:'strategy',emoji:'♟️'},
+  {name:'GeoGuessr Free',url:'https://www.geoguessr.com/free',cat:'adventure',emoji:'🌍'},
+  {name:'Sporcle',url:'https://www.sporcle.com',cat:'puzzle',emoji:'🧠'},
+  // === FUN / MISC ===
+  {name:'HackerTyper',url:'https://hackertyper.net',cat:'action',emoji:'💻'},
+  {name:'Pointer Pointer',url:'https://pointerpointer.com',cat:'puzzle',emoji:'👆'},
+  {name:'Find the Invisible Cow',url:'https://findtheinvisiblecow.com',cat:'action',emoji:'🐄'},
+  {name:'Patatap',url:'https://patatap.com',cat:'action',emoji:'🎵'},
+  {name:'Silk',url:'https://weavesilk.com',cat:'action',emoji:'🌸'},
+  {name:'Drawasaurus',url:'https://www.drawasaurus.org',cat:'multiplayer',emoji:'🦕'},
+  {name:'skribbl.io (alt)',url:'https://sketchful.io',cat:'multiplayer',emoji:'🎨'},
+  // === CLASSIC GAMES (old sites, likely embeddable) ===
+  {name:'Slope',url:'https://slope.game',cat:'action',emoji:'🎿'},
+  {name:'Run 3',url:'https://www.google.com/search?q=run+3+game',cat:'action',emoji:'🏃'},
+  {name:'Retro Bowl',url:'https://retrobowl.me',cat:'sports',emoji:'🏈'},
+  {name:'Smash Karts (alt)',url:'https://smashkarts.io',cat:'racing',emoji:'🚗'},
+  // === MUSIC / CREATIVE ===
+  {name:'Chrome Music Lab',url:'https://musiclab.chromeexperiments.com',cat:'action',emoji:'🎹'},
+  {name:'AutoDraw',url:'https://www.autodraw.com',cat:'action',emoji:'✏️'},
+  {name:'Make Art',url:'https://make.art',cat:'action',emoji:'🎨'},
+  // === MORE MULTIPLAYER ===
+  {name:'Hordes.io',url:'https://hordes.io',cat:'multiplayer',emoji:'⚔️'},
+  {name:'Starblast.io',url:'https://starblast.io',cat:'multiplayer',emoji:'🚀'},
+  {name:'Territorial.io',url:'https://territorial.io',cat:'strategy',emoji:'🗺️'},
+  {name:'Generals.io',url:'https://generals.io',cat:'strategy',emoji:'🗺️'},
+  // === IDLE ===
+  {name:'Universal Paperclips',url:'https://www.decisionproblem.com/paperclips/index2.html',cat:'idle',emoji:'📎'},
+  {name:'Candy Box 2',url:'https://candybox2.github.io',cat:'idle',emoji:'🍬'},
+  {name:'A Dark Room',url:'https://adarkroom.doublespeakgames.com',cat:'idle',emoji:'🕯️'},
+  // === ADDITIONAL NEAL.FUN ===
+  {name:'Neal: Draw Logos',url:'https://neal.fun/logo-quiz/',cat:'puzzle',emoji:'🎨'},
+  {name:'Neal: Artifacts',url:'https://neal.fun/internet-artifacts/',cat:'adventure',emoji:'🌐'},
+  // === MORE MISC ===
+  {name:'Chrome Dino',url:'https://chromedino.com',cat:'action',emoji:'🦕'},
+  {name:'Townscaper',url:'https://oskarstalberg.com/Townscaper/',cat:'adventure',emoji:'🏘️'},
+  {name:'Minecraft Classic',url:'https://classic.minecraft.net',cat:'adventure',emoji:'⛏️'},
+];
+// (old list removed)
+var _REMOVE_OLD_LIST_ = (function() { var x = [
   {name:'OvO',url:'https://www.crazygames.com/embed/ovo',cat:'action',emoji:'💫'},
   {name:'Stickman Hook',url:'https://www.crazygames.com/embed/stickman-hook',cat:'action',emoji:'🪝'},
   {name:'Smash Karts',url:'https://www.crazygames.com/embed/smash-karts',cat:'multiplayer',emoji:'🚗'},
@@ -4252,8 +4505,8 @@ var embeddedGamesList = [
   {name:'Cyber Surfer',url:'https://www.crazygames.com/embed/cyber-surfer',cat:'action',emoji:'🛹'},
   {name:'Hanger',url:'https://www.crazygames.com/embed/hanger',cat:'action',emoji:'🔗'},
   {name:'Hanger 2',url:'https://www.crazygames.com/embed/hanger-2',cat:'action',emoji:'🔗'},
-  {name:'Elastoman',url:'https://www.crazygames.com/embed/elastoman',cat:'action',emoji:'🤸'},
-];
+  {name:'Elastoman',url:'https://www.crazygames.com/embed/elastoman',cat:'action',emoji:'🤸'}
+]; return x; })();
 
 var embeddedGamesCats = ['all','action','puzzle','racing','sports','strategy','idle','multiplayer','adventure'];
 var embeddedCatLabels = {all:'All',action:'Action',puzzle:'Puzzle',racing:'Racing',sports:'Sports',strategy:'Strategy',idle:'Idle/Clicker',multiplayer:'Multiplayer',adventure:'Adventure'};
@@ -4567,7 +4820,18 @@ function convertTabToBrowser(tabId) {
   homePage.appendChild(hSub);
   var quickLinks = document.createElement('div');
   quickLinks.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;';
-  var bookmarks = [{n:'Google',u:'https://google.com'},{n:'YouTube',u:'https://youtube.com'},{n:'Wikipedia',u:'https://wikipedia.org'},{n:'Reddit',u:'https://reddit.com'},{n:'GitHub',u:'https://github.com'}];
+  var bookmarks = [
+    {n:'🔍 Search',u:'https://duckduckgo.com'},
+    {n:'▶ YouTube',u:'https://youtube.com'},
+    {n:'📖 Wikipedia',u:'https://wikipedia.org'},
+    {n:'🌐 Reddit',u:'https://reddit.com'},
+    {n:'🐙 GitHub',u:'https://github.com'},
+    {n:'🗺️ Maps',u:'https://maps.google.com'},
+    {n:'♟️ Chess',u:'https://lichess.org'},
+    {n:'🧩 Infinite Craft',u:'https://neal.fun/infinite-craft/'},
+    {n:'📝 Wordle',u:'https://wordplay.com'},
+    {n:'✍️ Draw',u:'https://www.autodraw.com'},
+  ];
   bookmarks.forEach(function(bm) {
     var btn = document.createElement('button');
     btn.textContent = bm.n;
@@ -4606,6 +4870,29 @@ function convertTabToBrowser(tabId) {
     if (!url.match(/^https?:\/\//i)) {
       if (url.indexOf('.') > 0 && url.indexOf(' ') === -1) url = 'https://' + url;
       else url = 'https://www.google.com/search?q=' + encodeURIComponent(url);
+    }
+    var ytMatch = url.match(/(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/)([a-zA-Z0-9_\-]{11})/);
+    var ytSearch = !ytMatch && url.match(/youtube\.com(?:\/results)?[?&]search_query=([^&]+)/);
+    var ytHome = !ytMatch && !ytSearch && url.match(/youtube\.com\/?$/);
+    if (ytMatch) {
+      urlInput.value = url;
+      frame.src = 'https://www.youtube.com/embed/' + ytMatch[1] + '?autoplay=0&rel=0';
+      frame.style.display = 'block';
+      homePage.style.display = 'none';
+      blockedMsg.style.display = 'none';
+      return;
+    }
+    if (ytSearch || ytHome) {
+      urlInput.value = url;
+      frame.src = 'https://www.youtube.com/embed/videoseries?list=PLbpi6ZahtOH6Ar_3GPy3workbIjZHz71b';
+      frame.style.display = 'block';
+      homePage.style.display = 'none';
+      blockedMsg.style.display = 'none';
+      return;
+    }
+    var gSearch = url.match(/google\.com\/search\?(?:.*&)?q=([^&]+)/);
+    if (gSearch) {
+      url = 'https://duckduckgo.com/?q=' + gSearch[1] + '&ia=web';
     }
     urlInput.value = url;
     var proxied = '/proxy?url=' + encodeURIComponent(url);
