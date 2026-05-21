@@ -105,22 +105,29 @@ _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 db_pool = None
-CURRENT_VERSION = "2.3"
+CURRENT_VERSION = "2.4"
 CHANGELOG_NOTES = (
-    "<b>What's new in v2.3</b><br><br>"
-    "&#x2022; <b>Reply to Messages</b> — Hit ↩ on any message to quote-reply; preview bar shows above the input<br>"
-    "&#x2022; <b>Markdown Formatting</b> — **bold**, _italic_, ~~strikethrough~~, `code`, ```code blocks```<br>"
-    "&#x2022; <b>Copy Button</b> — One-click 📋 copy on every message hover bar<br>"
-    "&#x2022; <b>@Mention Autocomplete</b> — Type @ and pick from online users with arrow keys or Tab<br>"
-    "&#x2022; <b>Ctrl+B / Ctrl+I</b> — Keyboard shortcuts to wrap selected text in bold or italic<br>"
-    "&#x2022; <b>Image Paste</b> — Paste an image from your clipboard directly into the chat input<br>"
-    "&#x2022; <b>Escape Key</b> — Clears reply preview; closes emoji picker; dismisses mention dropdown<br>"
-    "&#x2022; <b>DM Search</b> — Filter your DM list by name with the search box in the sidebar<br>"
-    "&#x2022; <b>Mark All Read</b> — ✓ button in the DMs section clears all unread badges at once<br>"
-    "&#x2022; <b>Browser Games</b> — Renamed from 'Embedded Games'; broken URLs fixed (Slope, Run 3, Retro Bowl, etc.)<br>"
-    "&#x2022; <b>Game Loading Spinner</b> — Spinner + 12-second timeout with fallback error panel for slow games<br>"
-    "&#x2022; <b>Game Tab Label</b> — Browser game tabs update their label to the game name when opened<br>"
-    "&#x2022; <b>DM Toast Notifications</b> — Incoming DMs show a toast when you're in a different channel<br>"
+    "<b>What's new in v2.4</b><br><br>"
+    "&#x2022; <b>Bug Fix: Owner Login</b> — Fixed a bug where the owner key login button did nothing (duplicate WebSocket handler)<br>"
+    "&#x2022; <b>Bug Fix: DM Click Cleared Messages</b> — Clicking a DM no longer wipes existing messages while waiting for history<br>"
+    "&#x2022; <b>Bug Fix: Fullscreen Games</b> — Games no longer show a blank page after exiting fullscreen mode<br>"
+    "&#x2022; <b>Bug Fix: Browser Proxy</b> — Proxy now strips X-Frame-Options and CSP headers so more sites load correctly<br>"
+    "&#x2022; <b>Status Selector</b> — Set your status (Online / Idle / DND / Invisible) from the Profile modal<br>"
+    "&#x2022; <b>Draft Persistence</b> — Unsent messages are auto-saved and restored per channel when you switch back<br>"
+    "&#x2022; <b>DM Previews</b> — Last message shown under each DM name in the sidebar<br>"
+    "&#x2022; <b>GC Previews</b> — Last message (with sender) shown under each Group Chat in the sidebar<br>"
+    "&#x2022; <b>Mute DMs &amp; GCs</b> — 🔔/🔕 toggle per channel; muted channels skip sound notifications<br>"
+    "&#x2022; <b>GC Leave Button</b> — Leave a group chat directly from the channel header<br>"
+    "&#x2022; <b>GC Member Count</b> — Shows number of members in the channel header when viewing a GC<br>"
+    "&#x2022; <b>Auto-scroll Toggle</b> — ⬇ Auto / Off button locks or unlocks scroll-to-bottom on new messages<br>"
+    "&#x2022; <b>Code Block Copy</b> — ⎘ copy button on every code block in chat<br>"
+    "&#x2022; <b>Owner Broadcast</b> — 📢 button lets owner send a highlighted system message to everyone<br>"
+    "&#x2022; <b>Welcome Toasts</b> — Personalised greeting toast on connect for guest, staff, and owner<br>"
+    "&#x2022; <b>DM / GC Counts</b> — Section headers show live count of open DMs and group chats<br>"
+    "&#x2022; <b>Tab Icons</b> — 💬 Chat · 🎮 Games · 🌐 Browser tabs now show emoji icons<br>"
+    "&#x2022; <b>Help &amp; Search Buttons</b> — ? keyboard shortcuts modal and 🔍 message search in the header<br>"
+    "<br><b>Previously in v2.3</b><br>"
+    "&#x2022; Reply to messages, Markdown formatting, @mention autocomplete, image paste, DM search, mark-all-read, browser games hub<br>"
     "<br><b>Previously in v2.2</b><br>"
     "&#x2022; DM redesign, emoji reactions, lightbox viewer, click-to-DM, toast notifications, peer notes<br>"
     "<br><b>Previously in v2.1</b><br>"
@@ -1181,6 +1188,13 @@ header h1 { font-size: 16px; font-weight: 600; }
   padding: 1px 8px 1px 52px; border-radius: 4px; line-height: 1.45;
 }
 .msg-grouped-row:hover { background: var(--bg-message-hover); }
+.msg-mention { background: rgba(250,168,26,0.08) !important; border-left: 3px solid #faa81a; padding-left: 5px !important; }
+.msg-mention:hover { background: rgba(250,168,26,0.14) !important; }
+#msgContextMenu { display:none;position:fixed;z-index:9999;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:6px 0;min-width:160px;box-shadow:0 4px 20px rgba(0,0,0,0.4);font-size:13px; }
+#msgContextMenu .ctx-item { padding:8px 16px;cursor:pointer;color:var(--text-primary);display:flex;align-items:center;gap:8px;transition:background 0.1s; }
+#msgContextMenu .ctx-item:hover { background:var(--bg-tertiary); }
+#msgContextMenu .ctx-item.danger { color:var(--red); }
+#msgContextMenu .ctx-sep { height:1px;background:var(--border);margin:4px 0; }
 .msg-content { flex: 1; min-width: 0; }
 .msg-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
 .msg-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
@@ -2271,6 +2285,35 @@ function buildReactionBar(msgKey, m) {
     replyBtn.onclick = function(e) { e.stopPropagation(); setReplyTo(m); document.getElementById('msgInput').focus(); };
     bar.appendChild(replyBtn);
   }
+  // More reactions "+" picker
+  var moreBtn = document.createElement('button');
+  moreBtn.className = 'msg-reaction-btn';
+  moreBtn.textContent = '＋';
+  moreBtn.title = 'More reactions';
+  moreBtn.onclick = function(e) {
+    e.stopPropagation();
+    var allEmoji = ['👍','👎','❤️','😂','😮','😢','😡','🔥','🎉','🥳','😍','🤩','👏','🙌','💯','🤔','🤣','😎','😴','🤯','🫡','💀','🫶','⚡','🌟'];
+    var existing = document.getElementById('_moreReactPicker');
+    if (existing) { existing.remove(); return; }
+    var picker = document.createElement('div');
+    picker.id = '_moreReactPicker';
+    picker.style.cssText = 'position:fixed;z-index:10000;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;gap:4px;max-width:220px;box-shadow:0 4px 16px rgba(0,0,0,0.4);';
+    allEmoji.forEach(function(em) {
+      var eb = document.createElement('button');
+      eb.style.cssText = 'background:none;border:none;font-size:18px;cursor:pointer;padding:4px 6px;border-radius:4px;transition:background 0.1s;';
+      eb.textContent = em;
+      eb.onmouseenter = function(){ eb.style.background='var(--bg-tertiary)'; };
+      eb.onmouseleave = function(){ eb.style.background='none'; };
+      eb.onclick = function(oe){ oe.stopPropagation(); addReaction(msgKey, em); picker.remove(); };
+      picker.appendChild(eb);
+    });
+    var rect = moreBtn.getBoundingClientRect();
+    picker.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
+    picker.style.top = (rect.bottom + 4) + 'px';
+    document.body.appendChild(picker);
+    setTimeout(function() { document.addEventListener('click', function _rp(){ picker.remove(); document.removeEventListener('click',_rp); }, {once:true}); }, 0);
+  };
+  bar.appendChild(moreBtn);
   return bar;
 }
 
@@ -2294,8 +2337,10 @@ function makeFullMessageDiv(m) {
   var displaySender = m.display_name || m.sender || '?';
   var msgKey = getMsgKey(m);
   var row = document.createElement('div');
-  row.className = 'msg-full';
+  var _isMention = myUsername && m.text && m.text.toLowerCase().indexOf('@' + myUsername.toLowerCase()) >= 0;
+  row.className = 'msg-full' + (_isMention ? ' msg-mention' : '');
   row.style.position = 'relative';
+  row.addEventListener('contextmenu', function(e) { showContextMenu(e, m); });
   var avatarCol = document.createElement('div');
   avatarCol.className = 'msg-avatar-col';
   var avatar = document.createElement('div');
@@ -2321,9 +2366,13 @@ function makeFullMessageDiv(m) {
   nameEl.className = 'msg-name' + (m.admin ? ' is-admin' : '');
   nameEl.textContent = displaySender;
   nameEl.style.cursor = 'pointer';
-  nameEl.title = 'Click to DM';
-  nameEl.addEventListener('click', function() {
-    if (m.sender && m.sender !== myUsername) openDm(m.sender);
+  nameEl.title = 'View profile';
+  nameEl.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var userInfo = lastUserList ? lastUserList.find(function(u){ return (typeof u==='string'?u:u.name)===m.sender; }) : null;
+    var bio = userInfo ? (userInfo.bio || '') : '';
+    var status = userInfo ? (userInfo.status || 'online') : 'online';
+    showUserCard(e, m.sender, m.display_name || m.sender, m.pfp || '', bio, status);
   });
   header.appendChild(nameEl);
   if (m.admin) {
@@ -2360,8 +2409,10 @@ function makeFullMessageDiv(m) {
 function makeGroupedMessageDiv(m) {
   var msgKey = getMsgKey(m);
   var row = document.createElement('div');
-  row.className = 'msg-grouped-row';
+  var _isMention2 = myUsername && m.text && m.text.toLowerCase().indexOf('@' + myUsername.toLowerCase()) >= 0;
+  row.className = 'msg-grouped-row' + (_isMention2 ? ' msg-mention' : '');
   row.style.position = 'relative';
+  row.addEventListener('contextmenu', function(e) { showContextMenu(e, m); });
   var body = renderRichText(m.text || '');
   row.appendChild(body);
   var pills = buildReactionPills(msgKey);
@@ -3456,7 +3507,8 @@ function handleMessage(data) {
     var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     generalMessages.push({sender: data.sender, display_name: data.display_name || data.sender, pfp: data.pfp || '', text: data.text, admin: data.admin || false, time: time, msg_id: data.msg_id||'', reply_sender: data.reply_sender||'', reply_text: data.reply_text||''});
     if (currentChannel === 'general') { renderMessages(); if (data.sender !== myUsername && typeof window._notifyScrollBtn === 'function') window._notifyScrollBtn(); }
-    if (data.sender !== myUsername) playNotifSound();
+    if (data.sender !== myUsername) { playNotifSound(); if (typeof checkConfetti === 'function') checkConfetti(data.text); }
+    else if (typeof checkConfetti === 'function') checkConfetti(data.text);
   } else if (data.type === 'system') {
     generalMessages.push({type: 'system', text: data.text});
     if (currentChannel === 'general') { renderMessages(); if (typeof window._notifyScrollBtn === 'function') window._notifyScrollBtn(); }
@@ -3496,10 +3548,11 @@ function handleMessage(data) {
     }
   } else if (data.type === 'dm_history') {
     var target = data.target;
-    dmMessages[target] = [];
-    (data.messages || []).forEach(function(m) {
-      dmMessages[target].push({sender: m.sender, display_name: m.display_name || m.sender, pfp: m.pfp || '', text: m.text, admin: m.admin || false, isDm: true, time: m.time || '', msg_id: m.msg_id||'', reply_sender: m.reply_sender||'', reply_text: m.reply_text||''});
+    var freshMsgs = (data.messages || []).map(function(m) {
+      return {sender: m.sender, display_name: m.display_name || m.sender, pfp: m.pfp || '', text: m.text, admin: m.admin || false, isDm: true, time: m.time || '', msg_id: m.msg_id||'', reply_sender: m.reply_sender||'', reply_text: m.reply_text||''};
     });
+    if (freshMsgs.length > 0) { dmMessages[target] = freshMsgs; }
+    else if (!dmMessages[target]) { dmMessages[target] = []; }
     if (dmPanelTarget === target) {
       renderDmPanel();
     } else if (currentChannel === 'dm:' + target) {
@@ -3623,6 +3676,8 @@ function connectOwner(token) {
     document.getElementById('broadcastBtn').style.display = 'flex';
     document.getElementById('msgInput').focus();
     setTimeout(function() { showToast('Welcome back, Owner! 👑', 'success'); }, 600);
+    _ownerReconnectDelay = 2000;
+    setConnectionStatus('connected');
   };
   var _ownerReconnectDelay = 2000;
   ws.onclose = function() {
@@ -3642,7 +3697,6 @@ function connectOwner(token) {
       connectOwner(token);
     }, _ownerReconnectDelay);
   };
-  ws.onopen = function() { _ownerReconnectDelay = 2000; setConnectionStatus('connected'); };
   ws.onerror = function() {};
   ws.onmessage = function(event) { handleMessage(JSON.parse(event.data)); };
 }
@@ -5640,6 +5694,20 @@ function convertTabToEmbedded(tabId) {
     }
     el.appendChild(gameContainer);
     renderTabBar();
+    // Fix blank page after fullscreen exit: restore container visibility
+    function _onFsChange() {
+      var fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
+      if (!fsEl) {
+        gameContainer.style.display = 'flex';
+        wrap.style.display = 'flex';
+        frame.style.display = 'block';
+        el.style.display = 'flex';
+        el.style.flexDirection = 'column';
+      }
+    }
+    document.addEventListener('fullscreenchange', _onFsChange);
+    document.addEventListener('webkitfullscreenchange', _onFsChange);
+    document.addEventListener('mozfullscreenchange', _onFsChange);
   }
 
   function renderGames(q, cat) {
@@ -6171,7 +6239,124 @@ bindEmojiPicker();
 document.getElementById('newTabBtn').addEventListener('click', function() {
   openNewTab();
 });
+
+// ── Right-click context menu ──────────────────────────────────────────────
+var _ctxMenu = document.getElementById('msgContextMenu');
+var _ctxMsg = null;
+function showContextMenu(e, m) {
+  e.preventDefault();
+  _ctxMsg = m;
+  _ctxMenu.innerHTML = '';
+  function addItem(icon, label, fn, cls) {
+    var d = document.createElement('div');
+    d.className = 'ctx-item' + (cls ? ' ' + cls : '');
+    d.innerHTML = '<span style="font-size:15px;">' + icon + '</span>' + label;
+    d.addEventListener('click', function() { hideCtxMenu(); fn(); });
+    _ctxMenu.appendChild(d);
+  }
+  function addSep() { var s = document.createElement('div'); s.className = 'ctx-sep'; _ctxMenu.appendChild(s); }
+  addItem('📋', 'Copy Text', function() {
+    if (!m || !m.text) return;
+    navigator.clipboard.writeText(m.text).then(function(){ showToast('Copied!','success'); }).catch(function(){
+      var t = document.createElement('textarea'); t.value = m.text; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); showToast('Copied!','success');
+    });
+  });
+  addItem('↩', 'Reply', function() { setReplyTo(m); document.getElementById('msgInput').focus(); });
+  addItem('👍', 'React 👍', function() { addReaction(getMsgKey(m), '👍'); });
+  addItem('❤️', 'React ❤️', function() { addReaction(getMsgKey(m), '❤️'); });
+  if (m && m.sender && m.sender !== myUsername) { addSep(); addItem('💬', 'DM ' + (m.display_name || m.sender), function() { openDm(m.sender); }); }
+  if (isOwner && m && m.msg_id) { addSep(); addItem('🗑️', 'Delete Message', function() { ws.send(JSON.stringify({type:'delete_log',id:m.msg_id})); }, 'danger'); }
+  _ctxMenu.style.display = 'block';
+  var x = e.clientX, y = e.clientY;
+  if (x + 170 > window.innerWidth) x = window.innerWidth - 175;
+  if (y + _ctxMenu.offsetHeight > window.innerHeight) y = window.innerHeight - _ctxMenu.offsetHeight - 8;
+  _ctxMenu.style.left = x + 'px';
+  _ctxMenu.style.top = y + 'px';
+}
+function hideCtxMenu() { _ctxMenu.style.display = 'none'; _ctxMsg = null; }
+document.addEventListener('click', hideCtxMenu);
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hideCtxMenu(); });
+
+// ── Confetti easter eggs ──────────────────────────────────────────────────
+function triggerConfetti() {
+  var canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:99999;width:100%;height:100%;';
+  document.body.appendChild(canvas);
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  var ctx = canvas.getContext('2d');
+  var colors = ['#5865f2','#57f287','#fee75c','#eb459e','#ed4245','#ff9900','#00b0f4'];
+  var pieces = Array.from({length:120}, function() {
+    return { x: Math.random()*canvas.width, y: Math.random()*-200, r: Math.random()*6+3,
+      c: colors[Math.floor(Math.random()*colors.length)], s: Math.random()*3+2,
+      vx: (Math.random()-0.5)*3, vy: 0, rot: Math.random()*360, rotV: (Math.random()-0.5)*6 };
+  });
+  var frame = 0;
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(function(p) {
+      p.y += p.s; p.x += p.vx; p.rot += p.rotV; p.vy += 0.05; p.y += p.vy;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.r,-p.r,p.r*2,p.r*1.4); ctx.restore();
+    });
+    frame++;
+    if (frame < 160) requestAnimationFrame(draw);
+    else { canvas.remove(); }
+  }
+  draw();
+}
+var _confettiWords = ['gg','congrats','congratulations','happy birthday','🎉','🎊','hbd','you win','winner'];
+function checkConfetti(text) {
+  if (!text) return;
+  var low = text.toLowerCase();
+  for (var i = 0; i < _confettiWords.length; i++) { if (low.indexOf(_confettiWords[i]) >= 0) { setTimeout(triggerConfetti, 300); break; } }
+}
+
+// ── User hover card ───────────────────────────────────────────────────────
+var _hoverCard = document.createElement('div');
+_hoverCard.id = 'userHoverCard';
+_hoverCard.style.cssText = 'display:none;position:fixed;z-index:9998;background:var(--bg-primary);border:1px solid var(--border);border-radius:10px;padding:16px;min-width:220px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,0.5);pointer-events:auto;';
+document.body.appendChild(_hoverCard);
+function showUserCard(e, senderUsername, displayName, pfpData, bio, status) {
+  _hoverCard.innerHTML = '';
+  var top = document.createElement('div');
+  top.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:10px;';
+  var av = document.createElement('div');
+  av.style.cssText = 'width:44px;height:44px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;background:'+avatarColor(displayName||senderUsername)+';background-size:cover;background-position:center;';
+  if (pfpData) { av.style.backgroundImage = 'url('+pfpData+')'; av.textContent=''; } else { av.textContent = (displayName||senderUsername||'?').substring(0,2).toUpperCase(); }
+  top.appendChild(av);
+  var nameCol = document.createElement('div');
+  var nm = document.createElement('div');
+  nm.style.cssText = 'font-weight:700;font-size:15px;color:var(--text-primary);';
+  nm.textContent = displayName || senderUsername;
+  nameCol.appendChild(nm);
+  if (senderUsername !== displayName) { var un = document.createElement('div'); un.style.cssText = 'font-size:12px;color:var(--text-muted);'; un.textContent = '@'+senderUsername; nameCol.appendChild(un); }
+  var statusColors2 = {online:'#3ba55c',idle:'#faa61a',dnd:'#ed4245',invisible:'#747f8d'};
+  var statusLabels = {online:'Online',idle:'Idle',dnd:'Do Not Disturb',invisible:'Offline'};
+  var st = document.createElement('div');
+  st.style.cssText = 'font-size:12px;color:'+((statusColors2[status||'online'])||'#3ba55c')+';';
+  st.textContent = '● '+(statusLabels[status||'online']||'Online');
+  nameCol.appendChild(st);
+  top.appendChild(nameCol);
+  _hoverCard.appendChild(top);
+  if (bio) { var bioEl = document.createElement('div'); bioEl.style.cssText = 'font-size:13px;color:var(--text-secondary);border-top:1px solid var(--border);padding-top:8px;margin-top:2px;line-height:1.5;'; bioEl.textContent = bio; _hoverCard.appendChild(bioEl); }
+  if (senderUsername && senderUsername !== myUsername) {
+    var dmBtn = document.createElement('button');
+    dmBtn.textContent = '💬 Send DM';
+    dmBtn.style.cssText = 'margin-top:10px;width:100%;padding:7px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;';
+    dmBtn.addEventListener('click', function() { hideUserCard(); openDm(senderUsername); });
+    _hoverCard.appendChild(dmBtn);
+  }
+  _hoverCard.style.display = 'block';
+  var x = e.clientX, y = e.clientY + 12;
+  if (x + 290 > window.innerWidth) x = window.innerWidth - 295;
+  if (y + 200 > window.innerHeight) y = e.clientY - _hoverCard.offsetHeight - 8;
+  _hoverCard.style.left = x + 'px';
+  _hoverCard.style.top = y + 'px';
+}
+function hideUserCard() { _hoverCard.style.display = 'none'; }
+document.addEventListener('click', function(e) { if (!_hoverCard.contains(e.target)) hideUserCard(); });
 </script>
+<div id="msgContextMenu"></div>
 </body>
 </html>"""
 
@@ -7532,6 +7717,8 @@ async def handle_proxy(request):
                 resp_obj = web.Response(body=body, status=resp.status)
                 resp_obj.content_type = content_type.split(';')[0].strip()
                 resp_obj.headers['Access-Control-Allow-Origin'] = '*'
+                resp_obj.headers['X-Frame-Options'] = 'ALLOWALL'
+                resp_obj.headers['Content-Security-Policy'] = "frame-ancestors *"
                 return resp_obj
     except Exception as e:
         return web.Response(text=f'Proxy error: {e}', status=502, content_type='text/plain')
