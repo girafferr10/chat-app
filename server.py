@@ -880,13 +880,14 @@ header h1 { font-size: 16px; font-weight: 600; }
 .tab-items::-webkit-scrollbar { height: 0; }
 .tab-item {
   display: flex; align-items: center; gap: 6px;
-  padding: 0 12px; height: 36px; font-size: 13px; font-weight: 500;
-  color: var(--text-secondary); cursor: pointer; white-space: nowrap;
+  padding: 0 14px; height: 36px; font-size: 13px; font-weight: 500;
+  color: var(--text-muted); cursor: pointer; white-space: nowrap;
   border-right: 1px solid var(--border); background: var(--bg-tertiary);
-  flex-shrink: 0; min-width: 0;
+  flex-shrink: 0; min-width: 0; transition: color 0.12s;
+  border-bottom: 2px solid transparent;
 }
-.tab-item:hover { background: var(--bg-secondary); }
-.tab-item.active { background: var(--bg-primary); color: var(--text-primary); }
+.tab-item:hover { background: var(--bg-secondary); color: var(--text-secondary); }
+.tab-item.active { background: var(--bg-primary); color: var(--text-primary); border-bottom-color: var(--accent); }
 .tab-item .tab-icon { font-size: 14px; opacity: 0.7; }
 .tab-item .tab-close {
   font-size: 14px; opacity: 0; width: 18px; height: 18px;
@@ -1031,9 +1032,12 @@ header h1 { font-size: 16px; font-weight: 600; }
 .memory-stats { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
 
 .channel-header {
-  padding: 10px 16px; border-bottom: 1px solid var(--bg-tertiary);
-  font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+  padding: 11px 16px; border-bottom: 1px solid var(--bg-tertiary);
+  font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px;
+  background: var(--bg-primary); flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
 }
+.channel-header .channel-hash { color: var(--text-muted); font-size: 20px; font-weight: 900; line-height: 1; margin-right: 2px; }
 .channel-header .dm-label { color: var(--dm-color); }
 
 #messages { flex: 1; overflow-y: auto; padding: 16px 16px; min-height: 0; position: relative; }
@@ -1061,11 +1065,11 @@ header h1 { font-size: 16px; font-weight: 600; }
 .msg-error { padding: 4px 8px; color: var(--red); font-size: 13px; font-weight: 500; }
 
 .emoji-picker-btn {
-  background: var(--input-bg); color: var(--text-secondary); border: none;
-  padding: 10px 12px; border-radius: 8px; font-size: 18px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
+  background: none; color: var(--text-muted); border: none;
+  padding: 7px 9px; border-radius: 6px; font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: color 0.12s;
 }
-.emoji-picker-btn:hover { background: var(--border); color: var(--text-primary); }
+.emoji-picker-btn:hover { background: none; color: var(--accent); }
 .emoji-picker-container {
   position: relative;
 }
@@ -1105,7 +1109,7 @@ header h1 { font-size: 16px; font-weight: 600; }
 .emoji-item:hover { background: var(--bg-message-hover); }
 
 .input-bar {
-  padding: 8px 16px 12px; display: flex; flex-direction: column; gap: 0; flex-shrink: 0;
+  padding: 4px 16px 14px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
   position: relative;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -1118,15 +1122,23 @@ header h1 { font-size: 16px; font-weight: 600; }
 .msg-animate { animation: msg-fadein 0.22s ease; }
 .rainbow-text { background:linear-gradient(90deg,#ff0000,#ff7700,#ffee00,#00c800,#0000ff,#8b00ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700; }
 .me-action { color:var(--accent);font-style:italic;opacity:0.9; }
-.fmt-toolbar { display:flex;align-items:center;gap:3px;padding:3px 12px 0;flex-shrink:0; }
-.fmt-btn { padding:2px 8px;background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-size:12px;font-weight:600;line-height:1.4; }
-.fmt-btn:hover { background:var(--accent);color:#fff;border-color:var(--accent); }
+.fmt-toolbar { display:flex;align-items:center;gap:2px;padding:0 6px;flex-shrink:0; }
+.fmt-btn { padding:3px 7px;background:none;color:var(--text-muted);border:1px solid transparent;border-radius:5px;cursor:pointer;font-size:12px;font-weight:700;line-height:1.4;transition:all 0.1s; }
+.fmt-btn:hover { background:var(--bg-tertiary);color:var(--text-primary);border-color:var(--border); }
 @keyframes party-hue { 0%{filter:hue-rotate(0deg);} 100%{filter:hue-rotate(360deg);} }
 .party-mode { animation:party-hue 1.5s linear infinite; }
 .poll-widget { background:var(--bg-tertiary);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:4px;max-width:340px; }
 .poll-option { display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer; }
 .poll-bar { height:6px;background:var(--accent);border-radius:3px;transition:width 0.4s; }
 .slow-badge { display:none;background:var(--orange);color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;margin-left:8px; }
+.slash-dropdown { display:none;position:absolute;bottom:100%;left:16px;right:16px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 -6px 28px rgba(0,0,0,0.38);z-index:220;margin-bottom:4px; }
+.slash-dropdown.open { display:block; }
+.slash-cmd-header { padding:5px 12px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;background:var(--bg-tertiary);border-bottom:1px solid var(--border); }
+.slash-cmd-item { display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:background 0.1s;border-bottom:1px solid rgba(0,0,0,0.06); }
+.slash-cmd-item:last-child { border-bottom:none; }
+.slash-cmd-item:hover,.slash-cmd-item.selected { background:var(--bg-tertiary); }
+.slash-cmd-name { font-size:13px;font-weight:700;color:var(--accent);min-width:110px;font-family:monospace; }
+.slash-cmd-desc { font-size:12px;color:var(--text-muted);flex:1; }
 .sidebar-collapsed { display:none!important; }
 .hide-timestamps .msg-time { display:none!important; }
 .hide-avatars .user-avatar { display:none!important; }
@@ -1158,26 +1170,39 @@ header h1 { font-size: 16px; font-weight: 600; }
 .broadcast-btn { width:100%;padding:8px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;text-align:center;margin-top:8px; }
 .broadcast-btn:hover { opacity:0.85; }
 .input-bar-row {
-  display: flex; gap: 8px; align-items: flex-end;
+  display: flex; gap: 0; align-items: center;
+  background: var(--input-bg); border-radius: 12px;
+  border: 1.5px solid transparent; transition: border-color 0.18s;
+  padding: 2px 6px 2px 2px;
 }
-.input-bar input {
-  flex: 1; padding: 10px 14px; border: none; border-radius: 8px;
-  font-size: 14px; outline: none; background: var(--input-bg);
+.input-bar-row:focus-within { border-color: rgba(88,101,242,0.5); }
+.input-bar input#msgInput {
+  flex: 1; padding: 9px 8px; border: none; border-radius: 0;
+  font-size: 14px; outline: none; background: transparent;
   color: var(--text-primary);
 }
-.input-bar input:focus { outline: 2px solid var(--accent); }
-.input-bar button {
-  padding: 10px 20px; background: var(--accent); color: #fff; border: none;
-  border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 500;
+.input-bar input#nameInput {
+  padding: 9px 8px; border: none; border-radius: 0;
+  font-size: 14px; outline: none; background: transparent;
+  color: var(--text-primary); width: 120px; flex: unset;
 }
-.input-bar button:hover { background: var(--accent-hover); }
-.input-bar button:disabled { background: var(--bg-tertiary); color: var(--text-muted); cursor: not-allowed; }
+.input-bar input#msgInput:focus, .input-bar input#nameInput:focus { outline: none; }
+#sendBtn {
+  background: var(--accent); color: #fff; border: none;
+  border-radius: 50%; width: 34px; height: 34px; font-size: 17px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background 0.15s, transform 0.12s; padding: 0;
+  margin: 1px 0;
+}
+#sendBtn:hover { background: var(--accent-hover); transform: scale(1.1); }
+#sendBtn:disabled { background: var(--bg-tertiary); color: var(--text-muted); cursor: not-allowed; transform: none; }
 .attach-btn {
-  background: var(--input-bg); color: var(--text-secondary); border: none;
-  padding: 10px 13px; border-radius: 8px; font-size: 18px; cursor: pointer;
+  background: none; color: var(--text-muted); border: none;
+  padding: 8px 9px; font-size: 18px; cursor: pointer;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  border-radius: 6px; transition: color 0.12s;
 }
-.attach-btn:hover { background: var(--border); color: var(--accent); }
+.attach-btn:hover { background: none; color: var(--accent); }
 .image-preview-bar {
   display: flex; gap: 8px; flex-wrap: wrap; padding: 6px 0 2px;
 }
@@ -1210,18 +1235,20 @@ header h1 { font-size: 16px; font-weight: 600; }
   width: 40px; flex-shrink: 0; display: flex; justify-content: center; padding-top: 2px;
 }
 .msg-avatar {
-  width: 36px; height: 36px; border-radius: 50%; background: var(--accent);
+  width: 38px; height: 38px; border-radius: 50%; background: var(--accent);
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; user-select: none;
+  font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; user-select: none;
   background-size: cover; background-position: center;
+  cursor: pointer; transition: opacity 0.12s;
 }
+.msg-avatar:hover { opacity: 0.85; }
 .msg-full {
-  display: flex; align-items: flex-start; gap: 12px; padding: 4px 8px 2px;
-  border-radius: 4px;
+  display: flex; align-items: flex-start; gap: 12px; padding: 6px 8px 4px;
+  border-radius: 4px; position: relative;
 }
 .msg-full:hover { background: var(--bg-message-hover); }
 .msg-grouped-row {
-  padding: 1px 8px 1px 52px; border-radius: 4px; line-height: 1.45;
+  padding: 1px 8px 1px 60px; border-radius: 4px; line-height: 1.5; position: relative;
 }
 .msg-grouped-row:hover { background: var(--bg-message-hover); }
 .msg-mention { background: rgba(250,168,26,0.08) !important; border-left: 3px solid #faa81a; padding-left: 5px !important; }
@@ -1699,7 +1726,7 @@ body.theme-rose {
         <div class="tab-content active" id="tabContent-chat" style="flex-direction:row;">
           <div class="chat-area" style="flex:1;min-width:0;">
             <div class="channel-header" id="channelHeaderBar">
-              <span class="channel-icon">#</span> <span id="channelName" data-testid="text-channel-name">General</span>
+              <span class="channel-hash">#</span><span id="channelName" data-testid="text-channel-name">General</span>
             </div>
             <div class="msg-search-bar" id="msgSearchBar">
               <input type="text" id="msgSearchInput" placeholder="Search messages… (Esc to close)" autocomplete="off" />
@@ -1716,6 +1743,7 @@ body.theme-rose {
               <div class="image-preview-bar" id="imagePreviewBar" style="display:none;"></div>
               <div id="replyPreviewBar" style="display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--bg-tertiary);border-left:3px solid var(--accent);border-radius:4px;margin-bottom:4px;font-size:12px;color:var(--text-secondary);max-width:100%;overflow:hidden;"></div>
               <div id="mentionDropdown" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;box-shadow:0 -4px 20px rgba(0,0,0,0.25);max-height:180px;overflow-y:auto;z-index:200;margin:0 16px 4px;"></div>
+              <div id="slashDropdown" class="slash-dropdown"></div>
               <div class="fmt-toolbar" id="fmtToolbar">
                 <button class="fmt-btn" title="Bold (Ctrl+B)" onclick="wrapSel('**','**')"><b>B</b></button>
                 <button class="fmt-btn" title="Italic (Ctrl+I)" onclick="wrapSel('_','_')"><i>I</i></button>
@@ -1739,7 +1767,7 @@ body.theme-rose {
                   </div>
                 </div>
                 <span class="char-counter" id="charCounter" style="display:none;">0</span>
-                <button id="sendBtn" data-testid="button-send">Send</button>
+                <button id="sendBtn" data-testid="button-send" title="Send (Enter)">&#x27A4;</button>
               </div>
             </div>
           </div>
@@ -4646,6 +4674,58 @@ var _triviaQs = [
   ['What language has the most native speakers?','Mandarin Chinese'],['What is 12 × 12?','144'],
 ];
 
+var _slashCmds = [
+  {name:'/me',        desc:'Do an action  —  /me dances'},
+  {name:'/roll',      desc:'Roll dice  —  /roll 20'},
+  {name:'/flip',      desc:'Flip a coin'},
+  {name:'/8ball',     desc:'Ask the magic 8-ball a question'},
+  {name:'/shrug',     desc:'Append a shrug emoticon'},
+  {name:'/tableflip', desc:'(╯°□°)╯ ︵ ┻━┻'},
+  {name:'/unflip',    desc:'Put the table back'},
+  {name:'/lenny',     desc:'Lenny face'},
+  {name:'/shout',     desc:'MAKE IT LOUD  —  /shout text'},
+  {name:'/rainbow',   desc:'Colorful text  —  /rainbow text'},
+  {name:'/trivia',    desc:'Post a random trivia question'},
+  {name:'/poll',      desc:'Create a poll  —  /poll Q | A | B'},
+];
+var _slashIdx = -1;
+function updateSlashDropdown() {
+  var inp = document.getElementById('msgInput');
+  var val = inp ? inp.value : '';
+  var dd = document.getElementById('slashDropdown');
+  if (!dd || !inp) return;
+  if (!val || !val.startsWith('/') || val.indexOf(' ') > -1) {
+    dd.classList.remove('open'); _slashIdx = -1; return;
+  }
+  var query = val.toLowerCase();
+  var matches = _slashCmds.filter(function(c){ return c.name.startsWith(query); });
+  if (!matches.length) { dd.classList.remove('open'); _slashIdx = -1; return; }
+  dd.innerHTML = '';
+  var hdr = document.createElement('div');
+  hdr.className = 'slash-cmd-header';
+  hdr.textContent = 'Commands — \u2191\u2193 to navigate, Enter/Tab to pick';
+  dd.appendChild(hdr);
+  matches.forEach(function(c, i) {
+    var item = document.createElement('div');
+    item.className = 'slash-cmd-item' + (i === _slashIdx ? ' selected' : '');
+    var nm = document.createElement('span');
+    nm.className = 'slash-cmd-name';
+    nm.textContent = c.name;
+    var ds = document.createElement('span');
+    ds.className = 'slash-cmd-desc';
+    ds.textContent = c.desc;
+    item.appendChild(nm);
+    item.appendChild(ds);
+    item.addEventListener('mousedown', function(ev) {
+      ev.preventDefault();
+      inp.value = c.name + ' ';
+      inp.focus();
+      dd.classList.remove('open'); _slashIdx = -1;
+    });
+    dd.appendChild(item);
+  });
+  dd.classList.add('open');
+}
 function processSlashCommand(rawText, inputEl) {
   var text = rawText.trim();
   var cmd = text.split(' ')[0].toLowerCase();
@@ -4797,6 +4877,7 @@ document.getElementById('sendBtn').addEventListener('click', function() {
 });
 
 document.getElementById('msgInput').addEventListener('input', function() {
+  updateSlashDropdown();
   updateMentionDropdown();
   var len = this.value.length;
   var counter = document.getElementById('charCounter');
@@ -4813,6 +4894,17 @@ document.getElementById('msgInput').addEventListener('input', function() {
   }
 });
 document.getElementById('msgInput').addEventListener('keydown', function(e) {
+  var sdd = document.getElementById('slashDropdown');
+  var sitems = sdd ? sdd.querySelectorAll('.slash-cmd-item') : [];
+  if (sdd && sdd.classList.contains('open') && sitems.length > 0) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); _slashIdx = Math.min(_slashIdx + 1, sitems.length - 1); sitems.forEach(function(d,i){d.classList.toggle('selected', i===_slashIdx);}); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); _slashIdx = Math.max(_slashIdx - 1, 0); sitems.forEach(function(d,i){d.classList.toggle('selected', i===_slashIdx);}); return; }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      var sel = _slashIdx >= 0 ? sitems[_slashIdx] : sitems[0];
+      if (sel) { e.preventDefault(); sel.dispatchEvent(new MouseEvent('mousedown')); return; }
+    }
+    if (e.key === 'Escape') { sdd.classList.remove('open'); _slashIdx = -1; return; }
+  }
   var dd = document.getElementById('mentionDropdown');
   var items = dd.querySelectorAll('div');
   if (dd.style.display !== 'none' && items.length > 0) {
@@ -8207,19 +8299,30 @@ async def handle_proxy(request):
         return _re.sub(r'url\(([^)]{1,500})\)', _rc, text)
 
     try:
-        parsed = _up.urlparse(url)
+        req_method = request.method.upper()
+        req_body = b''
+        if req_method == 'POST':
+            try: req_body = await request.read()
+            except Exception: pass
         req_headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'identity',
-            'Referer': f"{parsed.scheme}://{parsed.netloc}/",
-            'Origin': f"{parsed.scheme}://{parsed.netloc}",
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Upgrade-Insecure-Requests': '1',
+            'Cache-Control': 'max-age=0',
+            'Connection': 'keep-alive',
         }
-        timeout = aiohttp.ClientTimeout(total=25)
+        timeout = aiohttp.ClientTimeout(total=30)
         connector = aiohttp.TCPConnector(ssl=False)
         async with aiohttp.ClientSession(connector=connector) as session:
-            async with session.get(url, headers=req_headers, allow_redirects=True, timeout=timeout) as resp:
+            _req_kwargs = dict(headers=req_headers, allow_redirects=True, timeout=timeout)
+            if req_method == 'POST':
+                _req_kwargs['data'] = req_body
+                _cm = session.post(url, **_req_kwargs)
+            else:
+                _cm = session.get(url, **_req_kwargs)
+            async with _cm as resp:
                 ct = resp.headers.get('Content-Type', 'text/html; charset=utf-8')
                 final_url = str(resp.url)
                 body = await resp.read()
@@ -8269,6 +8372,7 @@ async def main():
     app.router.add_get("/api/changelog-seen", handle_api_changelog_seen)
     app.router.add_post("/api/changelog-seen", handle_api_changelog_seen)
     app.router.add_get("/proxy", handle_proxy)
+    app.router.add_post("/proxy", handle_proxy)
 
     runner = web.AppRunner(app)
     await runner.setup()
