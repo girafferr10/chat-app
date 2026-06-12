@@ -105,35 +105,50 @@ _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 db_pool = None
-CURRENT_VERSION = "2.4"
+CURRENT_VERSION = "2.5"
 CHANGELOG_NOTES = (
-    "<b>What's new in v2.4</b><br><br>"
-    "&#x2022; <b>Bug Fix: Owner Login</b> — Fixed a bug where the owner key login button did nothing (duplicate WebSocket handler)<br>"
-    "&#x2022; <b>Bug Fix: DM Click Cleared Messages</b> — Clicking a DM no longer wipes existing messages while waiting for history<br>"
-    "&#x2022; <b>Bug Fix: Fullscreen Games</b> — Games no longer show a blank page after exiting fullscreen mode<br>"
-    "&#x2022; <b>Bug Fix: Browser Proxy</b> — Proxy now strips X-Frame-Options and CSP headers so more sites load correctly<br>"
-    "&#x2022; <b>Status Selector</b> — Set your status (Online / Idle / DND / Invisible) from the Profile modal<br>"
-    "&#x2022; <b>Draft Persistence</b> — Unsent messages are auto-saved and restored per channel when you switch back<br>"
-    "&#x2022; <b>DM Previews</b> — Last message shown under each DM name in the sidebar<br>"
-    "&#x2022; <b>GC Previews</b> — Last message (with sender) shown under each Group Chat in the sidebar<br>"
-    "&#x2022; <b>Mute DMs &amp; GCs</b> — 🔔/🔕 toggle per channel; muted channels skip sound notifications<br>"
-    "&#x2022; <b>GC Leave Button</b> — Leave a group chat directly from the channel header<br>"
-    "&#x2022; <b>GC Member Count</b> — Shows number of members in the channel header when viewing a GC<br>"
-    "&#x2022; <b>Auto-scroll Toggle</b> — ⬇ Auto / Off button locks or unlocks scroll-to-bottom on new messages<br>"
-    "&#x2022; <b>Code Block Copy</b> — ⎘ copy button on every code block in chat<br>"
-    "&#x2022; <b>Owner Broadcast</b> — 📢 button lets owner send a highlighted system message to everyone<br>"
-    "&#x2022; <b>Welcome Toasts</b> — Personalised greeting toast on connect for guest, staff, and owner<br>"
-    "&#x2022; <b>DM / GC Counts</b> — Section headers show live count of open DMs and group chats<br>"
-    "&#x2022; <b>Tab Icons</b> — 💬 Chat · 🎮 Games · 🌐 Browser tabs now show emoji icons<br>"
-    "&#x2022; <b>Help &amp; Search Buttons</b> — ? keyboard shortcuts modal and 🔍 message search in the header<br>"
+    "<b>What's new in v2.5</b><br><br>"
+    "&#x2022; <b>Browser Overhaul</b> — Always-on proxy with full HTML/CSS URL rewriting; fetch &amp; XHR intercepted so resources actually load<br>"
+    "&#x2022; <b>Browser Bookmarks</b> — ★ button saves any page; bookmarks bar appears below toolbar<br>"
+    "&#x2022; <b>Browser Navigation History</b> — Proper back/forward stack within session<br>"
+    "&#x2022; <b>Browser Loading Bar</b> — Animated progress bar while pages load<br>"
+    "&#x2022; <b>Browser Home Page Redesign</b> — Search bar + featured site grid<br>"
+    "&#x2022; <b>Google → DuckDuckGo</b> — Google searches redirect to DuckDuckGo Lite which actually works in iframes<br>"
+    "&#x2022; <b>/me command</b> — Action messages rendered in italic with accent color<br>"
+    "&#x2022; <b>/roll N</b> — Rolls an N-sided dice and announces the result<br>"
+    "&#x2022; <b>/flip</b> — Flips a coin; confetti fires on Heads!<br>"
+    "&#x2022; <b>/shrug /tableflip /unflip /lenny</b> — Classic text emoticon shortcuts<br>"
+    "&#x2022; <b>/8ball question</b> — Magic 8-ball responds to your question<br>"
+    "&#x2022; <b>/rainbow text</b> — Renders text in rainbow gradient colors<br>"
+    "&#x2022; <b>/shout text</b> — Sends text in bold uppercase<br>"
+    "&#x2022; <b>/trivia</b> — Random trivia question posted in chat<br>"
+    "&#x2022; <b>/poll</b> — Create a local poll: /poll question | opt1 | opt2<br>"
+    "&#x2022; <b>Formatting Toolbar</b> — B / I / S / Code buttons above the message input<br>"
+    "&#x2022; <b>Animated Typing Indicator</b> — Bouncing ●●● dots instead of plain text<br>"
+    "&#x2022; <b>Collapsible Sidebar</b> — Toggle sidebar with the ← button in the header<br>"
+    "&#x2022; <b>User Search</b> — Filter online users list with a search box<br>"
+    "&#x2022; <b>Sort Users A-Z</b> — Toggle alphabetical sort on the online user list<br>"
+    "&#x2022; <b>Owner/Admin Badges</b> — 👑/🛡️ icons appear next to staff in the user list<br>"
+    "&#x2022; <b>Ctrl+K DM Search</b> — Keyboard shortcut to quickly open a DM<br>"
+    "&#x2022; <b>Username Color</b> — Pick your own name color in Settings<br>"
+    "&#x2022; <b>Font Family</b> — Switch between Default / Monospace / Serif in Settings<br>"
+    "&#x2022; <b>Avatar Toggle</b> — Show or hide avatars in Settings<br>"
+    "&#x2022; <b>Timestamp Toggle</b> — Show or hide message timestamps in Settings<br>"
+    "&#x2022; <b>Message Animations</b> — Fade-in animation on new messages (toggle in Settings)<br>"
+    "&#x2022; <b>Slowmode</b> — Owner sets a message cooldown (off / 5 / 10 / 30 / 60 seconds)<br>"
+    "&#x2022; <b>Bulk Clear Chat</b> — Owner button to clear all visible #General messages<br>"
+    "&#x2022; <b>Export Logs</b> — Owner can download chat_logs.json as a file<br>"
+    "&#x2022; <b>Word Filter</b> — Owner sets blocked words; messages auto-blur for guests<br>"
+    "&#x2022; <b>Announcement Mode</b> — Owner toggle: only owner/admin can post<br>"
+    "&#x2022; <b>Custom MOTD</b> — Owner sets a Message of the Day shown on join<br>"
+    "&#x2022; <b>Konami Code Party Mode</b> — ↑↑↓↓←→←→BA unlocks rainbow party mode 🎉<br>"
+    "&#x2022; <b>Session Stats</b> — Profile shows messages sent &amp; session duration<br>"
+    "&#x2022; <b>Link → Browser Tab</b> — Clicking URLs in chat opens them in the built-in browser<br>"
+    "&#x2022; <b>Message Fade-in</b> — New messages slide/fade in smoothly<br>"
+    "<br><b>Previously in v2.4</b><br>"
+    "&#x2022; Bug fixes: owner login, DM clearing, fullscreen games, browser proxy; status selector, draft persistence, DM/GC previews, mute toggles, GC leave, auto-scroll, code copy, broadcast, welcome toasts<br>"
     "<br><b>Previously in v2.3</b><br>"
     "&#x2022; Reply to messages, Markdown formatting, @mention autocomplete, image paste, DM search, mark-all-read, browser games hub<br>"
-    "<br><b>Previously in v2.2</b><br>"
-    "&#x2022; DM redesign, emoji reactions, lightbox viewer, click-to-DM, toast notifications, peer notes<br>"
-    "<br><b>Previously in v2.1</b><br>"
-    "&#x2022; PFP crop tool, scroll-to-bottom button, smart auto-scroll, browser &amp; game improvements<br>"
-    "<br><b>Previously in v2.0</b><br>"
-    "&#x2022; Account system, persistent profiles, Garlic Phone game, changelog popups<br>"
 )
 
 
@@ -1096,6 +1111,27 @@ header h1 { font-size: 16px; font-weight: 600; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.5;transform:scale(1.35);} }
 #chatStatusDot { animation: pulse-dot 2s ease-in-out infinite; }
+@keyframes typing-bounce { 0%,60%,100%{transform:translateY(0);opacity:0.6;} 30%{transform:translateY(-5px);opacity:1;} }
+.typing-dot { display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--text-muted);margin:0 1.5px;animation:typing-bounce 1.1s ease-in-out infinite; }
+.typing-dot:nth-child(2){animation-delay:.18s;} .typing-dot:nth-child(3){animation-delay:.36s;}
+@keyframes msg-fadein { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+.msg-animate { animation: msg-fadein 0.22s ease; }
+.rainbow-text { background:linear-gradient(90deg,#ff0000,#ff7700,#ffee00,#00c800,#0000ff,#8b00ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700; }
+.me-action { color:var(--accent);font-style:italic;opacity:0.9; }
+.fmt-toolbar { display:flex;align-items:center;gap:3px;padding:3px 12px 0;flex-shrink:0; }
+.fmt-btn { padding:2px 8px;background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border);border-radius:3px;cursor:pointer;font-size:12px;font-weight:600;line-height:1.4; }
+.fmt-btn:hover { background:var(--accent);color:#fff;border-color:var(--accent); }
+@keyframes party-hue { 0%{filter:hue-rotate(0deg);} 100%{filter:hue-rotate(360deg);} }
+.party-mode { animation:party-hue 1.5s linear infinite; }
+.poll-widget { background:var(--bg-tertiary);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:4px;max-width:340px; }
+.poll-option { display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer; }
+.poll-bar { height:6px;background:var(--accent);border-radius:3px;transition:width 0.4s; }
+.slow-badge { display:none;background:var(--orange);color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;margin-left:8px; }
+.sidebar-collapsed { display:none!important; }
+.hide-timestamps .msg-time { display:none!important; }
+.hide-avatars .user-avatar { display:none!important; }
+.msg-sender { color: var(--username-color-custom, var(--text-primary)); }
+.msg-sender.is-admin { color: var(--admin-color)!important; }
 .date-divider { display:flex;align-items:center;gap:10px;padding:10px 0 6px;color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;user-select:none; }
 .date-divider::before,.date-divider::after { content:'';flex:1;height:1px;background:var(--border); }
 .unread-divider { display:flex;align-items:center;gap:10px;padding:6px 0;color:var(--red,#f04747);font-size:11px;font-weight:700;letter-spacing:0.04em;user-select:none; }
@@ -1587,6 +1623,7 @@ body.theme-rose {
 <div class="chat-screen" id="chatScreen">
   <header>
     <h1 data-testid="text-header">Chat</h1>
+    <button id="sidebarToggleBtn" title="Toggle Sidebar" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:4px 8px;border-radius:4px;line-height:1;">&#x2630;</button>
     <div class="header-right">
       <div class="status" id="chatStatus"><div class="dot" id="chatStatusDot"></div><span id="chatStatusText">Connected</span></div>
       <button class="theme-btn" id="updatesBtn" data-testid="button-updates" title="What's New" style="font-size:13px;padding:4px 9px;font-weight:600;">&#x1F195;</button>
@@ -1614,7 +1651,11 @@ body.theme-rose {
         <div id="gcChannelsList"></div>
       </div>
       <div class="sidebar-section">
-        <div class="sidebar-label">Online <span class="count" id="userCount" data-testid="text-user-count">0</span></div>
+        <div class="sidebar-label" style="display:flex;align-items:center;justify-content:space-between;">
+          Online <span class="count" id="userCount" data-testid="text-user-count">0</span>
+          <button id="sortUsersBtn" title="Sort A-Z" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:2px 5px;border-radius:3px;">A-Z</button>
+        </div>
+        <input id="userSearchInput" type="text" placeholder="Search users..." autocomplete="off" style="width:100%;margin:3px 0 4px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text-primary);font-size:12px;outline:none;box-sizing:border-box;" />
       </div>
       <div class="user-list-area" id="userList" data-testid="list-users"></div>
       <div id="dmSpySection" class="dm-spy-section" style="display:none;">
@@ -1634,6 +1675,12 @@ body.theme-rose {
         <div class="dm-spy-item" id="adminCreatorBtn" data-testid="button-admin-creator" style="cursor:pointer;display:none;"><span class="dm-spy-icon" style="color:var(--green);">+</span><span>Create Admin</span></div>
         <div class="dm-spy-item" id="manageAdminsBtn" data-testid="button-manage-admins" style="cursor:pointer;display:none;"><span class="dm-spy-icon" style="color:var(--accent);">A</span><span>Manage Admins</span></div>
         <div class="dm-spy-item" id="broadcastBtn" data-testid="button-broadcast" style="cursor:pointer;display:none;"><span class="dm-spy-icon" style="color:#e74c3c;">📢</span><span>Broadcast</span></div>
+        <div class="dm-spy-item" id="slowmodeBtn" style="cursor:pointer;display:none;"><span class="dm-spy-icon" style="color:var(--orange);">⏱</span><span id="slowmodeBtnLabel">Slowmode: Off</span></div>
+        <div class="dm-spy-item" id="announcementBtn" style="cursor:pointer;display:none;"><span class="dm-spy-icon" style="color:var(--accent);">📣</span><span id="announcementBtnLabel">Announce Mode: Off</span></div>
+        <div class="dm-spy-item" id="motdBtn" style="cursor:pointer;display:none;"><span class="dm-spy-icon" style="color:var(--green);">📌</span><span>Set MOTD</span></div>
+        <div class="dm-spy-item" id="wordFilterBtn" style="cursor:pointer;display:none;"><span class="dm-spy-icon" style="color:var(--red,#f04747);">🚫</span><span>Word Filter</span></div>
+        <div class="dm-spy-item" id="bulkClearBtn" style="cursor:pointer;display:none;"><span class="dm-spy-icon" style="color:var(--red,#f04747);">🗑</span><span>Bulk Clear Chat</span></div>
+        <div class="dm-spy-item" id="exportLogsBtn" style="cursor:pointer;display:none;"><span class="dm-spy-icon" style="color:var(--text-secondary);">📥</span><span>Export Logs</span></div>
       </div>
       <div id="suggestBoxSection" class="dm-spy-section" style="display:none;">
         <div class="dm-spy-label" style="color:var(--green);">Send Suggestion</div>
@@ -1669,6 +1716,15 @@ body.theme-rose {
               <div class="image-preview-bar" id="imagePreviewBar" style="display:none;"></div>
               <div id="replyPreviewBar" style="display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--bg-tertiary);border-left:3px solid var(--accent);border-radius:4px;margin-bottom:4px;font-size:12px;color:var(--text-secondary);max-width:100%;overflow:hidden;"></div>
               <div id="mentionDropdown" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;box-shadow:0 -4px 20px rgba(0,0,0,0.25);max-height:180px;overflow-y:auto;z-index:200;margin:0 16px 4px;"></div>
+              <div class="fmt-toolbar" id="fmtToolbar">
+                <button class="fmt-btn" title="Bold (Ctrl+B)" onclick="wrapSel('**','**')"><b>B</b></button>
+                <button class="fmt-btn" title="Italic (Ctrl+I)" onclick="wrapSel('_','_')"><i>I</i></button>
+                <button class="fmt-btn" title="Strikethrough" onclick="wrapSel('~~','~~')"><s>S</s></button>
+                <button class="fmt-btn" title="Inline code" onclick="wrapSel('\`','\`')">&#x3C;/&#x3E;</button>
+                <button class="fmt-btn" title="Code block" onclick="wrapSel('\`\`\`\n','\n\`\`\`')">&#x1F4CB;</button>
+                <span style="flex:1;"></span>
+                <span id="slowBadge" class="slow-badge" style="display:none;">&#x23F1; Slowmode ON</span>
+              </div>
               <div class="input-bar-row">
                 <input type="text" id="nameInput" data-testid="input-admin-name" placeholder="Your name" value="Admin" style="display:none;width:140px;flex:unset;" />
                 <button class="attach-btn" id="attachBtn" data-testid="button-attach" type="button" title="Attach image">&#x1F4CE;</button>
@@ -2159,9 +2215,16 @@ function renderRichText(text) {
         container.appendChild(img2);
       } else {
         var link = document.createElement('a');
-        link.href = part; link.target = '_blank'; link.rel = 'noopener noreferrer';
+        link.href = '#';
+        link.rel = 'noopener noreferrer';
         link.textContent = part;
-        link.style.cssText = 'color:var(--accent);text-decoration:underline;';
+        link.style.cssText = 'color:var(--accent);text-decoration:underline;cursor:pointer;';
+        (function(u) {
+          link.addEventListener('click', function(e) {
+            e.preventDefault();
+            openBrowserTab(u);
+          });
+        })(part);
         container.appendChild(link);
       }
     } else {
@@ -2811,6 +2874,12 @@ function loadUserSettings() {
   } else if (chatDensity === 'cozy') {
     document.documentElement.style.setProperty('--msg-padding', '8px 16px');
   }
+  var ff = localStorage.getItem('chat-font-family') || '';
+  if (ff) document.documentElement.style.setProperty('font-family', ff);
+  var uclr = localStorage.getItem('chat-username-color') || '';
+  if (uclr) document.documentElement.style.setProperty('--username-color-custom', uclr);
+  if (localStorage.getItem('chat-show-timestamps') === 'off') document.body.classList.add('hide-timestamps');
+  if (localStorage.getItem('chat-show-avatars') === 'off') document.body.classList.add('hide-avatars');
 }
 
 function showSettingsModal() {
@@ -2895,6 +2964,44 @@ function showSettingsModal() {
   soundCheck.setAttribute('data-testid', 'input-settings-sounds');
   addRow('Notification Sounds', soundCheck);
 
+  var fontFamilySelect = document.createElement('select');
+  fontFamilySelect.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:13px;';
+  fontFamilySelect.setAttribute('data-testid', 'select-settings-font-family');
+  [['Default',''],['Monospace','monospace'],['Serif','serif'],['Comic Sans','Comic Sans MS, cursive']].forEach(function(opt) {
+    var o = document.createElement('option');
+    o.value = opt[1]; o.textContent = opt[0];
+    fontFamilySelect.appendChild(o);
+  });
+  fontFamilySelect.value = localStorage.getItem('chat-font-family') || '';
+  addRow('Font Family', fontFamilySelect);
+
+  var usernameColorInput = document.createElement('input');
+  usernameColorInput.type = 'color';
+  usernameColorInput.value = localStorage.getItem('chat-username-color') || '#5865f2';
+  usernameColorInput.setAttribute('data-testid', 'input-settings-username-color');
+  addRow('Username Color', usernameColorInput);
+
+  var timestampsCheck = document.createElement('input');
+  timestampsCheck.type = 'checkbox';
+  timestampsCheck.checked = localStorage.getItem('chat-show-timestamps') !== 'off';
+  timestampsCheck.style.cssText = 'width:18px;height:18px;cursor:pointer;';
+  timestampsCheck.setAttribute('data-testid', 'input-settings-timestamps');
+  addRow('Show Timestamps', timestampsCheck);
+
+  var avatarsCheck = document.createElement('input');
+  avatarsCheck.type = 'checkbox';
+  avatarsCheck.checked = localStorage.getItem('chat-show-avatars') !== 'off';
+  avatarsCheck.style.cssText = 'width:18px;height:18px;cursor:pointer;';
+  avatarsCheck.setAttribute('data-testid', 'input-settings-avatars');
+  addRow('Show Avatars', avatarsCheck);
+
+  var animCheck = document.createElement('input');
+  animCheck.type = 'checkbox';
+  animCheck.checked = localStorage.getItem('chat-msg-animate') !== 'off';
+  animCheck.style.cssText = 'width:18px;height:18px;cursor:pointer;';
+  animCheck.setAttribute('data-testid', 'input-settings-animations');
+  addRow('Message Animations', animCheck);
+
   var btns = document.createElement('div');
   btns.className = 'gc-modal-btns';
   var resetBtn = document.createElement('button');
@@ -2902,7 +3009,7 @@ function showSettingsModal() {
   resetBtn.textContent = 'Reset All';
   resetBtn.setAttribute('data-testid', 'button-settings-reset');
   resetBtn.addEventListener('click', function() {
-    ['chat-bg-url','chat-accent-color','chat-text-color','chat-font-size','chat-density','chat-bg-blur','chat-sounds'].forEach(function(k) {
+    ['chat-bg-url','chat-accent-color','chat-text-color','chat-font-size','chat-density','chat-bg-blur','chat-sounds','chat-font-family','chat-username-color','chat-show-timestamps','chat-show-avatars','chat-msg-animate'].forEach(function(k) {
       localStorage.removeItem(k);
     });
     document.body.style.backgroundImage = '';
@@ -2963,6 +3070,18 @@ function showSettingsModal() {
       document.documentElement.style.removeProperty('--msg-padding');
     }
     localStorage.setItem('chat-sounds', sounds ? 'on' : 'off');
+    var ff = fontFamilySelect.value;
+    if (ff) { localStorage.setItem('chat-font-family', ff); document.documentElement.style.setProperty('font-family', ff); }
+    else { localStorage.removeItem('chat-font-family'); document.documentElement.style.removeProperty('font-family'); }
+    var uclr = usernameColorInput.value;
+    localStorage.setItem('chat-username-color', uclr);
+    document.documentElement.style.setProperty('--username-color-custom', uclr);
+    localStorage.setItem('chat-show-timestamps', timestampsCheck.checked ? 'on' : 'off');
+    document.body.classList.toggle('hide-timestamps', !timestampsCheck.checked);
+    localStorage.setItem('chat-show-avatars', avatarsCheck.checked ? 'on' : 'off');
+    document.body.classList.toggle('hide-avatars', !avatarsCheck.checked);
+    localStorage.setItem('chat-msg-animate', animCheck.checked ? 'on' : 'off');
+    _msgAnimations = animCheck.checked;
     overlay.remove();
   });
   btns.appendChild(saveBtn);
@@ -3275,13 +3394,27 @@ function getUserObj(username) {
   return {name: username};
 }
 
+var _userSortAZ = false;
+var _userSearchQuery = '';
+
 function renderUsers(list) {
   lastUserList = list;
   onlineUsers = list.map(function(u) { return typeof u === 'string' ? u : u.name; });
   document.getElementById('userCount').textContent = list.length;
   var ul = document.getElementById('userList');
   ul.innerHTML = '';
-  list.forEach(function(user) {
+  var filtered = list.filter(function(u) {
+    var n = (typeof u === 'string' ? u : (u.display_name || u.name)).toLowerCase();
+    return !_userSearchQuery || n.indexOf(_userSearchQuery) !== -1;
+  });
+  if (_userSortAZ) {
+    filtered = filtered.slice().sort(function(a, b) {
+      var na = (typeof a === 'string' ? a : (a.display_name || a.name)).toLowerCase();
+      var nb = (typeof b === 'string' ? b : (b.display_name || b.name)).toLowerCase();
+      return na < nb ? -1 : na > nb ? 1 : 0;
+    });
+  }
+  filtered.forEach(function(user) {
     var name = typeof user === 'string' ? user : user.name;
     var displayName = typeof user === 'string' ? user : (user.display_name || user.name);
     var pfpUrl = typeof user === 'string' ? '' : (user.pfp || '');
@@ -3308,7 +3441,9 @@ function renderUsers(list) {
     div.appendChild(avatarWrap);
     var nameEl = document.createElement('span');
     nameEl.className = 'user-name';
-    nameEl.textContent = displayName + (name === myUsername ? ' (you)' : '');
+    var role = typeof user === 'string' ? '' : (user.role || '');
+    var roleBadge = role === 'owner' ? ' 👑' : (role === 'admin' ? ' 🛡️' : '');
+    nameEl.textContent = displayName + roleBadge + (name === myUsername ? ' (you)' : '');
     div.appendChild(nameEl);
     if (name !== myUsername) {
       div.style.cursor = 'pointer';
@@ -3371,22 +3506,17 @@ function updateTypingDisplay() {
     var parts = key.split(':');
     var ch = parts[0];
     var who = parts.slice(1).join(':');
-    if (currentChannel === ch || (currentChannel === 'general' && ch === 'general')) {
-      names.push(who);
-    }
+    if (currentChannel === ch || (currentChannel === 'general' && ch === 'general')) names.push(who);
   }
   if (names.length === 0) {
-    el.style.display = 'none';
-  } else if (names.length === 1) {
-    el.style.display = 'block';
-    el.textContent = names[0] + ' is typing...';
-  } else if (names.length === 2) {
-    el.style.display = 'block';
-    el.textContent = names[0] + ' and ' + names[1] + ' are typing...';
-  } else {
-    el.style.display = 'block';
-    el.textContent = names.length + ' people are typing...';
+    el.style.display = 'none'; return;
   }
+  var nameText = names.length === 1 ? names[0] + ' is typing' :
+                 names.length === 2 ? names[0] + ' and ' + names[1] + ' are typing' :
+                 names.length + ' people are typing';
+  el.style.display = 'flex'; el.style.alignItems = 'center'; el.style.gap = '5px';
+  el.innerHTML = '<span style="font-size:12px;color:var(--text-muted);font-style:italic;">' + escapeHtml(nameText) + '</span>'
+    + '<span class="typing-dots" style="display:inline-flex;align-items:center;margin-bottom:1px;"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>';
 }
 
 function openDm(target) {
@@ -3591,7 +3721,18 @@ function handleMessage(data) {
   } else if (data.type === 'dm_pairs') {
     renderDmSpy(data.pairs);
   } else if (data.type === 'logs_data') {
-    showLogsModal(data.logs || []);
+    if (window._logsExportMode) {
+      window._logsExportMode = false;
+      var blob = new Blob([JSON.stringify(data.logs || [], null, 2)], {type: 'application/json'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'chat_logs_' + new Date().toISOString().slice(0,10) + '.json';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Logs exported!', 'success');
+    } else {
+      showLogsModal(data.logs || []);
+    }
   } else if (data.type === 'suggestions_data') {
     showSuggestionsModal(data.suggestions || []);
   } else if (data.type === 'admins_data') {
@@ -3674,6 +3815,12 @@ function connectOwner(token) {
     document.getElementById('adminCreatorBtn').style.display = 'flex';
     document.getElementById('manageAdminsBtn').style.display = 'flex';
     document.getElementById('broadcastBtn').style.display = 'flex';
+    document.getElementById('slowmodeBtn').style.display = 'flex';
+    document.getElementById('announcementBtn').style.display = 'flex';
+    document.getElementById('motdBtn').style.display = 'flex';
+    document.getElementById('wordFilterBtn').style.display = 'flex';
+    document.getElementById('bulkClearBtn').style.display = 'flex';
+    document.getElementById('exportLogsBtn').style.display = 'flex';
     document.getElementById('msgInput').focus();
     setTimeout(function() { showToast('Welcome back, Owner! 👑', 'success'); }, 600);
     _ownerReconnectDelay = 2000;
@@ -4183,6 +4330,106 @@ document.getElementById('broadcastBtn').addEventListener('click', function() {
   showToast('Broadcast sent!', 'success');
 });
 
+(function() {
+  var slowLevels = [0, 5, 10, 30, 60];
+  document.getElementById('slowmodeBtn').addEventListener('click', function() {
+    var cur = slowLevels.indexOf(_slowmodeDelay);
+    var next = slowLevels[(cur + 1) % slowLevels.length];
+    _slowmodeDelay = next;
+    var lbl = next === 0 ? 'Off' : next + 's';
+    document.getElementById('slowmodeBtnLabel').textContent = 'Slowmode: ' + lbl;
+    showToast('Slowmode set to ' + lbl, 'info');
+  });
+})();
+
+document.getElementById('announcementBtn').addEventListener('click', function() {
+  _announcementMode = !_announcementMode;
+  document.getElementById('announcementBtnLabel').textContent = 'Announce Mode: ' + (_announcementMode ? 'On' : 'Off');
+  showToast('Announcement mode ' + (_announcementMode ? 'enabled — only staff can post.' : 'disabled.'), 'info');
+});
+
+document.getElementById('motdBtn').addEventListener('click', function() {
+  var motd = prompt('Set Message of the Day (shown to all users on join):');
+  if (motd === null) return;
+  if (!motd.trim()) { showToast('MOTD cleared.', 'info'); ws.send(JSON.stringify({type: 'set_motd', text: ''})); return; }
+  ws.send(JSON.stringify({type: 'set_motd', text: motd.trim()}));
+  showToast('MOTD set!', 'success');
+});
+
+document.getElementById('wordFilterBtn').addEventListener('click', function() {
+  var current = _wordFilter.join(', ');
+  var input = prompt('Word filter (comma-separated words to block):', current);
+  if (input === null) return;
+  _wordFilter = input.split(',').map(function(w) { return w.trim().toLowerCase(); }).filter(Boolean);
+  showToast('Word filter updated (' + _wordFilter.length + ' words).', 'success');
+});
+
+document.getElementById('bulkClearBtn').addEventListener('click', function() {
+  if (!confirm('Clear ALL messages from the chat? This cannot be undone.')) return;
+  var messDiv = document.getElementById('messages');
+  if (messDiv) messDiv.innerHTML = '';
+  addSystemMessage('Chat was bulk-cleared by the owner.');
+  showToast('Chat cleared!', 'success');
+});
+
+document.getElementById('exportLogsBtn').addEventListener('click', function() {
+  window._logsExportMode = true;
+  ws.send(JSON.stringify({type: 'get_logs'}));
+  showToast('Preparing log export...', 'info');
+});
+
+document.getElementById('sidebarToggleBtn').addEventListener('click', function() {
+  var sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+  sidebar.classList.toggle('sidebar-collapsed');
+  this.title = sidebar.classList.contains('sidebar-collapsed') ? 'Show Sidebar' : 'Hide Sidebar';
+});
+
+(function() {
+  var uSearch = document.getElementById('userSearchInput');
+  var sortBtn = document.getElementById('sortUsersBtn');
+  if (uSearch) {
+    uSearch.addEventListener('input', function() {
+      _userSearchQuery = this.value.toLowerCase().trim();
+      if (lastUserList) renderUsers(lastUserList);
+    });
+    uSearch.addEventListener('keydown', function(e) { e.stopPropagation(); });
+  }
+  if (sortBtn) {
+    sortBtn.addEventListener('click', function() {
+      _userSortAZ = !_userSortAZ;
+      this.style.color = _userSortAZ ? 'var(--accent)' : 'var(--text-muted)';
+      if (lastUserList) renderUsers(lastUserList);
+    });
+  }
+})();
+
+// Konami code easter egg
+(function() {
+  var _konamiSeq = [];
+  var _konamiCode = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+  document.addEventListener('keydown', function(e) {
+    _konamiSeq.push(e.key);
+    if (_konamiSeq.length > _konamiCode.length) _konamiSeq.shift();
+    if (_konamiSeq.join(',') === _konamiCode.join(',')) {
+      _konamiSeq = [];
+      document.body.classList.add('party-mode');
+      launchConfetti();
+      showToast('🎉 PARTY MODE ACTIVATED! 🎉', 'success');
+      setTimeout(function() { document.body.classList.remove('party-mode'); }, 10000);
+    }
+  });
+})();
+
+// Ctrl+K = open DM search
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    var uSearch = document.getElementById('userSearchInput');
+    if (uSearch) { uSearch.focus(); uSearch.select(); }
+  }
+});
+
 document.getElementById('suggestSendBtn').addEventListener('click', function() {
   var input = document.getElementById('suggestInput');
   var text = input.value.trim();
@@ -4308,6 +4555,8 @@ function applyShortcodes(text) {
   return text.replace(/:[a-z0-9_+\-]+:/gi, function(m) { return _emojiShortcodes[m.toLowerCase()] || m; });
 }
 
+function wrapSel(before, after) { wrapSelection(document.getElementById('msgInput'), before, after); }
+
 function openSearch() {
   var bar = document.getElementById('msgSearchBar');
   if (bar) { bar.classList.add('open'); setTimeout(function() { var i = document.getElementById('msgSearchInput'); if(i) i.focus(); }, 50); }
@@ -4380,10 +4629,141 @@ document.addEventListener('keydown', function(e) {
   if (e.key === '?') { openShortcutsModal(); }
 });
 
+// ── Slash command system ─────────────────────────────────────────────────────
+var _sessionMsgs = 0;
+var _sessionStart = Date.now();
+var _slowmodeDelay = 0;
+var _lastMsgTime = 0;
+var _announcementMode = false;
+var _wordFilter = [];
+var _msgAnimations = localStorage.getItem('chat-msg-animate') !== 'off';
+
+var _8ballAnswers = ['It is certain.','It is decidedly so.','Without a doubt.','Yes, definitely.','You may rely on it.','As I see it, yes.','Most likely.','Outlook good.','Yes.','Signs point to yes.','Reply hazy, try again.','Ask again later.','Better not tell you now.','Cannot predict now.','Concentrate and ask again.','Don\'t count on it.','My reply is no.','My sources say no.','Outlook not so good.','Very doubtful.'];
+var _triviaQs = [
+  ['What is the capital of Japan?','Tokyo'],['How many sides does a hexagon have?','6'],['What is the largest planet in our solar system?','Jupiter'],
+  ['What is the chemical symbol for gold?','Au'],['Who painted the Mona Lisa?','Leonardo da Vinci'],['What is the speed of light (approx, km/s)?','299,792'],
+  ['How many bones are in the adult human body?','206'],['What is the smallest country in the world?','Vatican City'],
+  ['What language has the most native speakers?','Mandarin Chinese'],['What is 12 × 12?','144'],
+];
+
+function processSlashCommand(rawText, inputEl) {
+  var text = rawText.trim();
+  var cmd = text.split(' ')[0].toLowerCase();
+  var rest = text.slice(cmd.length).trim();
+  if (cmd === '/shrug') { inputEl.value = (rest || '') + ' \u00AF\\_(\u30C4)_/\u00AF'; return false; }
+  if (cmd === '/tableflip') { inputEl.value = '(\u256F\u00B0\u25A1\u00B0\uFF09\u256F\uFE35 \u253B\u2501\u253B'; return false; }
+  if (cmd === '/unflip') { inputEl.value = '\u252C\u2500\u252C\u30CE( \u00BA _ \u00BA\u30CE)'; return false; }
+  if (cmd === '/lenny') { inputEl.value = '( \u0361\u00B0 \u035C\u0296 \u0361\u00B0)'; return false; }
+  if (cmd === '/shout') { if (!rest) { showToast('Usage: /shout YOUR TEXT', 'info'); return true; } inputEl.value = rest.toUpperCase(); return false; }
+  if (cmd === '/rainbow') {
+    if (!rest) { showToast('Usage: /rainbow your text', 'info'); return true; }
+    inputEl.value = '🌈 ' + rest;
+    return false;
+  }
+  if (cmd === '/me') {
+    if (!rest) { showToast('Usage: /me does something', 'info'); return true; }
+    inputEl.value = '👤 *' + rest + '*';
+    return false;
+  }
+  if (cmd === '/roll') {
+    var sides = parseInt(rest) || 6;
+    if (sides < 2 || sides > 10000) sides = 6;
+    var result = Math.floor(Math.random() * sides) + 1;
+    inputEl.value = '🎲 Rolled a ' + sides + '-sided die: **' + result + '**!';
+    return false;
+  }
+  if (cmd === '/flip') {
+    var coin = Math.random() < 0.5 ? 'Heads' : 'Tails';
+    if (coin === 'Heads') launchConfetti();
+    inputEl.value = '🪙 Flipped a coin: **' + coin + '**!';
+    return false;
+  }
+  if (cmd === '/8ball') {
+    var q = rest || 'question';
+    var ans = _8ballAnswers[Math.floor(Math.random() * _8ballAnswers.length)];
+    inputEl.value = '🎱 *' + q + '* — ' + ans;
+    return false;
+  }
+  if (cmd === '/trivia') {
+    var t = _triviaQs[Math.floor(Math.random() * _triviaQs.length)];
+    inputEl.value = '🧠 **Trivia:** ' + t[0] + ' ||Answer: ' + t[1] + '||';
+    return false;
+  }
+  if (cmd === '/poll') {
+    var parts = text.slice(5).split('|').map(function(s){return s.trim();}).filter(Boolean);
+    if (parts.length < 3) { showToast('Usage: /poll Question | Option 1 | Option 2', 'info'); return true; }
+    showLocalPoll(parts[0], parts.slice(1));
+    inputEl.value = '';
+    return true;
+  }
+  return false;
+}
+
+function showLocalPoll(question, options) {
+  var messagesDiv = document.getElementById('messages');
+  if (!messagesDiv) return;
+  var empty = document.getElementById('emptyState');
+  if (empty) empty.style.display = 'none';
+  var row = document.createElement('div');
+  row.className = 'msg-row' + (_msgAnimations ? ' msg-animate' : '');
+  row.style.cssText = 'padding:6px 16px;';
+  var votes = options.map(function() { return 0; });
+  var voted = -1;
+  function render() {
+    row.innerHTML = '';
+    var w = document.createElement('div');
+    w.className = 'poll-widget';
+    w.innerHTML = '<div style="font-weight:700;color:var(--text-primary);margin-bottom:8px;">📊 ' + escapeHtml(question) + '</div>';
+    var total = votes.reduce(function(a,b){return a+b;},0);
+    options.forEach(function(opt, i) {
+      var pct = total > 0 ? Math.round(votes[i]/total*100) : 0;
+      var ob = document.createElement('div');
+      ob.className = 'poll-option';
+      ob.innerHTML = '<span style="flex:1;font-size:13px;color:var(--text-primary);">' + escapeHtml(opt) + '</span><span style="font-size:12px;color:var(--text-muted);min-width:32px;text-align:right;">' + pct + '%</span>';
+      var bar = document.createElement('div');
+      bar.style.cssText = 'width:100%;background:var(--bg-primary);border-radius:3px;height:6px;margin-top:4px;overflow:hidden;';
+      var fill = document.createElement('div');
+      fill.className = 'poll-bar'; fill.style.width = pct + '%';
+      bar.appendChild(fill); ob.appendChild(bar);
+      if (voted === -1) {
+        ob.style.cursor = 'pointer';
+        ob.addEventListener('click', function() { if (voted >= 0) return; votes[i]++; voted = i; render(); });
+      }
+      w.appendChild(ob);
+    });
+    if (voted >= 0) {
+      var note = document.createElement('div');
+      note.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:6px;';
+      note.textContent = 'Voted! (' + total + ' total)';
+      w.appendChild(note);
+    }
+    row.appendChild(w);
+  }
+  render();
+  messagesDiv.appendChild(row);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
 document.getElementById('sendBtn').addEventListener('click', function() {
   var input = document.getElementById('msgInput');
-  var text = applyShortcodes(input.value.trim());
+  var rawText = input.value.trim();
+  if (_announcementMode && !isOwner && !isAdmin) { showToast('Announcement mode is on — only staff can post.', 'info'); return; }
+  if (_slowmodeDelay > 0 && !isOwner && !isAdmin) {
+    var elapsed = Date.now() - _lastMsgTime;
+    if (elapsed < _slowmodeDelay * 1000) {
+      var wait = Math.ceil((_slowmodeDelay * 1000 - elapsed) / 1000);
+      showToast('Slowmode: wait ' + wait + 's before sending again.', 'info'); return;
+    }
+  }
+  if (rawText.startsWith('/')) {
+    var cmdHandled = processSlashCommand(rawText, input);
+    if (cmdHandled === true) { input.focus(); return; }
+    rawText = input.value.trim();
+  }
+  var text = applyShortcodes(rawText);
   if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  _lastMsgTime = Date.now();
+  _sessionMsgs++;
   localStorage.removeItem('draft:' + currentChannel);
   var replyCtx = _replyTo ? { reply_sender: _replyTo.display_name || _replyTo.sender, reply_text: (_replyTo.text || '').substring(0, 80) } : {};
   if (currentChannel === 'general') {
@@ -4819,6 +5199,31 @@ var allNewTabItems = [
   { id: 'embedded', type: 'embedded', name: 'Embedded Games', desc: '200+ popular unblocked games playable in-browser', badge: 'NEW' },
   { id: 'browser', type: 'browser', name: 'Browser', desc: 'Built-in web browser with proxy support', badge: 'NEW' },
 ];
+
+function openBrowserTab(url) {
+  var existing = findTabByType('browser');
+  if (existing) {
+    switchTab(existing.id);
+    var inp = document.getElementById('browser-urlinput-' + existing.id);
+    var go = document.getElementById('browser-go-' + existing.id);
+    if (inp) { inp.value = url; if (go) go.click(); }
+    return;
+  }
+  var id = createTabId();
+  tabs.push({ id: id, type: 'browser', label: 'Browser' });
+  var content = document.createElement('div');
+  content.className = 'tab-content';
+  content.id = 'tabContent-' + id;
+  document.getElementById('tabContents').appendChild(content);
+  renderTabBar();
+  switchTab(id);
+  convertTabToBrowser(id);
+  setTimeout(function() {
+    var inp = document.getElementById('browser-urlinput-' + id);
+    var go = document.getElementById('browser-go-' + id);
+    if (inp) { inp.value = url; if (go) go.click(); }
+  }, 150);
+}
 
 function openNewTab() {
   var existing = findTabByType('newtab');
@@ -5809,127 +6214,156 @@ function convertTabToEmbedded(tabId) {
 
 function convertTabToBrowser(tabId) {
   for (var i = 0; i < tabs.length; i++) {
-    if (tabs[i].id === tabId) {
-      tabs[i].type = 'browser';
-      tabs[i].label = 'Browser';
-      break;
-    }
+    if (tabs[i].id === tabId) { tabs[i].type = 'browser'; tabs[i].label = 'Browser'; break; }
   }
   var el = document.getElementById('tabContent-' + tabId);
   el.innerHTML = '';
   var container = document.createElement('div');
   container.style.cssText = 'display:flex;flex-direction:column;height:100%;background:var(--bg-primary);overflow:hidden;';
 
+  // ── Toolbar ──────────────────────────────────────────────────────────────
   var toolbar = document.createElement('div');
-  toolbar.style.cssText = 'display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;';
+  toolbar.style.cssText = 'display:flex;align-items:center;gap:5px;padding:7px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;position:relative;';
 
-  var backBtn2 = document.createElement('button');
-  backBtn2.title = 'Back';
-  backBtn2.innerHTML = '&#x2190;';
-  backBtn2.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;';
-  toolbar.appendChild(backBtn2);
-  var fwdBtn = document.createElement('button');
-  fwdBtn.title = 'Forward';
-  fwdBtn.innerHTML = '&#x2192;';
-  fwdBtn.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;';
-  toolbar.appendChild(fwdBtn);
-  var refreshBtn2 = document.createElement('button');
-  refreshBtn2.title = 'Refresh';
-  refreshBtn2.innerHTML = '&#x21BB;';
-  refreshBtn2.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;';
-  toolbar.appendChild(refreshBtn2);
-  var homeBtn = document.createElement('button');
-  homeBtn.title = 'Home';
-  homeBtn.innerHTML = '&#x2302;';
-  homeBtn.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;';
-  toolbar.appendChild(homeBtn);
+  function mkNavBtn(html, title) {
+    var b = document.createElement('button');
+    b.innerHTML = html; b.title = title;
+    b.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;';
+    return b;
+  }
+  var backBtn2  = mkNavBtn('&#x2190;', 'Back');
+  var fwdBtn    = mkNavBtn('&#x2192;', 'Forward');
+  var refreshBtn2 = mkNavBtn('&#x21BB;', 'Refresh');
+  var homeBtn   = mkNavBtn('&#x2302;', 'Home');
+  toolbar.appendChild(backBtn2); toolbar.appendChild(fwdBtn);
+  toolbar.appendChild(refreshBtn2); toolbar.appendChild(homeBtn);
 
   var urlInput = document.createElement('input');
-  urlInput.type = 'text';
-  urlInput.placeholder = 'Enter URL or search...';
-  urlInput.value = '';
-  urlInput.style.cssText = 'flex:1;padding:7px 12px;border:none;border-radius:6px;background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;';
+  urlInput.type = 'text'; urlInput.placeholder = 'Search or enter URL...';
+  urlInput.style.cssText = 'flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;min-width:0;';
   toolbar.appendChild(urlInput);
 
   var goBtn = document.createElement('button');
   goBtn.textContent = 'Go';
-  goBtn.style.cssText = 'padding:5px 14px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:600;';
+  goBtn.style.cssText = 'padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:600;flex-shrink:0;';
   toolbar.appendChild(goBtn);
 
+  var bookmarkBtn = document.createElement('button');
+  bookmarkBtn.title = 'Bookmark this page'; bookmarkBtn.textContent = '☆';
+  bookmarkBtn.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;flex-shrink:0;';
+  toolbar.appendChild(bookmarkBtn);
+
   var newWindowBtn = document.createElement('button');
-  newWindowBtn.title = 'Open in new tab';
-  newWindowBtn.innerHTML = '&#x2197;';
-  newWindowBtn.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;line-height:1;';
+  newWindowBtn.title = 'Open in new window'; newWindowBtn.innerHTML = '&#x2197;';
+  newWindowBtn.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;flex-shrink:0;';
   toolbar.appendChild(newWindowBtn);
 
-  var vpnToggle = document.createElement('button');
-  vpnToggle.title = 'Toggle VPN proxy';
-  vpnToggle.textContent = '🔒 VPN';
-  vpnToggle.style.cssText = 'padding:5px 10px;background:var(--bg-tertiary);color:var(--green);border:1px solid var(--green);border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;';
-  var vpnEnabled = false;
-  toolbar.appendChild(vpnToggle);
+  // Loading progress bar
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'position:absolute;bottom:0;left:0;height:2px;width:0%;background:var(--accent);transition:width 0.4s ease;z-index:5;border-radius:0 2px 2px 0;';
+  toolbar.appendChild(progressBar);
   container.appendChild(toolbar);
 
-  var proxyNote = document.createElement('div');
-  proxyNote.style.cssText = 'background:var(--accent);color:#fff;padding:6px 14px;font-size:12px;text-align:center;flex-shrink:0;display:none;';
-  proxyNote.textContent = '🔒 VPN Proxy Active — routing through proxy.corsfix.com';
-  container.appendChild(proxyNote);
+  // ── Bookmarks bar ─────────────────────────────────────────────────────────
+  var bkBar = document.createElement('div');
+  bkBar.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;min-height:32px;overflow-x:auto;';
+  container.appendChild(bkBar);
 
+  var _savedBookmarks = JSON.parse(localStorage.getItem('browser_bookmarks') || '[]');
+  var _currentUrl = '';
+  var _navHistory = [];
+  var _navIdx = -1;
+
+  function renderBookmarksBar() {
+    bkBar.innerHTML = '';
+    if (_savedBookmarks.length === 0) {
+      var hint = document.createElement('span');
+      hint.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 4px;white-space:nowrap;';
+      hint.textContent = '☆ Click ☆ to bookmark pages';
+      bkBar.appendChild(hint);
+      return;
+    }
+    _savedBookmarks.forEach(function(bm, idx) {
+      var b = document.createElement('button');
+      b.title = bm.url; b.textContent = bm.name || bm.url.replace(/^https?:\/\//, '').split('/')[0];
+      b.style.cssText = 'padding:3px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;position:relative;';
+      b.addEventListener('click', function() { navigate(bm.url); });
+      b.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        _savedBookmarks.splice(idx, 1);
+        localStorage.setItem('browser_bookmarks', JSON.stringify(_savedBookmarks));
+        renderBookmarksBar();
+      });
+      bkBar.appendChild(b);
+    });
+  }
+  renderBookmarksBar();
+
+  // ── Frame wrapper ────────────────────────────────────────────────────────
   var frameWrap = document.createElement('div');
   frameWrap.style.cssText = 'flex:1;position:relative;overflow:hidden;';
 
+  // Home page
   var homePage = document.createElement('div');
-  homePage.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:var(--text-secondary);';
-  var hIcon = document.createElement('div');
-  hIcon.style.cssText = 'font-size:48px;';
-  hIcon.textContent = '🌐';
-  homePage.appendChild(hIcon);
+  homePage.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;overflow-y:auto;padding:24px;';
   var hTitle = document.createElement('div');
-  hTitle.style.cssText = 'font-size:22px;font-weight:700;color:var(--text-primary);';
-  hTitle.textContent = 'Browser';
+  hTitle.style.cssText = 'font-size:28px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:10px;';
+  hTitle.innerHTML = '🌐 Browser';
   homePage.appendChild(hTitle);
-  var hSub = document.createElement('div');
-  hSub.style.cssText = 'font-size:13px;color:var(--text-muted);text-align:center;max-width:320px;';
-  hSub.innerHTML = 'Enter a URL above or search to start browsing.<br>Enable VPN proxy to bypass restrictions.';
-  homePage.appendChild(hSub);
-  var quickLinks = document.createElement('div');
-  quickLinks.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;';
-  var bookmarks = [
-    {n:'🔍 Search',u:'https://duckduckgo.com'},
-    {n:'▶ YouTube',u:'https://youtube.com'},
-    {n:'📖 Wikipedia',u:'https://wikipedia.org'},
-    {n:'🌐 Reddit',u:'https://reddit.com'},
-    {n:'🐙 GitHub',u:'https://github.com'},
-    {n:'🗺️ Maps',u:'https://maps.google.com'},
-    {n:'♟️ Chess',u:'https://lichess.org'},
-    {n:'🧩 Infinite Craft',u:'https://neal.fun/infinite-craft/'},
-    {n:'📝 Wordle',u:'https://wordplay.com'},
-    {n:'✍️ Draw',u:'https://www.autodraw.com'},
+  // Search box on home page
+  var homeSearch = document.createElement('div');
+  homeSearch.style.cssText = 'display:flex;gap:8px;width:100%;max-width:500px;';
+  var homeSearchInput = document.createElement('input');
+  homeSearchInput.type = 'text'; homeSearchInput.placeholder = 'Search DuckDuckGo or enter URL...';
+  homeSearchInput.style.cssText = 'flex:1;padding:10px 16px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;outline:none;';
+  var homeSearchBtn = document.createElement('button');
+  homeSearchBtn.textContent = 'Go';
+  homeSearchBtn.style.cssText = 'padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;';
+  homeSearch.appendChild(homeSearchInput); homeSearch.appendChild(homeSearchBtn);
+  homePage.appendChild(homeSearch);
+  var homeNote = document.createElement('div');
+  homeNote.style.cssText = 'font-size:11px;color:var(--text-muted);text-align:center;';
+  homeNote.innerHTML = '🔒 All pages routed through secure proxy &nbsp;|&nbsp; Google redirects to DuckDuckGo';
+  homePage.appendChild(homeNote);
+  // Quick links grid
+  var quickGrid = document.createElement('div');
+  quickGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;width:100%;max-width:560px;margin-top:4px;';
+  var quickSites = [
+    {e:'🔍',n:'DuckDuckGo',u:'https://lite.duckduckgo.com/lite/'},
+    {e:'▶',n:'YouTube',u:'https://youtube.com'},
+    {e:'📖',n:'Wikipedia',u:'https://wikipedia.org'},
+    {e:'🐙',n:'GitHub',u:'https://github.com'},
+    {e:'♟',n:'Chess',u:'https://lichess.org'},
+    {e:'🧩',n:'Inf. Craft',u:'https://neal.fun/infinite-craft/'},
+    {e:'📝',n:'Wordle',u:'https://wordplay.com'},
+    {e:'✍',n:'AutoDraw',u:'https://autodraw.com'},
+    {e:'🌐',n:'Reddit',u:'https://old.reddit.com'},
+    {e:'📰',n:'HN',u:'https://news.ycombinator.com'},
+    {e:'🎮',n:'Coolmath',u:'https://www.coolmathgames.com'},
+    {e:'📡',n:'Archive',u:'https://web.archive.org'},
   ];
-  bookmarks.forEach(function(bm) {
+  quickSites.forEach(function(s) {
     var btn = document.createElement('button');
-    btn.textContent = bm.n;
-    btn.style.cssText = 'padding:7px 14px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;';
-    btn.addEventListener('click', function() { urlInput.value = bm.u; navigate(bm.u); });
-    quickLinks.appendChild(btn);
+    btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:11px;';
+    btn.innerHTML = '<span style="font-size:20px;">' + s.e + '</span>' + escapeHtml(s.n);
+    btn.addEventListener('click', function() { navigate(s.u); });
+    quickGrid.appendChild(btn);
   });
-  homePage.appendChild(quickLinks);
+  homePage.appendChild(quickGrid);
   frameWrap.appendChild(homePage);
 
+  // Iframe
   var frame = document.createElement('iframe');
   frame.id = 'browser-frame-' + tabId;
   frame.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;display:none;';
   frame.allow = 'fullscreen; autoplay; payment; camera; microphone; gamepad';
   frame.setAttribute('allowfullscreen', '');
+  frame.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation');
   frameWrap.appendChild(frame);
 
+  // Blocked/error overlay
   var blockedMsg = document.createElement('div');
-  blockedMsg.style.cssText = 'display:none;position:absolute;inset:0;background:var(--bg-primary);align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;padding:24px;';
-  blockedMsg.innerHTML = '<div style="font-size:40px;">🚫</div><div style="font-size:18px;font-weight:700;color:var(--text-primary);">Site blocked embedding</div><div style="font-size:13px;color:var(--text-muted);">This site cannot be displayed inside a frame.<br>Try enabling VPN proxy or open in new tab.</div>';
-  var openExtBtn = document.createElement('button');
-  openExtBtn.textContent = '↗ Open in New Tab';
-  openExtBtn.style.cssText = 'margin-top:8px;padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;';
-  blockedMsg.appendChild(openExtBtn);
+  blockedMsg.style.cssText = 'display:none;position:absolute;inset:0;background:var(--bg-primary);flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:32px;';
   frameWrap.appendChild(blockedMsg);
 
   container.appendChild(frameWrap);
@@ -5938,130 +6372,159 @@ function convertTabToBrowser(tabId) {
   urlInput.id = 'browser-urlinput-' + tabId;
   goBtn.id = 'browser-go-' + tabId;
 
-  function navigate(rawUrl) {
+  // ── Progress bar helpers ─────────────────────────────────────────────────
+  var _progTimer = null;
+  function startProgress() {
+    progressBar.style.transition = 'none'; progressBar.style.width = '0%';
+    setTimeout(function() { progressBar.style.transition = 'width 2s ease'; progressBar.style.width = '75%'; }, 20);
+    clearTimeout(_progTimer);
+  }
+  function finishProgress() {
+    progressBar.style.transition = 'width 0.3s ease'; progressBar.style.width = '100%';
+    _progTimer = setTimeout(function() { progressBar.style.width = '0%'; }, 400);
+  }
+
+  // ── Show/hide helpers ────────────────────────────────────────────────────
+  function showFrame() {
+    frame.style.display = 'block';
+    homePage.style.display = 'none';
+    blockedMsg.style.display = 'none';
+  }
+  function showHome() {
+    frame.style.display = 'none';
+    homePage.style.display = 'flex';
+    blockedMsg.style.display = 'none';
+    _currentUrl = '';
+    updateBookmarkBtn();
+  }
+  function showBlocked(icon, title, body, extUrl) {
+    frame.style.display = 'none';
+    homePage.style.display = 'none';
+    finishProgress();
+    blockedMsg.innerHTML = '';
+    blockedMsg.style.display = 'flex';
+    var parts = [
+      '<div style="font-size:36px;">' + icon + '</div>',
+      '<div style="font-size:17px;font-weight:700;color:var(--text-primary);">' + escapeHtml(title) + '</div>',
+      '<div style="font-size:13px;color:var(--text-muted);max-width:380px;">' + body + '</div>'
+    ];
+    blockedMsg.innerHTML = parts.join('');
+    if (extUrl) {
+      var eb = document.createElement('button');
+      eb.textContent = '↗ Open in New Window';
+      eb.style.cssText = 'margin-top:4px;padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;';
+      eb.addEventListener('click', function() { window.open(extUrl, '_blank'); });
+      blockedMsg.appendChild(eb);
+    }
+    var homeB = document.createElement('button');
+    homeB.textContent = '🏠 Back to Home';
+    homeB.style.cssText = 'padding:8px 16px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;';
+    homeB.addEventListener('click', showHome);
+    blockedMsg.appendChild(homeB);
+  }
+
+  function updateBookmarkBtn() {
+    var isBm = _currentUrl && _savedBookmarks.some(function(b) { return b.url === _currentUrl; });
+    bookmarkBtn.textContent = isBm ? '★' : '☆';
+    bookmarkBtn.style.color = isBm ? 'gold' : '';
+  }
+
+  // ── Navigate ──────────────────────────────────────────────────────────────
+  function navigate(rawUrl, pushHistory) {
     var url = rawUrl.trim();
     if (!url) return;
     if (!url.match(/^https?:\/\//i)) {
       if (url.indexOf('.') > 0 && url.indexOf(' ') === -1) url = 'https://' + url;
-      else {
-        url = 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(url);
-      }
+      else url = 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(url);
     }
-    // YouTube watch link → embed
-    var ytMatch = url.match(/(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/)([a-zA-Z0-9_\-]{11})/);
-    // YouTube search
-    var ytSearch = !ytMatch && url.match(/youtube\.com(?:\/results)?\?(?:.*&)?search_query=([^&]+)/);
-    // YouTube home
-    var ytHome = !ytMatch && !ytSearch && /youtube\.com\/?$/.test(url);
-    // Google search → DDG lite
-    var gSearch = !ytMatch && !ytSearch && !ytHome && url.match(/google\.com\/search\?(?:.*&)?q=([^&]+)/);
-    // DDG normal → DDG lite
-    var ddgSearch = !ytMatch && !ytSearch && !ytHome && !gSearch && url.match(/duckduckgo\.com\/?\?(?:.*&)?q=([^&]+)/);
 
-    if (ytMatch) {
-      urlInput.value = url;
-      frame.src = 'https://www.youtube-nocookie.com/embed/' + ytMatch[1] + '?autoplay=0&rel=0';
-      frame.style.display = 'block';
-      homePage.style.display = 'none';
-      blockedMsg.style.display = 'none';
-      openExtBtn.onclick = function() { window.open(url, '_blank'); };
-      newWindowBtn.onclick = function() { window.open(url, '_blank'); };
-      return;
+    // YouTube watch → nocookie embed
+    var ytV = url.match(/(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/)([a-zA-Z0-9_\-]{11})/);
+    if (ytV) {
+      urlInput.value = url; _currentUrl = url;
+      pushNav(url, pushHistory);
+      frame.src = 'https://www.youtube-nocookie.com/embed/' + ytV[1] + '?autoplay=0&rel=0';
+      showFrame(); finishProgress(); updateBookmarkBtn(); return;
     }
-    if (ytSearch) {
-      var q = ytSearch[1];
-      urlInput.value = url;
-      frame.src = 'https://www.youtube.com/embed/videoseries?list=PLbpi6ZahtOH6Ar_3GPy3workbIjZHz71b';
-      // Show a YouTube search helper instead of a broken embed
-      frame.style.display = 'none';
-      homePage.style.display = 'none';
-      blockedMsg.innerHTML = '<div style="font-size:28px;">▶</div>'
-        + '<div style="font-size:16px;font-weight:700;color:var(--text-primary);">YouTube Search</div>'
-        + '<div style="font-size:13px;color:var(--text-muted);max-width:300px;text-align:center;">YouTube blocks embedding. Paste a direct video URL (youtube.com/watch?v=...) to embed it, or open YouTube in a new tab.</div>';
-      var searchExtBtn = document.createElement('button');
-      searchExtBtn.textContent = 'Search "' + decodeURIComponent(q) + '" on YouTube ↗';
-      searchExtBtn.style.cssText = 'margin-top:10px;padding:10px 18px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;';
-      searchExtBtn.onclick = function() { window.open('https://www.youtube.com/results?search_query=' + q, '_blank'); };
-      blockedMsg.appendChild(searchExtBtn);
-      blockedMsg.style.display = 'flex';
-      return;
+    // YouTube home/search → helper
+    if (/youtube\.com\/?($|\?|\/results|\/feed)/i.test(url)) {
+      urlInput.value = url; _currentUrl = url; pushNav(url, pushHistory);
+      var q2 = (url.match(/search_query=([^&]+)/) || [])[1];
+      showBlocked('▶', 'YouTube', 'YouTube blocks embedding. Paste a video URL (youtube.com/watch?v=...) to play it here.', 'https://www.youtube.com' + (q2 ? '/results?search_query=' + q2 : ''));
+      updateBookmarkBtn(); return;
     }
-    if (ytHome) {
-      urlInput.value = url;
-      frame.style.display = 'none';
-      homePage.style.display = 'none';
-      blockedMsg.innerHTML = '<div style="font-size:28px;">▶</div>'
-        + '<div style="font-size:16px;font-weight:700;color:var(--text-primary);">YouTube</div>'
-        + '<div style="font-size:13px;color:var(--text-muted);max-width:320px;text-align:center;">YouTube blocks embedding of its homepage. Paste a video link to watch it here, or search and open in a new tab.</div>';
-      var ytExtBtn = document.createElement('button');
-      ytExtBtn.textContent = 'Open YouTube ↗';
-      ytExtBtn.style.cssText = 'margin-top:10px;padding:10px 18px;background:#ff0000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;';
-      ytExtBtn.onclick = function() { window.open('https://www.youtube.com', '_blank'); };
-      blockedMsg.appendChild(ytExtBtn);
-      blockedMsg.style.display = 'flex';
-      return;
+    // Google home/search → DuckDuckGo lite
+    var gQ = url.match(/google\.com\/(search\?(?:.*&)?q=([^&\s]+)|[^\/]*$)/);
+    if (gQ) {
+      var q3 = gQ[2] ? gQ[2] : '';
+      url = q3 ? 'https://lite.duckduckgo.com/lite/?q=' + q3 : 'https://lite.duckduckgo.com/lite/';
     }
-    if (gSearch) {
-      url = 'https://lite.duckduckgo.com/lite/?q=' + gSearch[1];
+    // DuckDuckGo full → lite
+    var ddgQ = url.match(/duckduckgo\.com\/?\?(?:.*&)?q=([^&]+)/);
+    if (ddgQ) url = 'https://lite.duckduckgo.com/lite/?q=' + ddgQ[1];
+
+    // Blocked-before-proxy sites
+    var blocked = /^https?:\/\/(www\.)?(twitter\.com|x\.com|facebook\.com|instagram\.com|tiktok\.com|accounts\.google)/i;
+    if (blocked.test(url)) {
+      urlInput.value = url; _currentUrl = url; pushNav(url, pushHistory);
+      var domain = url.match(/^https?:\/\/[^/]+/)[0];
+      showBlocked('🔒', 'Login required', 'This site requires a login to display content and blocks embedding.', url);
+      updateBookmarkBtn(); return;
     }
-    if (ddgSearch) {
-      url = 'https://lite.duckduckgo.com/lite/?q=' + ddgSearch[1];
-    }
-    urlInput.value = url;
-    var loadUrl = vpnEnabled ? '/proxy?url=' + encodeURIComponent(url) : url;
-    frame.src = loadUrl;
-    frame.style.display = 'block';
-    homePage.style.display = 'none';
-    blockedMsg.style.display = 'none';
-    openExtBtn.onclick = function() { window.open(url, '_blank'); };
+
+    urlInput.value = url; _currentUrl = url;
+    pushNav(url, pushHistory);
+    updateBookmarkBtn();
+    startProgress();
+    frame.src = '/proxy?url=' + encodeURIComponent(url);
+    showFrame();
     newWindowBtn.onclick = function() { window.open(url, '_blank'); };
-    var _proxyTried = vpnEnabled;
+    frame.onload = function() { finishProgress(); };
     frame.onerror = function() {
-      if (!_proxyTried) {
-        _proxyTried = true;
-        frame.src = '/proxy?url=' + encodeURIComponent(url);
-        return;
-      }
-      blockedMsg.style.display = 'flex'; frame.style.display = 'none';
-    };
-    // Auto-detect block: some sites load a redirect instead of blocking
-    frame.onload = function() {
-      // If VPN not on and page loaded but frame is tiny we can't detect CSP, just let it show
+      showBlocked('🚫', 'Failed to load', 'The page could not be loaded through the proxy.', url);
     };
   }
 
+  function pushNav(url, doIt) {
+    if (doIt === false) return;
+    _navHistory = _navHistory.slice(0, _navIdx + 1);
+    _navHistory.push(url);
+    _navIdx = _navHistory.length - 1;
+  }
+
+  // ── Event listeners ──────────────────────────────────────────────────────
   goBtn.addEventListener('click', function() { navigate(urlInput.value); });
+  homeSearchBtn.addEventListener('click', function() { navigate(homeSearchInput.value); });
+  homeSearchInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') navigate(homeSearchInput.value); e.stopPropagation(); });
   urlInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') navigate(urlInput.value);
     e.stopPropagation();
   });
-  urlInput.addEventListener('click', function() { this.select(); });
+  urlInput.addEventListener('focus', function() { this.select(); });
   backBtn2.addEventListener('click', function() {
-    try { frame.contentWindow.history.back(); } catch(e) { frame.src = 'about:blank'; frame.style.display='none'; homePage.style.display='flex'; }
+    if (_navIdx > 0) { _navIdx--; navigate(_navHistory[_navIdx], false); }
   });
   fwdBtn.addEventListener('click', function() {
-    try { frame.contentWindow.history.forward(); } catch(e) {}
+    if (_navIdx < _navHistory.length - 1) { _navIdx++; navigate(_navHistory[_navIdx], false); }
   });
   refreshBtn2.addEventListener('click', function() {
-    if (frame.src && frame.src !== 'about:blank') { var s = frame.src; frame.src=''; frame.src=s; }
+    if (_currentUrl) { startProgress(); var s = frame.src; frame.src = ''; frame.src = s; }
   });
-  homeBtn.addEventListener('click', function() {
-    frame.src = 'about:blank';
-    frame.style.display = 'none';
-    homePage.style.display = 'flex';
-    urlInput.value = '';
-    blockedMsg.style.display = 'none';
+  homeBtn.addEventListener('click', showHome);
+  bookmarkBtn.addEventListener('click', function() {
+    if (!_currentUrl) return;
+    var existing = _savedBookmarks.findIndex(function(b) { return b.url === _currentUrl; });
+    if (existing >= 0) {
+      _savedBookmarks.splice(existing, 1);
+    } else {
+      var name = _currentUrl.replace(/^https?:\/\//, '').split('/')[0];
+      _savedBookmarks.push({ url: _currentUrl, name: name });
+    }
+    localStorage.setItem('browser_bookmarks', JSON.stringify(_savedBookmarks));
+    renderBookmarksBar();
+    updateBookmarkBtn();
   });
-  vpnToggle.addEventListener('click', function() {
-    vpnEnabled = !vpnEnabled;
-    vpnToggle.textContent = vpnEnabled ? '🔒 VPN ON' : '🔒 VPN';
-    vpnToggle.style.background = vpnEnabled ? 'var(--green)' : 'var(--bg-tertiary)';
-    vpnToggle.style.color = vpnEnabled ? '#fff' : 'var(--green)';
-    proxyNote.style.display = vpnEnabled ? 'block' : 'none';
-  });
-  newWindowBtn.addEventListener('click', function() {
-    if (frame.src && frame.src !== 'about:blank') window.open(frame.src, '_blank');
-  });
+  newWindowBtn.addEventListener('click', function() { if (_currentUrl) window.open(_currentUrl, '_blank'); });
   renderTabBar();
 }
 
@@ -6643,6 +7106,15 @@ async def handle_owner_ws(request):
                         await broadcast_all(bcast_msg)
                         add_log("chat", sender="[Broadcast]", text=text, admin=True)
                         print(f"[OWNER BROADCAST] {text}")
+
+                elif data["type"] == "set_motd":
+                    motd_text = data.get("text", "").strip()
+                    if motd_text:
+                        motd_msg = {"type": "system", "text": f"📌 MOTD: {motd_text}"}
+                        await broadcast_all(motd_msg)
+                        print(f"[MOTD SET] {motd_text}")
+                    else:
+                        print("[MOTD CLEARED]")
 
                 elif data["type"] == "chat":
                     text = data.get("text", "").strip()
@@ -7682,46 +8154,101 @@ async def handle_api_changelog_seen(request):
 
 async def handle_proxy(request):
     import urllib.parse as _up
+    import re as _re
     url = request.rel_url.query.get('url', '').strip()
     if not url or not (url.startswith('http://') or url.startswith('https://')):
         return web.Response(text='Bad URL', status=400, content_type='text/plain')
+
+    def _mp(u, base):
+        if not u: return u
+        u = u.strip()
+        skip = ('data:', 'blob:', '#', 'javascript:', 'mailto:', 'tel:', 'about:', '/proxy?', 'chrome:', 'ws:', 'wss:')
+        if any(u.startswith(p) for p in skip): return u
+        if u.startswith('//'): u = 'https:' + u
+        elif not u.startswith(('http://', 'https://')):
+            try: u = _up.urljoin(base, u)
+            except: return u
+        return '/proxy?url=' + _up.quote(u, safe='')
+
+    def _rewrite_html(text, base):
+        def _ra(m):
+            return m.group(1) + '=' + m.group(2) + _mp(m.group(3), base) + m.group(2)
+        text = _re.sub(r'(?i)(src)=(["\'])([^"\'>\s]{1,2000})\2', _ra, text)
+        text = _re.sub(r'(?i)(href)=(["\'])([^"\'>\s]{1,2000})\2', _ra, text)
+        text = _re.sub(r'(?i)(action)=(["\'])([^"\'>\s]{1,2000})\2', _ra, text)
+        safe_base = base.replace("'", "\\'")
+        inject = (
+            "<script>(function(){"
+            "try{"
+            "var _b='/proxy?url=';"
+            "function _p(u){"
+            "if(!u||typeof u!=='string')return u;"
+            "if(u.indexOf('/proxy?url=')===0||u.startsWith('data:')||u.startsWith('blob:')||u.startsWith('#')||u.startsWith('javascript:'))return u;"
+            "if(u.startsWith('//'))u='https:'+u;"
+            f"if(!/^https?:/i.test(u)){{try{{u=new URL(u,'{safe_base}').href;}}catch(e){{return u;}}}}"
+            "return _b+encodeURIComponent(u);}"
+            "var _of=window.fetch;"
+            "window.fetch=function(r,i){if(typeof r==='string')r=_p(r);return _of.call(this,r,i);};"
+            "var _ox=XMLHttpRequest.prototype.open;"
+            "XMLHttpRequest.prototype.open=function(m,u,a,us,p){return _ox.call(this,m,_p(u),a,us,p);};"
+            "}catch(e){}"
+            "})();</script>"
+        )
+        lo = text.lower()
+        hi = lo.find('</head>')
+        if hi >= 0: text = text[:hi] + inject + text[hi:]
+        else: text = inject + text
+        return text
+
+    def _rewrite_css(text, base):
+        def _rc(m):
+            inner = m.group(1).strip().strip('"\'')
+            return 'url("' + _mp(inner, base) + '")'
+        return _re.sub(r'url\(([^)]{1,500})\)', _rc, text)
+
     try:
         parsed = _up.urlparse(url)
-        base_url = f"{parsed.scheme}://{parsed.netloc}"
         req_headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'identity',
+            'Referer': f"{parsed.scheme}://{parsed.netloc}/",
+            'Origin': f"{parsed.scheme}://{parsed.netloc}",
         }
-        timeout = aiohttp.ClientTimeout(total=20)
+        timeout = aiohttp.ClientTimeout(total=25)
         connector = aiohttp.TCPConnector(ssl=False)
         async with aiohttp.ClientSession(connector=connector) as session:
             async with session.get(url, headers=req_headers, allow_redirects=True, timeout=timeout) as resp:
-                content_type = resp.headers.get('Content-Type', 'text/html; charset=utf-8')
+                ct = resp.headers.get('Content-Type', 'text/html; charset=utf-8')
+                final_url = str(resp.url)
                 body = await resp.read()
-                if 'html' in content_type.lower():
+                ct_lo = ct.lower()
+                if 'html' in ct_lo:
                     try:
                         text = body.decode('utf-8', errors='replace')
-                        base_tag = f'<base href="{base_url}/">'
-                        lower = text.lower()
-                        head_pos = lower.find('<head>')
-                        if head_pos >= 0:
-                            ins = head_pos + 6
-                            text = text[:ins] + base_tag + text[ins:]
-                        else:
-                            text = base_tag + text
+                        text = _rewrite_html(text, final_url)
+                        body = text.encode('utf-8')
+                    except Exception:
+                        pass
+                elif 'css' in ct_lo:
+                    try:
+                        text = body.decode('utf-8', errors='replace')
+                        text = _rewrite_css(text, final_url)
                         body = text.encode('utf-8')
                     except Exception:
                         pass
                 resp_obj = web.Response(body=body, status=resp.status)
-                resp_obj.content_type = content_type.split(';')[0].strip()
+                resp_obj.content_type = ct.split(';')[0].strip()
                 resp_obj.headers['Access-Control-Allow-Origin'] = '*'
+                resp_obj.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+                resp_obj.headers['Access-Control-Allow-Headers'] = '*'
                 resp_obj.headers['X-Frame-Options'] = 'ALLOWALL'
-                resp_obj.headers['Content-Security-Policy'] = "frame-ancestors *"
+                resp_obj.headers['Content-Security-Policy'] = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; frame-ancestors *"
                 return resp_obj
     except Exception as e:
-        return web.Response(text=f'Proxy error: {e}', status=502, content_type='text/plain')
+        err_html = f'<html><body style="background:#1e2124;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:12px;"><div style="font-size:40px;">🚫</div><div style="font-size:18px;font-weight:700;">Failed to load</div><div style="font-size:13px;color:#aaa;max-width:400px;text-align:center;">{e}</div></body></html>'
+        return web.Response(text=err_html, status=502, content_type='text/html')
 
 
 async def main():

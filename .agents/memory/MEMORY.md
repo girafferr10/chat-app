@@ -1,0 +1,2 @@
+- [Python unicode in JS strings](python-unicode-js.md) — never use JS \u{XXXX} escape syntax inside Python strings; use actual emoji chars or \\uXXXX 4-digit form.
+- [Server architecture](server-arch.md) — all HTML/CSS/JS is embedded in server.py via get_client_html(); use createElement+addEventListener not innerHTML with JS to avoid escaping issues.
