@@ -4638,7 +4638,7 @@ var _announcementMode = false;
 var _wordFilter = [];
 var _msgAnimations = localStorage.getItem('chat-msg-animate') !== 'off';
 
-var _8ballAnswers = ['It is certain.','It is decidedly so.','Without a doubt.','Yes, definitely.','You may rely on it.','As I see it, yes.','Most likely.','Outlook good.','Yes.','Signs point to yes.','Reply hazy, try again.','Ask again later.','Better not tell you now.','Cannot predict now.','Concentrate and ask again.','Don\'t count on it.','My reply is no.','My sources say no.','Outlook not so good.','Very doubtful.'];
+var _8ballAnswers = ['It is certain.','It is decidedly so.','Without a doubt.','Yes, definitely.','You may rely on it.','As I see it, yes.','Most likely.','Outlook good.','Yes.','Signs point to yes.','Reply hazy, try again.','Ask again later.','Better not tell you now.','Cannot predict now.','Concentrate and ask again.','Don\\'t count on it.','My reply is no.','My sources say no.','Outlook not so good.','Very doubtful.'];
 var _triviaQs = [
   ['What is the capital of Japan?','Tokyo'],['How many sides does a hexagon have?','6'],['What is the largest planet in our solar system?','Jupiter'],
   ['What is the chemical symbol for gold?','Au'],['Who painted the Mona Lisa?','Leonardo da Vinci'],['What is the speed of light (approx, km/s)?','299,792'],
