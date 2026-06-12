@@ -105,50 +105,27 @@ _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 db_pool = None
-CURRENT_VERSION = "2.5"
+CURRENT_VERSION = "2.6"
 CHANGELOG_NOTES = (
-    "<b>What's new in v2.5</b><br><br>"
-    "&#x2022; <b>Browser Overhaul</b> — Always-on proxy with full HTML/CSS URL rewriting; fetch &amp; XHR intercepted so resources actually load<br>"
-    "&#x2022; <b>Browser Bookmarks</b> — ★ button saves any page; bookmarks bar appears below toolbar<br>"
-    "&#x2022; <b>Browser Navigation History</b> — Proper back/forward stack within session<br>"
-    "&#x2022; <b>Browser Loading Bar</b> — Animated progress bar while pages load<br>"
-    "&#x2022; <b>Browser Home Page Redesign</b> — Search bar + featured site grid<br>"
-    "&#x2022; <b>Google → DuckDuckGo</b> — Google searches redirect to DuckDuckGo Lite which actually works in iframes<br>"
-    "&#x2022; <b>/me command</b> — Action messages rendered in italic with accent color<br>"
-    "&#x2022; <b>/roll N</b> — Rolls an N-sided dice and announces the result<br>"
-    "&#x2022; <b>/flip</b> — Flips a coin; confetti fires on Heads!<br>"
-    "&#x2022; <b>/shrug /tableflip /unflip /lenny</b> — Classic text emoticon shortcuts<br>"
-    "&#x2022; <b>/8ball question</b> — Magic 8-ball responds to your question<br>"
-    "&#x2022; <b>/rainbow text</b> — Renders text in rainbow gradient colors<br>"
-    "&#x2022; <b>/shout text</b> — Sends text in bold uppercase<br>"
-    "&#x2022; <b>/trivia</b> — Random trivia question posted in chat<br>"
-    "&#x2022; <b>/poll</b> — Create a local poll: /poll question | opt1 | opt2<br>"
-    "&#x2022; <b>Formatting Toolbar</b> — B / I / S / Code buttons above the message input<br>"
-    "&#x2022; <b>Animated Typing Indicator</b> — Bouncing ●●● dots instead of plain text<br>"
-    "&#x2022; <b>Collapsible Sidebar</b> — Toggle sidebar with the ← button in the header<br>"
-    "&#x2022; <b>User Search</b> — Filter online users list with a search box<br>"
-    "&#x2022; <b>Sort Users A-Z</b> — Toggle alphabetical sort on the online user list<br>"
-    "&#x2022; <b>Owner/Admin Badges</b> — 👑/🛡️ icons appear next to staff in the user list<br>"
-    "&#x2022; <b>Ctrl+K DM Search</b> — Keyboard shortcut to quickly open a DM<br>"
-    "&#x2022; <b>Username Color</b> — Pick your own name color in Settings<br>"
-    "&#x2022; <b>Font Family</b> — Switch between Default / Monospace / Serif in Settings<br>"
-    "&#x2022; <b>Avatar Toggle</b> — Show or hide avatars in Settings<br>"
-    "&#x2022; <b>Timestamp Toggle</b> — Show or hide message timestamps in Settings<br>"
-    "&#x2022; <b>Message Animations</b> — Fade-in animation on new messages (toggle in Settings)<br>"
-    "&#x2022; <b>Slowmode</b> — Owner sets a message cooldown (off / 5 / 10 / 30 / 60 seconds)<br>"
-    "&#x2022; <b>Bulk Clear Chat</b> — Owner button to clear all visible #General messages<br>"
-    "&#x2022; <b>Export Logs</b> — Owner can download chat_logs.json as a file<br>"
-    "&#x2022; <b>Word Filter</b> — Owner sets blocked words; messages auto-blur for guests<br>"
-    "&#x2022; <b>Announcement Mode</b> — Owner toggle: only owner/admin can post<br>"
-    "&#x2022; <b>Custom MOTD</b> — Owner sets a Message of the Day shown on join<br>"
-    "&#x2022; <b>Konami Code Party Mode</b> — ↑↑↓↓←→←→BA unlocks rainbow party mode 🎉<br>"
-    "&#x2022; <b>Session Stats</b> — Profile shows messages sent &amp; session duration<br>"
-    "&#x2022; <b>Link → Browser Tab</b> — Clicking URLs in chat opens them in the built-in browser<br>"
-    "&#x2022; <b>Message Fade-in</b> — New messages slide/fade in smoothly<br>"
+    "<b>What's new in v2.6</b><br><br>"
+    "&#x2022; <b>Browser UI Overhaul</b> — Pill-shaped address bar, circular nav buttons, gradient progress bar, cleaner home page<br>"
+    "&#x2022; <b>VPN / Proxy Indicator</b> — 🛡 shield badge in address bar shows proxy is active on every page<br>"
+    "&#x2022; <b>Browser: Fixed nginx 400 errors</b> — Proxy now sends correct Host header so nginx sites load properly<br>"
+    "&#x2022; <b>Browser: POST support</b> — Proxy handles POST requests (forms, searches) in addition to GET<br>"
+    "&#x2022; <b>Slash Command Autocomplete</b> — Type / in chat to get a live dropdown of all commands with descriptions<br>"
+    "&#x2022; <b>Chat Input Bar Redesign</b> — Unified pill-shaped input container; circular send button; cleaner formatting toolbar<br>"
+    "&#x2022; <b>Message Layout Polish</b> — Better spacing, larger avatars, aligned grouped messages, smoother hover<br>"
+    "&#x2022; <b>Tab Bar Accent</b> — Active tab gets an accent underline; muted inactive tab colors<br>"
+    "&#x2022; <b>Channel Header Shadow</b> — Subtle shadow separates header from messages<br>"
+    "<br><b>Previously in v2.5</b><br>"
+    "&#x2022; Browser bookmarks, nav history, loading bar, home page redesign, Google\u2192DuckDuckGo redirect<br>"
+    "&#x2022; Slash commands: /me /roll /flip /8ball /shrug /tableflip /rainbow /shout /trivia /poll<br>"
+    "&#x2022; Formatting toolbar, typing indicator, collapsible sidebar, user search, Ctrl+K DM, username color<br>"
+    "&#x2022; Slowmode, bulk clear, export logs, word filter, announce mode, MOTD, Konami code party mode<br>"
     "<br><b>Previously in v2.4</b><br>"
-    "&#x2022; Bug fixes: owner login, DM clearing, fullscreen games, browser proxy; status selector, draft persistence, DM/GC previews, mute toggles, GC leave, auto-scroll, code copy, broadcast, welcome toasts<br>"
+    "&#x2022; Bug fixes: owner login, DM clearing, fullscreen games, browser proxy; status selector, draft persistence<br>"
     "<br><b>Previously in v2.3</b><br>"
-    "&#x2022; Reply to messages, Markdown formatting, @mention autocomplete, image paste, DM search, mark-all-read, browser games hub<br>"
+    "&#x2022; Reply to messages, Markdown formatting, @mention autocomplete, image paste, DM search, browser games hub<br>"
 )
 
 
@@ -6313,52 +6290,87 @@ function convertTabToBrowser(tabId) {
   var container = document.createElement('div');
   container.style.cssText = 'display:flex;flex-direction:column;height:100%;background:var(--bg-primary);overflow:hidden;';
 
+  // ── Progress bar (top of container) ────────────────────────────────────
+  var progressBar = document.createElement('div');
+  progressBar.style.cssText = 'height:3px;width:0%;background:linear-gradient(90deg,var(--accent),#a78bfa);transition:width 0.4s ease;flex-shrink:0;';
+  container.appendChild(progressBar);
+
   // ── Toolbar ──────────────────────────────────────────────────────────────
   var toolbar = document.createElement('div');
-  toolbar.style.cssText = 'display:flex;align-items:center;gap:5px;padding:7px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;position:relative;';
+  toolbar.style.cssText = 'display:flex;align-items:center;gap:5px;padding:7px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;';
 
   function mkNavBtn(html, title) {
     var b = document.createElement('button');
     b.innerHTML = html; b.title = title;
-    b.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;';
+    b.style.cssText = 'width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:none;color:var(--text-muted);border:none;border-radius:50%;cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;transition:background 0.12s,color 0.12s;';
+    b.addEventListener('mouseover', function(){ this.style.background='var(--bg-tertiary)'; this.style.color='var(--text-primary)'; });
+    b.addEventListener('mouseout',  function(){ this.style.background='none'; this.style.color='var(--text-muted)'; });
     return b;
   }
-  var backBtn2  = mkNavBtn('&#x2190;', 'Back');
-  var fwdBtn    = mkNavBtn('&#x2192;', 'Forward');
+  var backBtn2    = mkNavBtn('&#x2190;', 'Back');
+  var fwdBtn      = mkNavBtn('&#x2192;', 'Forward');
   var refreshBtn2 = mkNavBtn('&#x21BB;', 'Refresh');
-  var homeBtn   = mkNavBtn('&#x2302;', 'Home');
+  var homeBtn     = mkNavBtn('&#x2302;', 'Home');
   toolbar.appendChild(backBtn2); toolbar.appendChild(fwdBtn);
   toolbar.appendChild(refreshBtn2); toolbar.appendChild(homeBtn);
 
-  var urlInput = document.createElement('input');
-  urlInput.type = 'text'; urlInput.placeholder = 'Search or enter URL...';
-  urlInput.style.cssText = 'flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;min-width:0;';
-  toolbar.appendChild(urlInput);
+  // Pill-shaped address bar
+  var addrWrap = document.createElement('div');
+  addrWrap.style.cssText = 'flex:1;display:flex;align-items:center;gap:5px;background:var(--bg-tertiary);border-radius:20px;border:1.5px solid transparent;padding:0 12px;min-width:0;cursor:text;transition:border-color 0.15s,background 0.15s;';
+  addrWrap.addEventListener('click', function(){ urlInput.focus(); });
 
+  var lockSpan = document.createElement('span');
+  lockSpan.textContent = '🔒'; lockSpan.title = 'Secure proxy connection';
+  lockSpan.style.cssText = 'font-size:11px;flex-shrink:0;opacity:0.5;user-select:none;';
+  addrWrap.appendChild(lockSpan);
+
+  var urlInput = document.createElement('input');
+  urlInput.type = 'text'; urlInput.placeholder = 'Search DuckDuckGo or enter a URL...';
+  urlInput.style.cssText = 'flex:1;border:none;background:transparent;color:var(--text-primary);font-size:13px;outline:none;min-width:0;padding:6px 0;';
+  urlInput.id = 'browser-urlinput-' + tabId;
+  urlInput.addEventListener('focus', function(){
+    addrWrap.style.borderColor = 'rgba(88,101,242,0.55)';
+    addrWrap.style.background = 'var(--bg-primary)';
+    this.select();
+  });
+  urlInput.addEventListener('blur', function(){
+    addrWrap.style.borderColor = 'transparent';
+    addrWrap.style.background = 'var(--bg-tertiary)';
+  });
+  addrWrap.appendChild(urlInput);
+
+  var vpnBadge = document.createElement('span');
+  vpnBadge.textContent = '🛡'; vpnBadge.title = 'VPN Proxy ON \u2014 all traffic routed through server';
+  vpnBadge.style.cssText = 'font-size:12px;flex-shrink:0;opacity:0.6;user-select:none;cursor:default;';
+  addrWrap.appendChild(vpnBadge);
+  toolbar.appendChild(addrWrap);
+
+  // Circular Go button
   var goBtn = document.createElement('button');
-  goBtn.textContent = 'Go';
-  goBtn.style.cssText = 'padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:600;flex-shrink:0;';
+  goBtn.innerHTML = '&#x27A4;'; goBtn.title = 'Go';
+  goBtn.id = 'browser-go-' + tabId;
+  goBtn.style.cssText = 'width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:14px;flex-shrink:0;transition:background 0.15s,transform 0.1s;';
+  goBtn.addEventListener('mouseover', function(){ this.style.background='var(--accent-hover)'; this.style.transform='scale(1.1)'; });
+  goBtn.addEventListener('mouseout',  function(){ this.style.background='var(--accent)'; this.style.transform='scale(1)'; });
   toolbar.appendChild(goBtn);
 
-  var bookmarkBtn = document.createElement('button');
-  bookmarkBtn.title = 'Bookmark this page'; bookmarkBtn.textContent = '☆';
-  bookmarkBtn.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;flex-shrink:0;';
+  function mkIconBtn(html, title, sz) {
+    var b = document.createElement('button');
+    b.innerHTML = html; b.title = title;
+    b.style.cssText = 'width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:none;color:var(--text-muted);border:none;border-radius:50%;cursor:pointer;font-size:'+(sz||'15px')+';flex-shrink:0;transition:background 0.12s,color 0.12s;';
+    b.addEventListener('mouseover', function(){ this.style.background='var(--bg-tertiary)'; this.style.color='var(--text-primary)'; });
+    b.addEventListener('mouseout',  function(){ this.style.background='none'; this.style.color='var(--text-muted)'; });
+    return b;
+  }
+  var bookmarkBtn  = mkIconBtn('&#x2606;', 'Bookmark this page', '17px');
+  var newWindowBtn = mkIconBtn('&#x2197;', 'Open in new window', '17px');
   toolbar.appendChild(bookmarkBtn);
-
-  var newWindowBtn = document.createElement('button');
-  newWindowBtn.title = 'Open in new window'; newWindowBtn.innerHTML = '&#x2197;';
-  newWindowBtn.style.cssText = 'padding:5px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:none;border-radius:4px;cursor:pointer;font-size:16px;flex-shrink:0;';
   toolbar.appendChild(newWindowBtn);
-
-  // Loading progress bar
-  var progressBar = document.createElement('div');
-  progressBar.style.cssText = 'position:absolute;bottom:0;left:0;height:2px;width:0%;background:var(--accent);transition:width 0.4s ease;z-index:5;border-radius:0 2px 2px 0;';
-  toolbar.appendChild(progressBar);
   container.appendChild(toolbar);
 
   // ── Bookmarks bar ─────────────────────────────────────────────────────────
   var bkBar = document.createElement('div');
-  bkBar.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;min-height:32px;overflow-x:auto;';
+  bkBar.style.cssText = 'display:flex;align-items:center;gap:3px;padding:3px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;min-height:26px;overflow-x:auto;scrollbar-width:none;';
   container.appendChild(bkBar);
 
   var _savedBookmarks = JSON.parse(localStorage.getItem('browser_bookmarks') || '[]');
@@ -6371,7 +6383,7 @@ function convertTabToBrowser(tabId) {
     if (_savedBookmarks.length === 0) {
       var hint = document.createElement('span');
       hint.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 4px;white-space:nowrap;';
-      hint.textContent = '☆ Click ☆ to bookmark pages';
+      hint.textContent = '\u2606 Bookmark pages with the \u2606 button above';
       bkBar.appendChild(hint);
       return;
     }
@@ -6397,48 +6409,59 @@ function convertTabToBrowser(tabId) {
 
   // Home page
   var homePage = document.createElement('div');
-  homePage.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;overflow-y:auto;padding:24px;';
+  homePage.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;overflow-y:auto;padding:28px;';
+
   var hTitle = document.createElement('div');
-  hTitle.style.cssText = 'font-size:28px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:10px;';
+  hTitle.style.cssText = 'font-size:26px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:10px;';
   hTitle.innerHTML = '🌐 Browser';
   homePage.appendChild(hTitle);
-  // Search box on home page
+
+  // Integrated search box (pill shape)
   var homeSearch = document.createElement('div');
-  homeSearch.style.cssText = 'display:flex;gap:8px;width:100%;max-width:500px;';
+  homeSearch.style.cssText = 'display:flex;align-items:center;width:100%;max-width:520px;background:var(--bg-tertiary);border:1.5px solid var(--border);border-radius:24px;overflow:hidden;transition:border-color 0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.12);';
+  homeSearch.addEventListener('focusin', function(){ this.style.borderColor='rgba(88,101,242,0.6)'; });
+  homeSearch.addEventListener('focusout', function(){ this.style.borderColor='var(--border)'; });
   var homeSearchInput = document.createElement('input');
-  homeSearchInput.type = 'text'; homeSearchInput.placeholder = 'Search DuckDuckGo or enter URL...';
-  homeSearchInput.style.cssText = 'flex:1;padding:10px 16px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;outline:none;';
+  homeSearchInput.type = 'text'; homeSearchInput.placeholder = 'Search DuckDuckGo or enter a URL...';
+  homeSearchInput.style.cssText = 'flex:1;padding:12px 18px;border:none;background:transparent;color:var(--text-primary);font-size:14px;outline:none;';
   var homeSearchBtn = document.createElement('button');
-  homeSearchBtn.textContent = 'Go';
-  homeSearchBtn.style.cssText = 'padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;';
+  homeSearchBtn.innerHTML = '&#x27A4;';
+  homeSearchBtn.style.cssText = 'padding:10px 18px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:background 0.15s;flex-shrink:0;';
+  homeSearchBtn.addEventListener('mouseover', function(){ this.style.background='var(--accent-hover)'; });
+  homeSearchBtn.addEventListener('mouseout', function(){ this.style.background='var(--accent)'; });
   homeSearch.appendChild(homeSearchInput); homeSearch.appendChild(homeSearchBtn);
   homePage.appendChild(homeSearch);
+
+  // Status strip
   var homeNote = document.createElement('div');
-  homeNote.style.cssText = 'font-size:11px;color:var(--text-muted);text-align:center;';
-  homeNote.innerHTML = '🔒 All pages routed through secure proxy &nbsp;|&nbsp; Google redirects to DuckDuckGo';
+  homeNote.style.cssText = 'display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text-muted);';
+  homeNote.innerHTML = '<span>🛡 Proxy Active</span><span style="opacity:0.35">|</span><span>🔍 Powered by DuckDuckGo</span><span style="opacity:0.35">|</span><span>🚫 Google \u2192 DDG Lite</span>';
   homePage.appendChild(homeNote);
+
   // Quick links grid
   var quickGrid = document.createElement('div');
-  quickGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;width:100%;max-width:560px;margin-top:4px;';
+  quickGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;width:100%;max-width:540px;';
   var quickSites = [
     {e:'🔍',n:'DuckDuckGo',u:'https://lite.duckduckgo.com/lite/'},
-    {e:'▶',n:'YouTube',u:'https://youtube.com'},
+    {e:'\u25B6',n:'YouTube',u:'https://youtube.com'},
     {e:'📖',n:'Wikipedia',u:'https://wikipedia.org'},
     {e:'🐙',n:'GitHub',u:'https://github.com'},
-    {e:'♟',n:'Chess',u:'https://lichess.org'},
+    {e:'\u265F',n:'Chess',u:'https://lichess.org'},
     {e:'🧩',n:'Inf. Craft',u:'https://neal.fun/infinite-craft/'},
     {e:'📝',n:'Wordle',u:'https://wordplay.com'},
-    {e:'✍',n:'AutoDraw',u:'https://autodraw.com'},
+    {e:'\u270D',n:'AutoDraw',u:'https://autodraw.com'},
     {e:'🌐',n:'Reddit',u:'https://old.reddit.com'},
-    {e:'📰',n:'HN',u:'https://news.ycombinator.com'},
+    {e:'📰',n:'Hacker News',u:'https://news.ycombinator.com'},
     {e:'🎮',n:'Coolmath',u:'https://www.coolmathgames.com'},
     {e:'📡',n:'Archive',u:'https://web.archive.org'},
   ];
   quickSites.forEach(function(s) {
     var btn = document.createElement('button');
-    btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:11px;';
-    btn.innerHTML = '<span style="font-size:20px;">' + s.e + '</span>' + escapeHtml(s.n);
+    btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:11px;line-height:1.3;transition:background 0.12s,border-color 0.12s,transform 0.1s;';
+    btn.innerHTML = '<span style="font-size:22px;">' + s.e + '</span>' + escapeHtml(s.n);
     btn.addEventListener('click', function() { navigate(s.u); });
+    btn.addEventListener('mouseover', function(){ this.style.background='var(--bg-secondary)'; this.style.borderColor='var(--accent)'; this.style.transform='translateY(-2px)'; });
+    btn.addEventListener('mouseout', function(){ this.style.background='var(--bg-tertiary)'; this.style.borderColor='var(--border)'; this.style.transform='none'; });
     quickGrid.appendChild(btn);
   });
   homePage.appendChild(quickGrid);
@@ -6460,9 +6483,6 @@ function convertTabToBrowser(tabId) {
 
   container.appendChild(frameWrap);
   el.appendChild(container);
-
-  urlInput.id = 'browser-urlinput-' + tabId;
-  goBtn.id = 'browser-go-' + tabId;
 
   // ── Progress bar helpers ─────────────────────────────────────────────────
   var _progTimer = null;
@@ -6495,24 +6515,27 @@ function convertTabToBrowser(tabId) {
     finishProgress();
     blockedMsg.innerHTML = '';
     blockedMsg.style.display = 'flex';
-    var parts = [
-      '<div style="font-size:36px;">' + icon + '</div>',
-      '<div style="font-size:17px;font-weight:700;color:var(--text-primary);">' + escapeHtml(title) + '</div>',
-      '<div style="font-size:13px;color:var(--text-muted);max-width:380px;">' + body + '</div>'
-    ];
-    blockedMsg.innerHTML = parts.join('');
+    var inner = document.createElement('div');
+    inner.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:440px;';
+    inner.innerHTML = '<div style="font-size:52px;line-height:1;">' + icon + '</div>'
+      + '<div style="font-size:19px;font-weight:800;color:var(--text-primary);">' + escapeHtml(title) + '</div>'
+      + '<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;max-width:360px;">' + body + '</div>';
+    var btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px;';
     if (extUrl) {
       var eb = document.createElement('button');
-      eb.textContent = '↗ Open in New Window';
-      eb.style.cssText = 'margin-top:4px;padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;';
+      eb.innerHTML = '&#x2197; Open in New Window';
+      eb.style.cssText = 'padding:9px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;';
       eb.addEventListener('click', function() { window.open(extUrl, '_blank'); });
-      blockedMsg.appendChild(eb);
+      btnRow.appendChild(eb);
     }
     var homeB = document.createElement('button');
-    homeB.textContent = '🏠 Back to Home';
-    homeB.style.cssText = 'padding:8px 16px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;';
+    homeB.innerHTML = '🏠 Home';
+    homeB.style.cssText = 'padding:9px 18px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;';
     homeB.addEventListener('click', showHome);
-    blockedMsg.appendChild(homeB);
+    btnRow.appendChild(homeB);
+    inner.appendChild(btnRow);
+    blockedMsg.appendChild(inner);
   }
 
   function updateBookmarkBtn() {
@@ -8304,14 +8327,15 @@ async def handle_proxy(request):
         if req_method == 'POST':
             try: req_body = await request.read()
             except Exception: pass
+        parsed = _up.urlparse(url)
         req_headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
             'Accept-Encoding': 'gzip, deflate',
+            'Host': parsed.netloc,
             'Upgrade-Insecure-Requests': '1',
             'Cache-Control': 'max-age=0',
-            'Connection': 'keep-alive',
         }
         timeout = aiohttp.ClientTimeout(total=30)
         connector = aiohttp.TCPConnector(ssl=False)
