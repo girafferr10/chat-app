@@ -6282,172 +6282,110 @@ function convertTabToEmbedded(tabId) {
 }
 
 function convertTabToBrowser(tabId) {
-  for (var i = 0; i < tabs.length; i++) {
-    if (tabs[i].id === tabId) { tabs[i].type = 'browser'; tabs[i].label = 'Browser'; break; }
-  }
-  var el = document.getElementById('tabContent-' + tabId);
-  el.innerHTML = '';
-  var container = document.createElement('div');
-  container.style.cssText = 'display:flex;flex-direction:column;height:100%;background:var(--bg-primary);overflow:hidden;';
+  for (var i=0;i<tabs.length;i++){if(tabs[i].id===tabId){tabs[i].type='browser';tabs[i].label='Browser';break;}}
+  var el=document.getElementById('tabContent-'+tabId);
+  el.innerHTML='';
 
-  // ── Progress bar (top of container) ────────────────────────────────────
-  var progressBar = document.createElement('div');
-  progressBar.style.cssText = 'height:3px;width:0%;background:linear-gradient(90deg,var(--accent),#a78bfa);transition:width 0.4s ease;flex-shrink:0;';
+  // State
+  var _btabs=[];
+  var _act=null;
+  var _vpnOn=true;
+  var _savedBm=JSON.parse(localStorage.getItem('browser_bookmarks')||'[]');
+  var _sid=(function(){var k='_bsid';var v=sessionStorage.getItem(k);if(!v){v=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem(k,v);}return v;})();
+
+  // Container
+  var container=document.createElement('div');
+  container.style.cssText='display:flex;flex-direction:column;height:100%;background:var(--bg-primary);overflow:hidden;';
+  var progressBar=document.createElement('div');
+  progressBar.style.cssText='height:3px;width:0%;background:linear-gradient(90deg,var(--accent),#a78bfa);transition:width 0.4s ease;flex-shrink:0;';
   container.appendChild(progressBar);
 
-  // ── Toolbar ──────────────────────────────────────────────────────────────
-  var toolbar = document.createElement('div');
-  toolbar.style.cssText = 'display:flex;align-items:center;gap:5px;padding:7px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;';
-
-  function mkNavBtn(html, title) {
-    var b = document.createElement('button');
-    b.innerHTML = html; b.title = title;
-    b.style.cssText = 'width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:none;color:var(--text-muted);border:none;border-radius:50%;cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;transition:background 0.12s,color 0.12s;';
-    b.addEventListener('mouseover', function(){ this.style.background='var(--bg-tertiary)'; this.style.color='var(--text-primary)'; });
-    b.addEventListener('mouseout',  function(){ this.style.background='none'; this.style.color='var(--text-muted)'; });
+  // Toolbar
+  var toolbar=document.createElement('div');
+  toolbar.style.cssText='display:flex;align-items:center;gap:4px;padding:6px 8px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;';
+  function mkBtn(html,title,isAcc,sz){
+    var b=document.createElement('button');b.innerHTML=html;b.title=title;
+    b.style.cssText='width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:'+(isAcc?'var(--accent)':'none')+';color:'+(isAcc?'#fff':'var(--text-muted)')+';border:none;border-radius:50%;cursor:pointer;font-size:'+(sz||'14px')+';flex-shrink:0;transition:background 0.12s,color 0.12s,transform 0.1s;';
+    if(isAcc){b.addEventListener('mouseover',function(){this.style.transform='scale(1.1)';});b.addEventListener('mouseout',function(){this.style.transform='scale(1)';});}
+    else{b.addEventListener('mouseover',function(){this.style.background='var(--bg-tertiary)';this.style.color='var(--text-primary)';});b.addEventListener('mouseout',function(){this.style.background='none';this.style.color='var(--text-muted)';});}
     return b;
   }
-  var backBtn2    = mkNavBtn('&#x2190;', 'Back');
-  var fwdBtn      = mkNavBtn('&#x2192;', 'Forward');
-  var refreshBtn2 = mkNavBtn('&#x21BB;', 'Refresh');
-  var homeBtn     = mkNavBtn('&#x2302;', 'Home');
-  toolbar.appendChild(backBtn2); toolbar.appendChild(fwdBtn);
-  toolbar.appendChild(refreshBtn2); toolbar.appendChild(homeBtn);
+  var backBtn=mkBtn('&#x2190;','Back');
+  var fwdBtn=mkBtn('&#x2192;','Forward');
+  var refreshBtn=mkBtn('&#x21BB;','Reload');
+  var homeBtn=mkBtn('&#x2302;','New tab');
+  toolbar.appendChild(backBtn);toolbar.appendChild(fwdBtn);toolbar.appendChild(refreshBtn);toolbar.appendChild(homeBtn);
 
-  // Pill-shaped address bar
-  var addrWrap = document.createElement('div');
-  addrWrap.style.cssText = 'flex:1;display:flex;align-items:center;gap:5px;background:var(--bg-tertiary);border-radius:20px;border:1.5px solid transparent;padding:0 12px;min-width:0;cursor:text;transition:border-color 0.15s,background 0.15s;';
-  addrWrap.addEventListener('click', function(){ urlInput.focus(); });
-
-  var lockSpan = document.createElement('span');
-  lockSpan.textContent = '🔒'; lockSpan.title = 'Secure proxy connection';
-  lockSpan.style.cssText = 'font-size:11px;flex-shrink:0;opacity:0.5;user-select:none;';
-  addrWrap.appendChild(lockSpan);
-
-  var urlInput = document.createElement('input');
-  urlInput.type = 'text'; urlInput.placeholder = 'Search DuckDuckGo or enter a URL...';
-  urlInput.style.cssText = 'flex:1;border:none;background:transparent;color:var(--text-primary);font-size:13px;outline:none;min-width:0;padding:6px 0;';
-  urlInput.id = 'browser-urlinput-' + tabId;
-  urlInput.addEventListener('focus', function(){
-    addrWrap.style.borderColor = 'rgba(88,101,242,0.55)';
-    addrWrap.style.background = 'var(--bg-primary)';
-    this.select();
-  });
-  urlInput.addEventListener('blur', function(){
-    addrWrap.style.borderColor = 'transparent';
-    addrWrap.style.background = 'var(--bg-tertiary)';
-  });
+  // Address bar
+  var addrWrap=document.createElement('div');
+  addrWrap.style.cssText='flex:1;display:flex;align-items:center;gap:5px;background:var(--bg-tertiary);border-radius:20px;border:1.5px solid transparent;padding:0 12px;min-width:0;cursor:text;transition:border-color 0.15s,background 0.15s;';
+  addrWrap.addEventListener('click',function(){urlInput.focus();});
+  var lockSpan=document.createElement('span');lockSpan.textContent='🔒';lockSpan.style.cssText='font-size:11px;flex-shrink:0;opacity:0.5;user-select:none;';addrWrap.appendChild(lockSpan);
+  var urlInput=document.createElement('input');
+  urlInput.type='text';urlInput.id='browser-urlinput-'+tabId;urlInput.placeholder='Search DuckDuckGo or enter a URL...';
+  urlInput.style.cssText='flex:1;border:none;background:transparent;color:var(--text-primary);font-size:13px;outline:none;min-width:0;padding:6px 0;';
+  urlInput.addEventListener('focus',function(){addrWrap.style.borderColor='rgba(88,101,242,0.55)';addrWrap.style.background='var(--bg-primary)';this.select();});
+  urlInput.addEventListener('blur',function(){addrWrap.style.borderColor='transparent';addrWrap.style.background='var(--bg-tertiary)';});
   addrWrap.appendChild(urlInput);
-
-  var vpnBadge = document.createElement('span');
-  vpnBadge.textContent = '🛡'; vpnBadge.title = 'VPN Proxy ON \u2014 all traffic routed through server';
-  vpnBadge.style.cssText = 'font-size:12px;flex-shrink:0;opacity:0.6;user-select:none;cursor:default;';
-  addrWrap.appendChild(vpnBadge);
+  var vpnSpan=document.createElement('span');vpnSpan.style.cssText='font-size:11px;flex-shrink:0;user-select:none;cursor:default;margin-left:2px;';addrWrap.appendChild(vpnSpan);
   toolbar.appendChild(addrWrap);
 
-  // Circular Go button
-  var goBtn = document.createElement('button');
-  goBtn.innerHTML = '&#x27A4;'; goBtn.title = 'Go';
-  goBtn.id = 'browser-go-' + tabId;
-  goBtn.style.cssText = 'width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:14px;flex-shrink:0;transition:background 0.15s,transform 0.1s;';
-  goBtn.addEventListener('mouseover', function(){ this.style.background='var(--accent-hover)'; this.style.transform='scale(1.1)'; });
-  goBtn.addEventListener('mouseout',  function(){ this.style.background='var(--accent)'; this.style.transform='scale(1)'; });
-  toolbar.appendChild(goBtn);
+  var goBtn=mkBtn('&#x27A4;','Go',true);goBtn.id='browser-go-'+tabId;toolbar.appendChild(goBtn);
 
-  function mkIconBtn(html, title, sz) {
-    var b = document.createElement('button');
-    b.innerHTML = html; b.title = title;
-    b.style.cssText = 'width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:none;color:var(--text-muted);border:none;border-radius:50%;cursor:pointer;font-size:'+(sz||'15px')+';flex-shrink:0;transition:background 0.12s,color 0.12s;';
-    b.addEventListener('mouseover', function(){ this.style.background='var(--bg-tertiary)'; this.style.color='var(--text-primary)'; });
-    b.addEventListener('mouseout',  function(){ this.style.background='none'; this.style.color='var(--text-muted)'; });
-    return b;
+  // VPN toggle pill
+  var vpnBtn=document.createElement('button');
+  vpnBtn.style.cssText='padding:0 9px;height:24px;display:flex;align-items:center;gap:4px;border-radius:12px;cursor:pointer;font-size:11px;font-weight:700;flex-shrink:0;transition:all 0.15s;white-space:nowrap;border:1px solid;';
+  function updateVpnBtn(){
+    if(_vpnOn){vpnBtn.innerHTML='🛡 VPN';vpnBtn.style.background='rgba(34,197,94,0.15)';vpnBtn.style.color='#22c55e';vpnBtn.style.borderColor='rgba(34,197,94,0.3)';vpnSpan.textContent='🛡';lockSpan.textContent='🔒';}
+    else{vpnBtn.innerHTML='\u26A0 Direct';vpnBtn.style.background='rgba(234,179,8,0.15)';vpnBtn.style.color='#eab308';vpnBtn.style.borderColor='rgba(234,179,8,0.3)';vpnSpan.textContent='';lockSpan.textContent='\u26A0';}
   }
-  var bookmarkBtn  = mkIconBtn('&#x2606;', 'Bookmark this page', '17px');
-  var newWindowBtn = mkIconBtn('&#x2197;', 'Open in new window', '17px');
-  toolbar.appendChild(bookmarkBtn);
-  toolbar.appendChild(newWindowBtn);
+  vpnBtn.addEventListener('click',function(){_vpnOn=!_vpnOn;updateVpnBtn();if(_act&&_act.url)navigate(_act.url);});
+  vpnBtn.title='Toggle VPN proxy (routes traffic through server)';
+  toolbar.appendChild(vpnBtn);
+
+  var bookmarkBtn=mkBtn('&#x2606;','Bookmark this page','','17px');toolbar.appendChild(bookmarkBtn);
+  var fsBtn=mkBtn('&#x26F6;','Toggle fullscreen');toolbar.appendChild(fsBtn);
+  var newWindowBtn=mkBtn('&#x2197;','Open in new window','','17px');toolbar.appendChild(newWindowBtn);
   container.appendChild(toolbar);
 
-  // ── Bookmarks bar ─────────────────────────────────────────────────────────
-  var bkBar = document.createElement('div');
-  bkBar.style.cssText = 'display:flex;align-items:center;gap:3px;padding:3px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;min-height:26px;overflow-x:auto;scrollbar-width:none;';
+  // Inner browser tab bar
+  var innerTabBar=document.createElement('div');
+  innerTabBar.style.cssText='display:flex;align-items:stretch;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;height:30px;overflow-x:auto;scrollbar-width:none;';
+  container.appendChild(innerTabBar);
+
+  // Bookmarks bar
+  var bkBar=document.createElement('div');
+  bkBar.style.cssText='display:flex;align-items:center;gap:3px;padding:3px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);flex-shrink:0;min-height:26px;overflow-x:auto;scrollbar-width:none;';
   container.appendChild(bkBar);
 
-  var _savedBookmarks = JSON.parse(localStorage.getItem('browser_bookmarks') || '[]');
-  var _currentUrl = '';
-  var _navHistory = [];
-  var _navIdx = -1;
-
-  function renderBookmarksBar() {
-    bkBar.innerHTML = '';
-    if (_savedBookmarks.length === 0) {
-      var hint = document.createElement('span');
-      hint.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 4px;white-space:nowrap;';
-      hint.textContent = '\u2606 Bookmark pages with the \u2606 button above';
-      bkBar.appendChild(hint);
-      return;
-    }
-    _savedBookmarks.forEach(function(bm, idx) {
-      var b = document.createElement('button');
-      b.title = bm.url; b.textContent = bm.name || bm.url.replace(/^https?:\/\//, '').split('/')[0];
-      b.style.cssText = 'padding:3px 9px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;position:relative;';
-      b.addEventListener('click', function() { navigate(bm.url); });
-      b.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-        _savedBookmarks.splice(idx, 1);
-        localStorage.setItem('browser_bookmarks', JSON.stringify(_savedBookmarks));
-        renderBookmarksBar();
-      });
-      bkBar.appendChild(b);
-    });
-  }
-  renderBookmarksBar();
-
-  // ── Frame wrapper ────────────────────────────────────────────────────────
-  var frameWrap = document.createElement('div');
-  frameWrap.style.cssText = 'flex:1;position:relative;overflow:hidden;';
+  // Frame wrapper
+  var frameWrap=document.createElement('div');
+  frameWrap.style.cssText='flex:1;position:relative;overflow:hidden;';
 
   // Home page
-  var homePage = document.createElement('div');
-  homePage.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;overflow-y:auto;padding:28px;';
-
-  var hTitle = document.createElement('div');
-  hTitle.style.cssText = 'font-size:26px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:10px;';
-  hTitle.innerHTML = '🌐 Browser';
-  homePage.appendChild(hTitle);
-
-  // Integrated search box (pill shape)
-  var homeSearch = document.createElement('div');
-  homeSearch.style.cssText = 'display:flex;align-items:center;width:100%;max-width:520px;background:var(--bg-tertiary);border:1.5px solid var(--border);border-radius:24px;overflow:hidden;transition:border-color 0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.12);';
-  homeSearch.addEventListener('focusin', function(){ this.style.borderColor='rgba(88,101,242,0.6)'; });
-  homeSearch.addEventListener('focusout', function(){ this.style.borderColor='var(--border)'; });
-  var homeSearchInput = document.createElement('input');
-  homeSearchInput.type = 'text'; homeSearchInput.placeholder = 'Search DuckDuckGo or enter a URL...';
-  homeSearchInput.style.cssText = 'flex:1;padding:12px 18px;border:none;background:transparent;color:var(--text-primary);font-size:14px;outline:none;';
-  var homeSearchBtn = document.createElement('button');
-  homeSearchBtn.innerHTML = '&#x27A4;';
-  homeSearchBtn.style.cssText = 'padding:10px 18px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:background 0.15s;flex-shrink:0;';
-  homeSearchBtn.addEventListener('mouseover', function(){ this.style.background='var(--accent-hover)'; });
-  homeSearchBtn.addEventListener('mouseout', function(){ this.style.background='var(--accent)'; });
-  homeSearch.appendChild(homeSearchInput); homeSearch.appendChild(homeSearchBtn);
-  homePage.appendChild(homeSearch);
-
-  // Status strip
-  var homeNote = document.createElement('div');
-  homeNote.style.cssText = 'display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text-muted);';
-  homeNote.innerHTML = '<span>🛡 Proxy Active</span><span style="opacity:0.35">|</span><span>🔍 Powered by DuckDuckGo</span><span style="opacity:0.35">|</span><span>🚫 Google \u2192 DDG Lite</span>';
+  var homePage=document.createElement('div');
+  homePage.style.cssText='position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;overflow-y:auto;padding:28px;';
+  var hTitle=document.createElement('div');hTitle.style.cssText='font-size:26px;font-weight:800;color:var(--text-primary);';hTitle.innerHTML='🌐 Browser';homePage.appendChild(hTitle);
+  var homeSearch=document.createElement('div');
+  homeSearch.style.cssText='display:flex;align-items:center;width:100%;max-width:520px;background:var(--bg-tertiary);border:1.5px solid var(--border);border-radius:24px;overflow:hidden;transition:border-color 0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.12);';
+  homeSearch.addEventListener('focusin',function(){this.style.borderColor='rgba(88,101,242,0.6)';});homeSearch.addEventListener('focusout',function(){this.style.borderColor='var(--border)';});
+  var homeSearchInput=document.createElement('input');homeSearchInput.type='text';homeSearchInput.placeholder='Search DuckDuckGo or enter a URL...';
+  homeSearchInput.style.cssText='flex:1;padding:12px 18px;border:none;background:transparent;color:var(--text-primary);font-size:14px;outline:none;';
+  var homeSearchBtn=document.createElement('button');homeSearchBtn.innerHTML='&#x27A4;';
+  homeSearchBtn.style.cssText='padding:10px 18px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:16px;flex-shrink:0;transition:background 0.15s;';
+  homeSearchBtn.addEventListener('mouseover',function(){this.style.background='var(--accent-hover)';});homeSearchBtn.addEventListener('mouseout',function(){this.style.background='var(--accent)';});
+  homeSearch.appendChild(homeSearchInput);homeSearch.appendChild(homeSearchBtn);homePage.appendChild(homeSearch);
+  var homeNote=document.createElement('div');homeNote.style.cssText='display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text-muted);';
+  homeNote.innerHTML='<span>🛡 Proxy Active</span><span style="opacity:0.35">|</span><span>🔍 DuckDuckGo</span><span style="opacity:0.35">|</span><span>🚫 Google\u2192DDG</span>';
   homePage.appendChild(homeNote);
-
-  // Quick links grid
-  var quickGrid = document.createElement('div');
-  quickGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;width:100%;max-width:540px;';
-  var quickSites = [
+  var quickGrid=document.createElement('div');quickGrid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;width:100%;max-width:540px;';
+  var quickSites=[
     {e:'🔍',n:'DuckDuckGo',u:'https://lite.duckduckgo.com/lite/'},
     {e:'\u25B6',n:'YouTube',u:'https://youtube.com'},
     {e:'📖',n:'Wikipedia',u:'https://wikipedia.org'},
     {e:'🐙',n:'GitHub',u:'https://github.com'},
     {e:'\u265F',n:'Chess',u:'https://lichess.org'},
-    {e:'🧩',n:'Inf. Craft',u:'https://neal.fun/infinite-craft/'},
+    {e:'🧩',n:'Inf.Craft',u:'https://neal.fun/infinite-craft/'},
     {e:'📝',n:'Wordle',u:'https://wordplay.com'},
     {e:'\u270D',n:'AutoDraw',u:'https://autodraw.com'},
     {e:'🌐',n:'Reddit',u:'https://old.reddit.com'},
@@ -6455,192 +6393,177 @@ function convertTabToBrowser(tabId) {
     {e:'🎮',n:'Coolmath',u:'https://www.coolmathgames.com'},
     {e:'📡',n:'Archive',u:'https://web.archive.org'},
   ];
-  quickSites.forEach(function(s) {
-    var btn = document.createElement('button');
-    btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:11px;line-height:1.3;transition:background 0.12s,border-color 0.12s,transform 0.1s;';
-    btn.innerHTML = '<span style="font-size:22px;">' + s.e + '</span>' + escapeHtml(s.n);
-    btn.addEventListener('click', function() { navigate(s.u); });
-    btn.addEventListener('mouseover', function(){ this.style.background='var(--bg-secondary)'; this.style.borderColor='var(--accent)'; this.style.transform='translateY(-2px)'; });
-    btn.addEventListener('mouseout', function(){ this.style.background='var(--bg-tertiary)'; this.style.borderColor='var(--border)'; this.style.transform='none'; });
+  quickSites.forEach(function(s){
+    var btn=document.createElement('button');
+    btn.style.cssText='display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:11px;line-height:1.3;transition:background 0.12s,border-color 0.12s,transform 0.1s;';
+    btn.innerHTML='<span style="font-size:22px;">'+s.e+'</span>'+escapeHtml(s.n);
+    btn.addEventListener('click',function(){navigate(s.u);});
+    btn.addEventListener('mouseover',function(){this.style.background='var(--bg-secondary)';this.style.borderColor='var(--accent)';this.style.transform='translateY(-2px)';});
+    btn.addEventListener('mouseout',function(){this.style.background='var(--bg-tertiary)';this.style.borderColor='var(--border)';this.style.transform='none';});
     quickGrid.appendChild(btn);
   });
   homePage.appendChild(quickGrid);
   frameWrap.appendChild(homePage);
 
-  // Iframe
-  var frame = document.createElement('iframe');
-  frame.id = 'browser-frame-' + tabId;
-  frame.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;display:none;';
-  frame.allow = 'fullscreen; autoplay; payment; camera; microphone; gamepad';
-  frame.setAttribute('allowfullscreen', '');
-  frame.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation');
-  frameWrap.appendChild(frame);
-
-  // Blocked/error overlay
-  var blockedMsg = document.createElement('div');
-  blockedMsg.style.cssText = 'display:none;position:absolute;inset:0;background:var(--bg-primary);flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:32px;';
+  // Error overlay
+  var blockedMsg=document.createElement('div');
+  blockedMsg.style.cssText='display:none;position:absolute;inset:0;background:var(--bg-primary);flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:32px;';
   frameWrap.appendChild(blockedMsg);
-
   container.appendChild(frameWrap);
   el.appendChild(container);
 
-  // ── Progress bar helpers ─────────────────────────────────────────────────
-  var _progTimer = null;
-  function startProgress() {
-    progressBar.style.transition = 'none'; progressBar.style.width = '0%';
-    setTimeout(function() { progressBar.style.transition = 'width 2s ease'; progressBar.style.width = '75%'; }, 20);
-    clearTimeout(_progTimer);
-  }
-  function finishProgress() {
-    progressBar.style.transition = 'width 0.3s ease'; progressBar.style.width = '100%';
-    _progTimer = setTimeout(function() { progressBar.style.width = '0%'; }, 400);
+  // Progress helpers
+  var _progTimer=null;
+  function startProgress(){progressBar.style.transition='none';progressBar.style.width='0%';setTimeout(function(){progressBar.style.transition='width 2s ease';progressBar.style.width='75%';},20);clearTimeout(_progTimer);}
+  function finishProgress(){progressBar.style.transition='width 0.3s ease';progressBar.style.width='100%';_progTimer=setTimeout(function(){progressBar.style.width='0%';},400);}
+
+  // Show/hide
+  function showFrame(){if(_act&&_act.frame)_act.frame.style.display='block';homePage.style.display='none';blockedMsg.style.display='none';}
+  function showHome(){if(_act&&_act.frame)_act.frame.style.display='none';homePage.style.display='flex';blockedMsg.style.display='none';if(_act){_act.url='';_act.mode='home';}updateBmBtn();}
+  function showBlocked(icon,title,body,extUrl){
+    if(_act&&_act.frame)_act.frame.style.display='none';homePage.style.display='none';finishProgress();
+    blockedMsg.innerHTML='';blockedMsg.style.display='flex';
+    var inner=document.createElement('div');inner.style.cssText='display:flex;flex-direction:column;align-items:center;gap:14px;max-width:440px;text-align:center;';
+    inner.innerHTML='<div style="font-size:52px;line-height:1;">'+icon+'</div>'+'<div style="font-size:19px;font-weight:800;color:var(--text-primary);">'+escapeHtml(title)+'</div>'+'<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;max-width:360px;">'+body+'</div>';
+    var btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px;';
+    if(extUrl){var eb=document.createElement('button');eb.innerHTML='&#x2197; Open in New Window';eb.style.cssText='padding:9px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;';eb.addEventListener('click',function(){window.open(extUrl,'_blank');});btnRow.appendChild(eb);}
+    var homeB=document.createElement('button');homeB.textContent='🏠 Home';homeB.style.cssText='padding:9px 18px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;';homeB.addEventListener('click',showHome);btnRow.appendChild(homeB);
+    inner.appendChild(btnRow);blockedMsg.appendChild(inner);if(_act)_act.mode='blocked';
   }
 
-  // ── Show/hide helpers ────────────────────────────────────────────────────
-  function showFrame() {
-    frame.style.display = 'block';
-    homePage.style.display = 'none';
-    blockedMsg.style.display = 'none';
+  // Bookmark helpers
+  function updateBmBtn(){var url=_act?_act.url:'';var isBm=url&&_savedBm.some(function(b){return b.url===url;});bookmarkBtn.innerHTML=isBm?'&#x2605;':'&#x2606;';bookmarkBtn.style.color=isBm?'gold':'';}
+  function renderBmBar(){
+    bkBar.innerHTML='';
+    if(_savedBm.length===0){var h=document.createElement('span');h.style.cssText='font-size:11px;color:var(--text-muted);padding:0 4px;white-space:nowrap;';h.textContent='\u2606 Bookmark pages with the \u2606 button above';bkBar.appendChild(h);return;}
+    _savedBm.forEach(function(bm,idx){
+      var b=document.createElement('button');b.title=bm.url;b.textContent=bm.name||bm.url.replace(/^https?:\/\//,'').split('/')[0];
+      b.style.cssText='padding:2px 8px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;';
+      b.addEventListener('click',function(){navigate(bm.url);});
+      b.addEventListener('contextmenu',function(e){e.preventDefault();_savedBm.splice(idx,1);localStorage.setItem('browser_bookmarks',JSON.stringify(_savedBm));renderBmBar();});
+      bkBar.appendChild(b);
+    });
   }
-  function showHome() {
-    frame.style.display = 'none';
-    homePage.style.display = 'flex';
-    blockedMsg.style.display = 'none';
-    _currentUrl = '';
-    updateBookmarkBtn();
+
+  // Inner tab management
+  function _mkFrame(){
+    var f=document.createElement('iframe');
+    f.style.cssText='position:absolute;inset:0;width:100%;height:100%;border:none;display:none;';
+    f.allow='fullscreen; autoplay; payment; camera; microphone; gamepad';f.setAttribute('allowfullscreen','');
+    f.setAttribute('sandbox','allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation');
+    frameWrap.insertBefore(f,blockedMsg);return f;
   }
-  function showBlocked(icon, title, body, extUrl) {
-    frame.style.display = 'none';
-    homePage.style.display = 'none';
-    finishProgress();
-    blockedMsg.innerHTML = '';
-    blockedMsg.style.display = 'flex';
-    var inner = document.createElement('div');
-    inner.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:440px;';
-    inner.innerHTML = '<div style="font-size:52px;line-height:1;">' + icon + '</div>'
-      + '<div style="font-size:19px;font-weight:800;color:var(--text-primary);">' + escapeHtml(title) + '</div>'
-      + '<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;max-width:360px;">' + body + '</div>';
-    var btnRow = document.createElement('div');
-    btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px;';
-    if (extUrl) {
-      var eb = document.createElement('button');
-      eb.innerHTML = '&#x2197; Open in New Window';
-      eb.style.cssText = 'padding:9px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;';
-      eb.addEventListener('click', function() { window.open(extUrl, '_blank'); });
-      btnRow.appendChild(eb);
+  function renderInnerTabs(){
+    innerTabBar.innerHTML='';
+    _btabs.forEach(function(t){
+      var td=document.createElement('div');var isA=_act&&_act.id===t.id;
+      td.style.cssText='display:flex;align-items:center;gap:4px;padding:0 8px 0 10px;min-width:80px;max-width:160px;height:100%;cursor:pointer;border-right:1px solid var(--border);flex-shrink:0;position:relative;background:'+(isA?'var(--bg-primary)':'transparent')+';transition:background 0.1s;';
+      if(isA){var ul=document.createElement('div');ul.style.cssText='position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--accent);border-radius:2px 2px 0 0;';td.appendChild(ul);}
+      var tl=document.createElement('span');tl.style.cssText='flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+(isA?'var(--text-primary)':'var(--text-muted)')+';';tl.textContent=t.label||'New Tab';td.appendChild(tl);
+      if(_btabs.length>1){
+        var cx=document.createElement('span');cx.textContent='\u00D7';cx.style.cssText='font-size:13px;color:var(--text-muted);border-radius:3px;width:16px;height:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;';
+        cx.addEventListener('mouseover',function(){this.style.background='rgba(255,59,48,0.2)';this.style.color='#ff3b30';});cx.addEventListener('mouseout',function(){this.style.background='none';this.style.color='var(--text-muted)';});
+        cx.addEventListener('click',function(e){e.stopPropagation();closeBtab(t.id);});td.appendChild(cx);
+      }
+      if(!isA){td.addEventListener('mouseover',function(){this.style.background='var(--bg-tertiary)';});td.addEventListener('mouseout',function(){this.style.background='transparent';});}
+      td.addEventListener('click',function(){switchBtab(t.id);});
+      innerTabBar.appendChild(td);
+    });
+    var addBtn=document.createElement('button');addBtn.innerHTML='+';addBtn.title='New tab';
+    addBtn.style.cssText='padding:0 10px;height:100%;background:none;border:none;border-right:1px solid var(--border);color:var(--text-muted);cursor:pointer;font-size:18px;flex-shrink:0;transition:background 0.1s;';
+    addBtn.addEventListener('mouseover',function(){this.style.background='var(--bg-tertiary)';});addBtn.addEventListener('mouseout',function(){this.style.background='none';});
+    addBtn.addEventListener('click',function(){addBtab();});innerTabBar.appendChild(addBtn);
+  }
+  function addBtab(url){
+    var id='bt'+Date.now()+Math.random().toString(36).slice(2,5);
+    var t={id:id,label:'New Tab',url:'',hist:[],histIdx:-1,frame:_mkFrame(),mode:'home'};
+    _btabs.push(t);switchBtab(id);if(url)navigate(url);return t;
+  }
+  function switchBtab(id){
+    _btabs.forEach(function(t){if(t.frame)t.frame.style.display='none';});
+    _act=_btabs.find(function(t){return t.id===id;})||(_btabs.length?_btabs[0]:null);
+    if(!_act)return;
+    urlInput.value=_act.url||'';
+    if(_act.mode==='home')showHome();
+    else if(_act.mode==='blocked'){blockedMsg.style.display='flex';homePage.style.display='none';}
+    else showFrame();
+    renderInnerTabs();updateBmBtn();
+  }
+  function closeBtab(id){
+    var idx=_btabs.findIndex(function(t){return t.id===id;});if(idx<0)return;
+    frameWrap.removeChild(_btabs[idx].frame);var wasActive=_act&&_act.id===id;_btabs.splice(idx,1);
+    if(_btabs.length===0){addBtab();return;}
+    if(wasActive)switchBtab(_btabs[Math.min(idx,_btabs.length-1)].id);else renderInnerTabs();
+  }
+
+  // Navigate
+  function navigate(rawUrl,pushHistory){
+    if(!_act)return;
+    var url=(rawUrl||'').trim();if(!url){showHome();return;}
+    if(!url.match(/^https?:\/\//i)){
+      if(url.indexOf('.')>0&&url.indexOf(' ')===-1)url='https://'+url;
+      else url='https://lite.duckduckgo.com/lite/?q='+encodeURIComponent(url);
     }
-    var homeB = document.createElement('button');
-    homeB.innerHTML = '🏠 Home';
-    homeB.style.cssText = 'padding:9px 18px;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;';
-    homeB.addEventListener('click', showHome);
-    btnRow.appendChild(homeB);
-    inner.appendChild(btnRow);
-    blockedMsg.appendChild(inner);
+    var ytV=url.match(/(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/)([a-zA-Z0-9_\-]{11})/);
+    if(ytV){urlInput.value=url;_act.url=url;_act.label='YouTube';_pushNav(url,pushHistory);_act.frame.src='https://www.youtube-nocookie.com/embed/'+ytV[1]+'?autoplay=0&rel=0';_act.mode='frame';showFrame();finishProgress();updateBmBtn();renderInnerTabs();return;}
+    if(/youtube\.com\/?($|\?|\/results|\/feed)/i.test(url)){
+      urlInput.value=url;_act.url=url;_act.label='YouTube';_pushNav(url,pushHistory);
+      var q2=(url.match(/search_query=([^&]+)/)||[])[1];
+      showBlocked('\u25B6','YouTube','YouTube blocks embedding. Paste a video URL (youtube.com/watch?v=...) to play it directly.','https://www.youtube.com'+(q2?'/results?search_query='+q2:''));renderInnerTabs();return;
+    }
+    var gQ=url.match(/google\.com\/(search\?(?:.*&)?q=([^&\s]+)|[^\/]*$)/);
+    if(gQ){var q3=gQ[2]||'';url=q3?'https://lite.duckduckgo.com/lite/?q='+q3:'https://lite.duckduckgo.com/lite/';}
+    var ddgQ=url.match(/duckduckgo\.com\/?\?(?:.*&)?q=([^&]+)/);if(ddgQ)url='https://lite.duckduckgo.com/lite/?q='+ddgQ[1];
+    if(/^https?:\/\/(www\.)?(twitter\.com|x\.com|facebook\.com|instagram\.com|tiktok\.com|accounts\.google)/i.test(url)){
+      urlInput.value=url;_act.url=url;_pushNav(url,pushHistory);showBlocked('🔒','Login required','This site requires a login and blocks embedding.',url);renderInnerTabs();return;
+    }
+    urlInput.value=url;_act.url=url;_pushNav(url,pushHistory);updateBmBtn();startProgress();
+    var proxyUrl='/proxy?url='+encodeURIComponent(url)+'&sid='+encodeURIComponent(_sid);
+    _act.frame.src=_vpnOn?proxyUrl:url;
+    _act.mode='frame';showFrame();
+    try{_act.label=new URL(url).hostname.replace(/^www\./,'');}catch(ex){_act.label='Tab';}
+    renderInnerTabs();
+    newWindowBtn.onclick=function(){window.open(url,'_blank');};
+    _act.frame.onload=function(){finishProgress();};
+    _act.frame.onerror=function(){showBlocked('🚫','Failed to load','Could not load through proxy. Try toggling VPN or opening in a new window.',url);};
+  }
+  function _pushNav(url,doIt){
+    if(doIt===false||!_act)return;
+    _act.hist=_act.hist.slice(0,_act.histIdx+1);_act.hist.push(url);_act.histIdx=_act.hist.length-1;
   }
 
-  function updateBookmarkBtn() {
-    var isBm = _currentUrl && _savedBookmarks.some(function(b) { return b.url === _currentUrl; });
-    bookmarkBtn.textContent = isBm ? '★' : '☆';
-    bookmarkBtn.style.color = isBm ? 'gold' : '';
-  }
-
-  // ── Navigate ──────────────────────────────────────────────────────────────
-  function navigate(rawUrl, pushHistory) {
-    var url = rawUrl.trim();
-    if (!url) return;
-    if (!url.match(/^https?:\/\//i)) {
-      if (url.indexOf('.') > 0 && url.indexOf(' ') === -1) url = 'https://' + url;
-      else url = 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(url);
-    }
-
-    // YouTube watch → nocookie embed
-    var ytV = url.match(/(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/)([a-zA-Z0-9_\-]{11})/);
-    if (ytV) {
-      urlInput.value = url; _currentUrl = url;
-      pushNav(url, pushHistory);
-      frame.src = 'https://www.youtube-nocookie.com/embed/' + ytV[1] + '?autoplay=0&rel=0';
-      showFrame(); finishProgress(); updateBookmarkBtn(); return;
-    }
-    // YouTube home/search → helper
-    if (/youtube\.com\/?($|\?|\/results|\/feed)/i.test(url)) {
-      urlInput.value = url; _currentUrl = url; pushNav(url, pushHistory);
-      var q2 = (url.match(/search_query=([^&]+)/) || [])[1];
-      showBlocked('▶', 'YouTube', 'YouTube blocks embedding. Paste a video URL (youtube.com/watch?v=...) to play it here.', 'https://www.youtube.com' + (q2 ? '/results?search_query=' + q2 : ''));
-      updateBookmarkBtn(); return;
-    }
-    // Google home/search → DuckDuckGo lite
-    var gQ = url.match(/google\.com\/(search\?(?:.*&)?q=([^&\s]+)|[^\/]*$)/);
-    if (gQ) {
-      var q3 = gQ[2] ? gQ[2] : '';
-      url = q3 ? 'https://lite.duckduckgo.com/lite/?q=' + q3 : 'https://lite.duckduckgo.com/lite/';
-    }
-    // DuckDuckGo full → lite
-    var ddgQ = url.match(/duckduckgo\.com\/?\?(?:.*&)?q=([^&]+)/);
-    if (ddgQ) url = 'https://lite.duckduckgo.com/lite/?q=' + ddgQ[1];
-
-    // Blocked-before-proxy sites
-    var blocked = /^https?:\/\/(www\.)?(twitter\.com|x\.com|facebook\.com|instagram\.com|tiktok\.com|accounts\.google)/i;
-    if (blocked.test(url)) {
-      urlInput.value = url; _currentUrl = url; pushNav(url, pushHistory);
-      var domain = url.match(/^https?:\/\/[^/]+/)[0];
-      showBlocked('🔒', 'Login required', 'This site requires a login to display content and blocks embedding.', url);
-      updateBookmarkBtn(); return;
-    }
-
-    urlInput.value = url; _currentUrl = url;
-    pushNav(url, pushHistory);
-    updateBookmarkBtn();
-    startProgress();
-    frame.src = '/proxy?url=' + encodeURIComponent(url);
-    showFrame();
-    newWindowBtn.onclick = function() { window.open(url, '_blank'); };
-    frame.onload = function() { finishProgress(); };
-    frame.onerror = function() {
-      showBlocked('🚫', 'Failed to load', 'The page could not be loaded through the proxy.', url);
-    };
-  }
-
-  function pushNav(url, doIt) {
-    if (doIt === false) return;
-    _navHistory = _navHistory.slice(0, _navIdx + 1);
-    _navHistory.push(url);
-    _navIdx = _navHistory.length - 1;
-  }
-
-  // ── Event listeners ──────────────────────────────────────────────────────
-  goBtn.addEventListener('click', function() { navigate(urlInput.value); });
-  homeSearchBtn.addEventListener('click', function() { navigate(homeSearchInput.value); });
-  homeSearchInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') navigate(homeSearchInput.value); e.stopPropagation(); });
-  urlInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') navigate(urlInput.value);
-    e.stopPropagation();
-  });
-  urlInput.addEventListener('focus', function() { this.select(); });
-  backBtn2.addEventListener('click', function() {
-    if (_navIdx > 0) { _navIdx--; navigate(_navHistory[_navIdx], false); }
-  });
-  fwdBtn.addEventListener('click', function() {
-    if (_navIdx < _navHistory.length - 1) { _navIdx++; navigate(_navHistory[_navIdx], false); }
-  });
-  refreshBtn2.addEventListener('click', function() {
-    if (_currentUrl) { startProgress(); var s = frame.src; frame.src = ''; frame.src = s; }
-  });
-  homeBtn.addEventListener('click', showHome);
-  bookmarkBtn.addEventListener('click', function() {
-    if (!_currentUrl) return;
-    var existing = _savedBookmarks.findIndex(function(b) { return b.url === _currentUrl; });
-    if (existing >= 0) {
-      _savedBookmarks.splice(existing, 1);
+  // Fullscreen
+  fsBtn.addEventListener('click',function(){
+    if(!document.fullscreenElement&&!document.webkitFullscreenElement){
+      (container.requestFullscreen||container.webkitRequestFullscreen||function(){}).call(container);
+      fsBtn.innerHTML='&#x2715;';
     } else {
-      var name = _currentUrl.replace(/^https?:\/\//, '').split('/')[0];
-      _savedBookmarks.push({ url: _currentUrl, name: name });
+      (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document);
+      fsBtn.innerHTML='&#x26F6;';
     }
-    localStorage.setItem('browser_bookmarks', JSON.stringify(_savedBookmarks));
-    renderBookmarksBar();
-    updateBookmarkBtn();
   });
-  newWindowBtn.addEventListener('click', function() { if (_currentUrl) window.open(_currentUrl, '_blank'); });
-  renderTabBar();
+  document.addEventListener('fullscreenchange',function(){if(!document.fullscreenElement)fsBtn.innerHTML='&#x26F6;';});
+  document.addEventListener('webkitfullscreenchange',function(){if(!document.webkitFullscreenElement)fsBtn.innerHTML='&#x26F6;';});
+
+  // Event listeners
+  goBtn.addEventListener('click',function(){navigate(urlInput.value);});
+  homeSearchBtn.addEventListener('click',function(){navigate(homeSearchInput.value);});
+  homeSearchInput.addEventListener('keydown',function(e){if(e.key==='Enter')navigate(homeSearchInput.value);e.stopPropagation();});
+  urlInput.addEventListener('keydown',function(e){if(e.key==='Enter')navigate(urlInput.value);e.stopPropagation();});
+  backBtn.addEventListener('click',function(){if(_act&&_act.histIdx>0){_act.histIdx--;navigate(_act.hist[_act.histIdx],false);}});
+  fwdBtn.addEventListener('click',function(){if(_act&&_act.histIdx<_act.hist.length-1){_act.histIdx++;navigate(_act.hist[_act.histIdx],false);}});
+  refreshBtn.addEventListener('click',function(){if(_act&&_act.url&&_act.mode==='frame'){startProgress();var s=_act.frame.src;_act.frame.src='';setTimeout(function(){_act.frame.src=s;},50);}});
+  homeBtn.addEventListener('click',function(){addBtab();});
+  bookmarkBtn.addEventListener('click',function(){
+    if(!_act||!_act.url)return;var url=_act.url;
+    var idx=_savedBm.findIndex(function(b){return b.url===url;});
+    if(idx>=0)_savedBm.splice(idx,1);else{_savedBm.push({url:url,name:url.replace(/^https?:\/\//,'').split('/')[0]});}
+    localStorage.setItem('browser_bookmarks',JSON.stringify(_savedBm));renderBmBar();updateBmBtn();
+  });
+  newWindowBtn.addEventListener('click',function(){if(_act&&_act.url)window.open(_act.url,'_blank');});
+
+  // Init
+  updateVpnBtn();renderBmBar();addBtab();renderTabBar();
 }
 
 var allGames = [
@@ -8267,6 +8190,18 @@ async def handle_api_changelog_seen(request):
         return web.Response(text=json.dumps({"ok": True}), content_type="application/json")
 
 
+_proxy_connector = None
+_proxy_cookie_jars = {}  # sid -> aiohttp.CookieJar for session cookie persistence
+
+async def _get_proxy_connector():
+    global _proxy_connector
+    if _proxy_connector is None or _proxy_connector.closed:
+        _proxy_connector = aiohttp.TCPConnector(
+            ssl=False, limit=100, limit_per_host=6,
+            keepalive_timeout=30, enable_cleanup_closed=True
+        )
+    return _proxy_connector
+
 async def handle_proxy(request):
     import urllib.parse as _up
     import re as _re
@@ -8337,9 +8272,16 @@ async def handle_proxy(request):
             'Upgrade-Insecure-Requests': '1',
             'Cache-Control': 'max-age=0',
         }
-        timeout = aiohttp.ClientTimeout(total=30)
-        connector = aiohttp.TCPConnector(ssl=False)
-        async with aiohttp.ClientSession(connector=connector) as session:
+        sid = request.rel_url.query.get('sid', '').strip()[:64]
+        timeout = aiohttp.ClientTimeout(total=20)
+        connector = await _get_proxy_connector()
+        if sid:
+            if sid not in _proxy_cookie_jars:
+                _proxy_cookie_jars[sid] = aiohttp.CookieJar(unsafe=True)
+            jar = _proxy_cookie_jars[sid]
+        else:
+            jar = aiohttp.DummyCookieJar()
+        async with aiohttp.ClientSession(connector=connector, connector_owner=False, cookie_jar=jar) as session:
             _req_kwargs = dict(headers=req_headers, allow_redirects=True, timeout=timeout)
             if req_method == 'POST':
                 _req_kwargs['data'] = req_body
