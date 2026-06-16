@@ -6517,15 +6517,29 @@ function convertTabToBrowser(tabId) {
     if(/^https?:\/\/(www\.)?(twitter\.com|x\.com|facebook\.com|instagram\.com|tiktok\.com|accounts\.google)/i.test(url)){
       urlInput.value=url;_act.url=url;_pushNav(url,pushHistory);showBlocked('🔒','Login required','This site requires a login and blocks embedding.',url);renderInnerTabs();return;
     }
-    urlInput.value=url;_act.url=url;_pushNav(url,pushHistory);updateBmBtn();startProgress();
-    var proxyUrl='/proxy?url='+encodeURIComponent(url)+'&sid='+encodeURIComponent(_sid);
-    _act.frame.src=_vpnOn?proxyUrl:url;
-    _act.mode='frame';showFrame();
+    urlInput.value=url;_act.url=url;_pushNav(url,pushHistory);updateBmBtn();
     try{_act.label=new URL(url).hostname.replace(/^www\./,'');}catch(ex){_act.label='Tab';}
+    // VPN off: show helpful overlay instead of letting browser fire X-Frame-Options error
+    if(!_vpnOn){
+      showBlocked('🌐','Direct Mode','Most websites block iframe embedding (X-Frame-Options). Enable the VPN to route through the proxy \u2014 that bypasses the block.',url);
+      var _vBtn=document.createElement('button');_vBtn.innerHTML='🛡 Enable VPN &amp; Load';
+      _vBtn.style.cssText='padding:9px 18px;background:rgba(34,197,94,0.2);color:#22c55e;border:1px solid rgba(34,197,94,0.4);border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;';
+      _vBtn.addEventListener('click',function(){_vpnOn=true;updateVpnBtn();navigate(url);});
+      var _bRow=blockedMsg.querySelector('div');if(_bRow){var _br2=_bRow.lastElementChild;if(_br2)_br2.insertBefore(_vBtn,_br2.firstChild);}
+      renderInnerTabs();return;
+    }
+    startProgress();
+    var proxyUrl='/proxy?url='+encodeURIComponent(url)+'&sid='+encodeURIComponent(_sid);
+    _act.frame.src=proxyUrl;
+    _act.mode='frame';showFrame();
     renderInnerTabs();
     newWindowBtn.onclick=function(){window.open(url,'_blank');};
-    _act.frame.onload=function(){finishProgress();};
-    _act.frame.onerror=function(){showBlocked('🚫','Failed to load','Could not load through proxy. Try toggling VPN or opening in a new window.',url);};
+    _act.frame.onload=function(){
+      finishProgress();
+      // Proxy is same-origin so we can read the iframe title
+      try{var t=this.contentDocument&&this.contentDocument.title;if(t&&t.trim()){_act.label=t.length>28?t.slice(0,25)+'\u2026':t.trim();renderInnerTabs();}}catch(ex){}
+    };
+    _act.frame.onerror=function(){showBlocked('🚫','Failed to load','The page could not be loaded through the proxy. Try opening in a new window.',url);};
   }
   function _pushNav(url,doIt){
     if(doIt===false||!_act)return;
@@ -6561,6 +6575,20 @@ function convertTabToBrowser(tabId) {
     localStorage.setItem('browser_bookmarks',JSON.stringify(_savedBm));renderBmBar();updateBmBtn();
   });
   newWindowBtn.addEventListener('click',function(){if(_act&&_act.url)window.open(_act.url,'_blank');});
+
+  // Keyboard shortcuts (Ctrl+T new tab, Ctrl+W close, Ctrl+L focus bar, Ctrl+R reload)
+  document.addEventListener('keydown',function _bkbd(e){
+    if(!container.isConnected){document.removeEventListener('keydown',_bkbd,true);return;}
+    if(container.offsetParent===null)return; // hidden tab
+    if(!(e.ctrlKey||e.metaKey))return;
+    if(e.key==='t'){e.preventDefault();e.stopPropagation();addBtab();}
+    else if(e.key==='w'){e.preventDefault();e.stopPropagation();if(_btabs.length>1)closeBtab(_act&&_act.id);}
+    else if(e.key==='l'||e.key==='L'){e.preventDefault();e.stopPropagation();urlInput.focus();urlInput.select();}
+    else if(e.key==='r'||e.key==='R'){
+      var tag=(document.activeElement||{}).tagName||'';
+      if(tag!=='INPUT'&&tag!=='TEXTAREA'){e.preventDefault();e.stopPropagation();refreshBtn.click();}
+    }
+  },true);
 
   // Init
   updateVpnBtn();renderBmBar();addBtab();renderTabBar();
@@ -8190,8 +8218,15 @@ async def handle_api_changelog_seen(request):
         return web.Response(text=json.dumps({"ok": True}), content_type="application/json")
 
 
+import time as _ptime
+from collections import OrderedDict as _OrdDict
+
 _proxy_connector = None
-_proxy_cookie_jars = {}  # sid -> aiohttp.CookieJar for session cookie persistence
+_proxy_sessions = {}          # sid -> persistent ClientSession
+_proxy_cache = _OrdDict()     # url -> (ts, body, ct) LRU cache for static resources
+_PROXY_CACHE_MAX = 300
+_PROXY_CACHE_TTL = 600        # 10 minutes
+
 
 async def _get_proxy_connector():
     global _proxy_connector
@@ -8202,12 +8237,50 @@ async def _get_proxy_connector():
         )
     return _proxy_connector
 
+
+async def _get_proxy_session(sid):
+    """Return a persistent session keyed by sid, or a fresh one-shot session."""
+    global _proxy_sessions
+    if sid and sid in _proxy_sessions and not _proxy_sessions[sid].closed:
+        return _proxy_sessions[sid]
+    connector = await _get_proxy_connector()
+    jar = aiohttp.CookieJar(unsafe=True) if sid else aiohttp.DummyCookieJar()
+    sess = aiohttp.ClientSession(connector=connector, connector_owner=False, cookie_jar=jar)
+    if sid:
+        _proxy_sessions[sid] = sess
+    return sess
+
+
+def _pcache_get(url):
+    if url in _proxy_cache:
+        ts, body, ct = _proxy_cache[url]
+        if _ptime.time() - ts < _PROXY_CACHE_TTL:
+            _proxy_cache.move_to_end(url)
+            return body, ct
+        del _proxy_cache[url]
+    return None, None
+
+
+def _pcache_set(url, body, ct):
+    ct_lo = ct.lower()
+    if not any(k in ct_lo for k in ('css', 'javascript', 'image/', 'font', 'woff', 'ttf', 'otf', 'svg')):
+        return
+    if len(body) > 2 * 1024 * 1024:
+        return
+    while len(_proxy_cache) >= _PROXY_CACHE_MAX:
+        _proxy_cache.popitem(last=False)
+    _proxy_cache[url] = (_ptime.time(), body, ct)
+
+
 async def handle_proxy(request):
     import urllib.parse as _up
     import re as _re
     url = request.rel_url.query.get('url', '').strip()
     if not url or not (url.startswith('http://') or url.startswith('https://')):
         return web.Response(text='Bad URL', status=400, content_type='text/plain')
+
+    req_method = request.method.upper()
+    sid = request.rel_url.query.get('sid', '').strip()[:64]
 
     def _mp(u, base):
         if not u: return u
@@ -8218,7 +8291,8 @@ async def handle_proxy(request):
         elif not u.startswith(('http://', 'https://')):
             try: u = _up.urljoin(base, u)
             except: return u
-        return '/proxy?url=' + _up.quote(u, safe='')
+        sid_part = ('&sid=' + _up.quote(sid, safe='')) if sid else ''
+        return '/proxy?url=' + _up.quote(u, safe='') + sid_part
 
     def _rewrite_html(text, base):
         def _ra(m):
@@ -8227,16 +8301,18 @@ async def handle_proxy(request):
         text = _re.sub(r'(?i)(href)=(["\'])([^"\'>\s]{1,2000})\2', _ra, text)
         text = _re.sub(r'(?i)(action)=(["\'])([^"\'>\s]{1,2000})\2', _ra, text)
         safe_base = base.replace("'", "\\'")
+        sid_js = sid.replace("'", "\\'")
         inject = (
             "<script>(function(){"
             "try{"
             "var _b='/proxy?url=';"
+            "var _si='" + sid_js + "';"
             "function _p(u){"
             "if(!u||typeof u!=='string')return u;"
             "if(u.indexOf('/proxy?url=')===0||u.startsWith('data:')||u.startsWith('blob:')||u.startsWith('#')||u.startsWith('javascript:'))return u;"
             "if(u.startsWith('//'))u='https:'+u;"
             f"if(!/^https?:/i.test(u)){{try{{u=new URL(u,'{safe_base}').href;}}catch(e){{return u;}}}}"
-            "return _b+encodeURIComponent(u);}"
+            "return _b+encodeURIComponent(u)+(_si?'&sid='+encodeURIComponent(_si):'');}"
             "var _of=window.fetch;"
             "window.fetch=function(r,i){if(typeof r==='string')r=_p(r);return _of.call(this,r,i);};"
             "var _ox=XMLHttpRequest.prototype.open;"
@@ -8256,8 +8332,19 @@ async def handle_proxy(request):
             return 'url("' + _mp(inner, base) + '")'
         return _re.sub(r'url\(([^)]{1,500})\)', _rc, text)
 
+    # Serve from cache for GET static resources (instant)
+    if req_method == 'GET':
+        cached_body, cached_ct = _pcache_get(url)
+        if cached_body is not None:
+            resp_obj = web.Response(body=cached_body, status=200)
+            resp_obj.content_type = cached_ct.split(';')[0].strip()
+            resp_obj.headers['Access-Control-Allow-Origin'] = '*'
+            resp_obj.headers['X-Frame-Options'] = 'ALLOWALL'
+            resp_obj.headers['Content-Security-Policy'] = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; frame-ancestors *"
+            resp_obj.headers['Cache-Control'] = 'public, max-age=300'
+            return resp_obj
+
     try:
-        req_method = request.method.upper()
         req_body = b''
         if req_method == 'POST':
             try: req_body = await request.read()
@@ -8272,51 +8359,46 @@ async def handle_proxy(request):
             'Upgrade-Insecure-Requests': '1',
             'Cache-Control': 'max-age=0',
         }
-        sid = request.rel_url.query.get('sid', '').strip()[:64]
         timeout = aiohttp.ClientTimeout(total=20)
-        connector = await _get_proxy_connector()
-        if sid:
-            if sid not in _proxy_cookie_jars:
-                _proxy_cookie_jars[sid] = aiohttp.CookieJar(unsafe=True)
-            jar = _proxy_cookie_jars[sid]
+        session = await _get_proxy_session(sid)
+        _req_kwargs = dict(headers=req_headers, allow_redirects=True, timeout=timeout)
+        if req_method == 'POST':
+            _req_kwargs['data'] = req_body
+            _cm = session.post(url, **_req_kwargs)
         else:
-            jar = aiohttp.DummyCookieJar()
-        async with aiohttp.ClientSession(connector=connector, connector_owner=False, cookie_jar=jar) as session:
-            _req_kwargs = dict(headers=req_headers, allow_redirects=True, timeout=timeout)
-            if req_method == 'POST':
-                _req_kwargs['data'] = req_body
-                _cm = session.post(url, **_req_kwargs)
+            _cm = session.get(url, **_req_kwargs)
+        async with _cm as resp:
+            ct = resp.headers.get('Content-Type', 'text/html; charset=utf-8')
+            final_url = str(resp.url)
+            body = await resp.read()
+            ct_lo = ct.lower()
+            if 'html' in ct_lo:
+                try:
+                    text = body.decode('utf-8', errors='replace')
+                    text = _rewrite_html(text, final_url)
+                    body = text.encode('utf-8')
+                except Exception:
+                    pass
+            elif 'css' in ct_lo:
+                try:
+                    text = body.decode('utf-8', errors='replace')
+                    text = _rewrite_css(text, final_url)
+                    body = text.encode('utf-8')
+                except Exception:
+                    pass
             else:
-                _cm = session.get(url, **_req_kwargs)
-            async with _cm as resp:
-                ct = resp.headers.get('Content-Type', 'text/html; charset=utf-8')
-                final_url = str(resp.url)
-                body = await resp.read()
-                ct_lo = ct.lower()
-                if 'html' in ct_lo:
-                    try:
-                        text = body.decode('utf-8', errors='replace')
-                        text = _rewrite_html(text, final_url)
-                        body = text.encode('utf-8')
-                    except Exception:
-                        pass
-                elif 'css' in ct_lo:
-                    try:
-                        text = body.decode('utf-8', errors='replace')
-                        text = _rewrite_css(text, final_url)
-                        body = text.encode('utf-8')
-                    except Exception:
-                        pass
-                resp_obj = web.Response(body=body, status=resp.status)
-                resp_obj.content_type = ct.split(';')[0].strip()
-                resp_obj.headers['Access-Control-Allow-Origin'] = '*'
-                resp_obj.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-                resp_obj.headers['Access-Control-Allow-Headers'] = '*'
-                resp_obj.headers['X-Frame-Options'] = 'ALLOWALL'
-                resp_obj.headers['Content-Security-Policy'] = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; frame-ancestors *"
-                return resp_obj
+                # Cache CSS/JS/images/fonts for instant repeat loads
+                _pcache_set(url, body, ct.split(';')[0].strip())
+            resp_obj = web.Response(body=body, status=resp.status)
+            resp_obj.content_type = ct.split(';')[0].strip()
+            resp_obj.headers['Access-Control-Allow-Origin'] = '*'
+            resp_obj.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            resp_obj.headers['Access-Control-Allow-Headers'] = '*'
+            resp_obj.headers['X-Frame-Options'] = 'ALLOWALL'
+            resp_obj.headers['Content-Security-Policy'] = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; frame-ancestors *"
+            return resp_obj
     except Exception as e:
-        err_html = f'<html><body style="background:#1e2124;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:12px;"><div style="font-size:40px;">🚫</div><div style="font-size:18px;font-weight:700;">Failed to load</div><div style="font-size:13px;color:#aaa;max-width:400px;text-align:center;">{e}</div></body></html>'
+        err_html = f'<html><body style="background:#1e2124;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:12px;"><div style="font-size:40px;">\U0001F6AB</div><div style="font-size:18px;font-weight:700;">Failed to load</div><div style="font-size:13px;color:#aaa;max-width:400px;text-align:center;">{e}</div></body></html>'
         return web.Response(text=err_html, status=502, content_type='text/html')
 
 
