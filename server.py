@@ -105,28 +105,135 @@ _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 db_pool = None
-CURRENT_VERSION = "2.6"
+CURRENT_VERSION = "2.7"
 CHANGELOG_NOTES = (
-    "<b>What's new in v2.6</b><br><br>"
-    "&#x2022; <b>Browser UI Overhaul</b> — Pill-shaped address bar, circular nav buttons, gradient progress bar, cleaner home page<br>"
-    "&#x2022; <b>VPN / Proxy Indicator</b> — 🛡 shield badge in address bar shows proxy is active on every page<br>"
-    "&#x2022; <b>Browser: Fixed nginx 400 errors</b> — Proxy now sends correct Host header so nginx sites load properly<br>"
-    "&#x2022; <b>Browser: POST support</b> — Proxy handles POST requests (forms, searches) in addition to GET<br>"
-    "&#x2022; <b>Slash Command Autocomplete</b> — Type / in chat to get a live dropdown of all commands with descriptions<br>"
-    "&#x2022; <b>Chat Input Bar Redesign</b> — Unified pill-shaped input container; circular send button; cleaner formatting toolbar<br>"
-    "&#x2022; <b>Message Layout Polish</b> — Better spacing, larger avatars, aligned grouped messages, smoother hover<br>"
-    "&#x2022; <b>Tab Bar Accent</b> — Active tab gets an accent underline; muted inactive tab colors<br>"
-    "&#x2022; <b>Channel Header Shadow</b> — Subtle shadow separates header from messages<br>"
+    "<b>What's new in v2.7</b><br><br>"
+    "&#x2022; <b>Balance System</b> — Every player starts with $1,000; registered users keep it forever across sessions<br>"
+    "&#x2022; <b>Shop</b> — 50+ items across 8 categories: Nameplates, Fonts, Avatar Rings, Profile FX, Themes, Titles, Chat Bubbles, Message Effects<br>"
+    "&#x2022; <b>Savings Plans</b> — Create personal savings goals with deposit/withdraw and color-coded progress bars<br>"
+    "&#x2022; <b>Gambling</b> — 5 casino games: Coin Flip, Dice Duel, Slot Machine, Roulette, Hi-Lo<br>"
+    "&#x2022; <b>Idle Game</b> — Earn passive income, buy 11 upgrades from Intern to Space Station<br>"
+    "&#x2022; <b>Browser VPN-off fix</b> — Shows a helpful overlay instead of cryptic iframe errors when VPN is off<br>"
+    "&#x2022; <b>Page title auto-detection</b> — Browser tabs update their label to the loaded page title<br>"
+    "&#x2022; <b>Browser keyboard shortcuts</b> — Ctrl+T (new tab), Ctrl+W (close), Ctrl+L (address bar), Ctrl+R (reload)<br>"
+    "<br><b>Previously in v2.6</b><br>"
+    "&#x2022; Browser UI overhaul, VPN/proxy indicator, slash command autocomplete, chat input redesign, message layout polish<br>"
     "<br><b>Previously in v2.5</b><br>"
     "&#x2022; Browser bookmarks, nav history, loading bar, home page redesign, Google\u2192DuckDuckGo redirect<br>"
     "&#x2022; Slash commands: /me /roll /flip /8ball /shrug /tableflip /rainbow /shout /trivia /poll<br>"
     "&#x2022; Formatting toolbar, typing indicator, collapsible sidebar, user search, Ctrl+K DM, username color<br>"
-    "&#x2022; Slowmode, bulk clear, export logs, word filter, announce mode, MOTD, Konami code party mode<br>"
     "<br><b>Previously in v2.4</b><br>"
     "&#x2022; Bug fixes: owner login, DM clearing, fullscreen games, browser proxy; status selector, draft persistence<br>"
-    "<br><b>Previously in v2.3</b><br>"
-    "&#x2022; Reply to messages, Markdown formatting, @mention autocomplete, image paste, DM search, browser games hub<br>"
 )
+
+# ─── Economy: Shop catalog ───────────────────────────────────────────────────
+SHOP_CATALOG = {
+    # Nameplates
+    "np_bronze":    {"name":"Bronze Nameplate",    "desc":"A warm bronze glow around your name",          "price":100,   "cat":"nameplate","rarity":"common",    "emoji":"\U0001F7EB"},
+    "np_silver":    {"name":"Silver Nameplate",    "desc":"A cool silver shimmer around your name",       "price":250,   "cat":"nameplate","rarity":"uncommon",  "emoji":"\U0001F7E9"},
+    "np_gold":      {"name":"Gold Nameplate",      "desc":"Shining gold highlights on your name",         "price":500,   "cat":"nameplate","rarity":"rare",      "emoji":"\U0001F7E8"},
+    "np_diamond":   {"name":"Diamond Nameplate",   "desc":"Crystal-clear diamond sparkle",                "price":1000,  "cat":"nameplate","rarity":"epic",      "emoji":"\U0001F48E"},
+    "np_rainbow":   {"name":"Rainbow Nameplate",   "desc":"Cycling rainbow gradient on your name",        "price":2000,  "cat":"nameplate","rarity":"legendary", "emoji":"\U0001F308"},
+    "np_neon":      {"name":"Neon Nameplate",      "desc":"Electric neon glow around your name",          "price":1500,  "cat":"nameplate","rarity":"epic",      "emoji":"\U0001F4A1"},
+    "np_galaxy":    {"name":"Galaxy Nameplate",    "desc":"Deep space cosmic aesthetic",                  "price":3000,  "cat":"nameplate","rarity":"legendary", "emoji":"\U0001F30C"},
+    "np_fire":      {"name":"Fire Nameplate",      "desc":"Blazing flames licking your name",             "price":2500,  "cat":"nameplate","rarity":"legendary", "emoji":"\U0001F525"},
+    "np_ice":       {"name":"Ice Nameplate",       "desc":"Frozen crystal icy effect",                    "price":2500,  "cat":"nameplate","rarity":"legendary", "emoji":"\u2744\uFE0F"},
+    "np_holo":      {"name":"Holographic",         "desc":"Prismatic holographic shimmer",                "price":5000,  "cat":"nameplate","rarity":"mythic",    "emoji":"\u2728"},
+    # Fonts
+    "font_bold":    {"name":"Bold Text",           "desc":"Make your messages stand out in bold",         "price":150,   "cat":"font",     "rarity":"common",    "emoji":"\U0001F1E7"},
+    "font_italic":  {"name":"Italic Text",         "desc":"Stylish slanted messages",                     "price":150,   "cat":"font",     "rarity":"common",    "emoji":"\U0001F4D4"},
+    "font_mono":    {"name":"Monospace",           "desc":"Hacker-style fixed-width font",                "price":200,   "cat":"font",     "rarity":"uncommon",  "emoji":"\u2328\uFE0F"},
+    "font_cursive": {"name":"Cursive",             "desc":"Elegant handwriting style font",               "price":350,   "cat":"font",     "rarity":"uncommon",  "emoji":"\u270D\uFE0F"},
+    "font_pixel":   {"name":"Pixel Art",           "desc":"Retro 8-bit pixel font vibes",                 "price":500,   "cat":"font",     "rarity":"rare",      "emoji":"\U0001F47E"},
+    "font_comic":   {"name":"Comic Sans",          "desc":"The legendary meme font, now as a flex",       "price":100,   "cat":"font",     "rarity":"common",    "emoji":"\U0001F602"},
+    # Avatar Rings
+    "ring_gold":    {"name":"Gold Ring",           "desc":"Luxurious gold ring around your avatar",       "price":300,   "cat":"ring",     "rarity":"uncommon",  "emoji":"\U0001F49B"},
+    "ring_rainbow": {"name":"Rainbow Ring",        "desc":"Cycling rainbow ring around avatar",           "price":800,   "cat":"ring",     "rarity":"rare",      "emoji":"\U0001F308"},
+    "ring_fire":    {"name":"Fire Ring",           "desc":"Blazing fire border around avatar",            "price":600,   "cat":"ring",     "rarity":"rare",      "emoji":"\U0001F525"},
+    "ring_ice":     {"name":"Ice Ring",            "desc":"Frosty ice crystal border",                    "price":600,   "cat":"ring",     "rarity":"rare",      "emoji":"\u2744\uFE0F"},
+    "ring_galaxy":  {"name":"Galaxy Ring",         "desc":"Swirling galaxy animation ring",               "price":1200,  "cat":"ring",     "rarity":"epic",      "emoji":"\U0001F30C"},
+    "ring_neon":    {"name":"Neon Ring",           "desc":"Electric neon glow ring",                      "price":700,   "cat":"ring",     "rarity":"rare",      "emoji":"\U0001F4A1"},
+    "ring_diamond": {"name":"Diamond Ring",        "desc":"Sparkling diamond border",                     "price":1000,  "cat":"ring",     "rarity":"epic",      "emoji":"\U0001F48E"},
+    "ring_crown":   {"name":"Crown",               "desc":"A royal crown above your avatar",              "price":2000,  "cat":"ring",     "rarity":"legendary", "emoji":"\U0001F451"},
+    "ring_star":    {"name":"Star Ring",           "desc":"Twinkling stars orbiting your avatar",         "price":500,   "cat":"ring",     "rarity":"uncommon",  "emoji":"\u2B50"},
+    # Profile Effects
+    "fx_sparkles":  {"name":"Sparkles",            "desc":"Sparkling particle effects on your profile",   "price":500,   "cat":"effect",   "rarity":"uncommon",  "emoji":"\u2728"},
+    "fx_snow":      {"name":"Snowfall",            "desc":"Gentle snowflakes float around you",           "price":600,   "cat":"effect",   "rarity":"rare",      "emoji":"\u2744\uFE0F"},
+    "fx_stars":     {"name":"Starfield",           "desc":"Infinite twinkling starfield background",      "price":800,   "cat":"effect",   "rarity":"rare",      "emoji":"\U0001F31F"},
+    "fx_flames":    {"name":"Flames",              "desc":"Dancing fire frames your profile",             "price":700,   "cat":"effect",   "rarity":"rare",      "emoji":"\U0001F525"},
+    "fx_lightning": {"name":"Lightning",           "desc":"Electric sparks crackle around you",           "price":1000,  "cat":"effect",   "rarity":"epic",      "emoji":"\u26A1"},
+    "fx_bubbles":   {"name":"Bubbles",             "desc":"Floating soap bubbles drift up",               "price":600,   "cat":"effect",   "rarity":"rare",      "emoji":"\U0001FAE7"},
+    "fx_matrix":    {"name":"Matrix Rain",         "desc":"Green code rains down your profile",           "price":1500,  "cat":"effect",   "rarity":"epic",      "emoji":"\U0001F4BB"},
+    "fx_aurora":    {"name":"Northern Lights",     "desc":"Ethereal aurora waves shimmer",                "price":2000,  "cat":"effect",   "rarity":"legendary", "emoji":"\U0001F30C"},
+    "fx_confetti":  {"name":"Confetti",            "desc":"Endless party confetti shower",                "price":400,   "cat":"effect",   "rarity":"uncommon",  "emoji":"\U0001F389"},
+    "fx_hearts":    {"name":"Floating Hearts",     "desc":"Little hearts float up constantly",            "price":350,   "cat":"effect",   "rarity":"uncommon",  "emoji":"\U0001F495"},
+    # Themes
+    "th_cyberpunk": {"name":"Cyberpunk",           "desc":"Neon-on-dark cyber aesthetic",                 "price":500,   "cat":"theme",    "rarity":"uncommon",  "emoji":"\U0001F916"},
+    "th_sakura":    {"name":"Sakura",              "desc":"Cherry blossom soft pink tones",               "price":400,   "cat":"theme",    "rarity":"uncommon",  "emoji":"\U0001F338"},
+    "th_arctic":    {"name":"Arctic",              "desc":"Cool blue glacial tones",                      "price":450,   "cat":"theme",    "rarity":"uncommon",  "emoji":"\U0001F9CA"},
+    "th_inferno":   {"name":"Inferno",             "desc":"Deep reds and volcanic oranges",               "price":550,   "cat":"theme",    "rarity":"rare",      "emoji":"\U0001F30B"},
+    "th_emerald":   {"name":"Emerald City",        "desc":"Rich jewel-green tones",                       "price":400,   "cat":"theme",    "rarity":"uncommon",  "emoji":"\U0001F49A"},
+    "th_royal":     {"name":"Royal Purple",        "desc":"Majestic purple and gold",                     "price":350,   "cat":"theme",    "rarity":"uncommon",  "emoji":"\U0001F7EA"},
+    "th_bloodmoon": {"name":"Blood Moon",          "desc":"Deep crimson and black",                       "price":600,   "cat":"theme",    "rarity":"rare",      "emoji":"\U0001F311"},
+    "th_golden":    {"name":"Golden Hour",         "desc":"Warm gold and amber sunset",                   "price":700,   "cat":"theme",    "rarity":"rare",      "emoji":"\u2728"},
+    "th_space":     {"name":"Space Station",       "desc":"Deep navy, silver and stars",                  "price":800,   "cat":"theme",    "rarity":"rare",      "emoji":"\U0001F680"},
+    "th_candy":     {"name":"Cotton Candy",        "desc":"Soft pastels and bubblegum",                   "price":300,   "cat":"theme",    "rarity":"common",    "emoji":"\U0001F36C"},
+    "th_toxic":     {"name":"Toxic Waste",         "desc":"Acid green neon on black",                     "price":650,   "cat":"theme",    "rarity":"rare",      "emoji":"\u2622\uFE0F"},
+    "th_vapor":     {"name":"Vaporwave",           "desc":"Retro purple and pink aesthetic",              "price":750,   "cat":"theme",    "rarity":"rare",      "emoji":"\U0001F4FA"},
+    # Title Badges
+    "title_fresh":  {"name":"Fresh",               "desc":"Keep it fresh vibes only",                     "price":250,   "cat":"title",    "rarity":"common",    "emoji":"\U0001F30A"},
+    "title_elite":  {"name":"Elite",               "desc":"Elite status badge",                           "price":500,   "cat":"title",    "rarity":"uncommon",  "emoji":"\U0001F537"},
+    "title_vip":    {"name":"VIP",                 "desc":"Very Important Person status",                 "price":800,   "cat":"title",    "rarity":"rare",      "emoji":"\u2B50"},
+    "title_pro":    {"name":"Pro",                 "desc":"A certified pro badge",                        "price":600,   "cat":"title",    "rarity":"rare",      "emoji":"\u26A1"},
+    "title_grind":  {"name":"Grinder",             "desc":"Always hustlin' badge",                        "price":700,   "cat":"title",    "rarity":"rare",      "emoji":"\u2699\uFE0F"},
+    "title_boss":   {"name":"Boss",                "desc":"Ran that. Enough said.",                       "price":1000,  "cat":"title",    "rarity":"epic",      "emoji":"\U0001F60E"},
+    "title_legend": {"name":"Legend",              "desc":"You are a legend badge",                       "price":1500,  "cat":"title",    "rarity":"epic",      "emoji":"\U0001F3C6"},
+    "title_champ":  {"name":"Champion",            "desc":"Champion of champions",                        "price":2000,  "cat":"title",    "rarity":"legendary", "emoji":"\U0001F947"},
+    "title_og":     {"name":"OG",                  "desc":"One of the true originals",                    "price":3000,  "cat":"title",    "rarity":"legendary", "emoji":"\U0001F4AF"},
+    "title_goat":   {"name":"GOAT",                "desc":"Greatest of all time",                         "price":4000,  "cat":"title",    "rarity":"mythic",    "emoji":"\U0001F410"},
+    "title_rich":   {"name":"Richie Rich",         "desc":"More money than they know what to do with",   "price":5000,  "cat":"title",    "rarity":"mythic",    "emoji":"\U0001F4B0"},
+    # Chat Bubbles
+    "bub_round":    {"name":"Rounded Bubbles",     "desc":"Pill-shaped message bubbles",                  "price":200,   "cat":"bubble",   "rarity":"common",    "emoji":"\U0001F4AC"},
+    "bub_speech":   {"name":"Speech Bubbles",      "desc":"Classic comic speech bubbles",                 "price":350,   "cat":"bubble",   "rarity":"uncommon",  "emoji":"\U0001F5E8\uFE0F"},
+    "bub_neon":     {"name":"Neon Outlines",       "desc":"Electric neon borders on messages",            "price":600,   "cat":"bubble",   "rarity":"rare",      "emoji":"\U0001F4A1"},
+    "bub_shadow":   {"name":"Shadow Boxes",        "desc":"Deep drop shadow card style",                  "price":400,   "cat":"bubble",   "rarity":"uncommon",  "emoji":"\U0001F532"},
+    "bub_glass":    {"name":"Glassmorphism",       "desc":"Frosted glass effect messages",                "price":700,   "cat":"bubble",   "rarity":"rare",      "emoji":"\U0001F9CA"},
+    "bub_retro":    {"name":"Retro Terminal",      "desc":"Old-school green-on-black terminal look",      "price":500,   "cat":"bubble",   "rarity":"rare",      "emoji":"\U0001F4BB"},
+    # Message Effects
+    "msg_gradient": {"name":"Gradient Text",       "desc":"Your messages displayed in rainbow gradient",  "price":800,   "cat":"message",  "rarity":"rare",      "emoji":"\U0001F308"},
+    "msg_glow":     {"name":"Glowing Text",        "desc":"Your text emits a soft colored glow",          "price":1000,  "cat":"message",  "rarity":"epic",      "emoji":"\u2728"},
+    "msg_big":      {"name":"Big Text",            "desc":"Your messages appear slightly larger",         "price":200,   "cat":"message",  "rarity":"common",    "emoji":"\U0001F524"},
+    "msg_shadow":   {"name":"Drop Shadow Text",    "desc":"Dramatic drop shadow on your text",            "price":500,   "cat":"message",  "rarity":"uncommon",  "emoji":"\U0001F532"},
+    "msg_caps":     {"name":"ALL CAPS Mode",       "desc":"Everything you send is in bold caps",          "price":300,   "cat":"message",  "rarity":"common",    "emoji":"\U0001F50A"},
+    "msg_wave":     {"name":"Wave Text",           "desc":"Your text undulates in an animated wave",      "price":1200,  "cat":"message",  "rarity":"epic",      "emoji":"\U0001F30A"},
+}
+
+# ─── Economy: Idle game upgrades ─────────────────────────────────────────────
+IDLE_UPGRADES = [
+    {"id":"click1",  "name":"Better Mouse",     "desc":"Each click earns +$1",          "emoji":"\U0001F5B1\uFE0F",  "base_price":50,       "type":"click","value":1},
+    {"id":"click2",  "name":"Power Fingers",    "desc":"Each click earns +$5",          "emoji":"\U0001F4AA",         "base_price":300,      "type":"click","value":5},
+    {"id":"click3",  "name":"Auto Tap",         "desc":"Each click earns +$25",         "emoji":"\U0001F916",         "base_price":2000,     "type":"click","value":25},
+    {"id":"auto1",   "name":"Intern",           "desc":"+$0.5 per second",              "emoji":"\U0001F476",         "base_price":100,      "type":"cps",  "value":0.5},
+    {"id":"auto2",   "name":"Employee",         "desc":"+$2 per second",               "emoji":"\U0001F468\u200D\U0001F4BC", "base_price":500, "type":"cps","value":2},
+    {"id":"auto3",   "name":"Manager",          "desc":"+$10 per second",              "emoji":"\U0001F454",          "base_price":2500,     "type":"cps",  "value":10},
+    {"id":"auto4",   "name":"Director",         "desc":"+$50 per second",              "emoji":"\U0001F3E2",          "base_price":15000,    "type":"cps",  "value":50},
+    {"id":"auto5",   "name":"Corporation",      "desc":"+$200 per second",             "emoji":"\U0001F3D9\uFE0F",   "base_price":75000,    "type":"cps",  "value":200},
+    {"id":"auto6",   "name":"Investment Fund",  "desc":"+$1,000 per second",           "emoji":"\U0001F4C8",          "base_price":400000,   "type":"cps",  "value":1000},
+    {"id":"auto7",   "name":"Crypto Mine",      "desc":"+$5,000 per second",           "emoji":"\u26CF\uFE0F",        "base_price":2000000,  "type":"cps",  "value":5000},
+    {"id":"auto8",   "name":"Space Station",    "desc":"+$25,000 per second",          "emoji":"\U0001F680",          "base_price":10000000, "type":"cps",  "value":25000},
+]
+
+def _calc_idle_stats(upgrades):
+    """Return (click_value, cps) from an upgrades dict."""
+    click_val = 1.0
+    cps = 0.0
+    for u in IDLE_UPGRADES:
+        cnt = upgrades.get(u["id"], 0)
+        if u["type"] == "click":
+            click_val += u["value"] * cnt
+        elif u["type"] == "cps":
+            cps += u["value"] * cnt
+    return click_val, cps
 
 
 async def init_db():
@@ -172,6 +279,37 @@ async def init_db():
                     username VARCHAR(20) NOT NULL,
                     version VARCHAR(20) NOT NULL,
                     PRIMARY KEY (username, version)
+                )
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS user_economy (
+                    username VARCHAR(20) PRIMARY KEY,
+                    balance INTEGER NOT NULL DEFAULT 1000,
+                    inventory JSONB NOT NULL DEFAULT '[]',
+                    equipped JSONB NOT NULL DEFAULT '{}',
+                    idle_money NUMERIC NOT NULL DEFAULT 0,
+                    idle_upgrades JSONB NOT NULL DEFAULT '{}',
+                    idle_last_collect TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS savings_plans (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(20) NOT NULL,
+                    name VARCHAR(50) NOT NULL,
+                    goal INTEGER NOT NULL DEFAULT 100,
+                    saved INTEGER NOT NULL DEFAULT 0,
+                    color VARCHAR(30) NOT NULL DEFAULT '#4f9cf9',
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(20) NOT NULL,
+                    amount INTEGER NOT NULL,
+                    reason VARCHAR(200) NOT NULL DEFAULT '',
+                    created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
         print("[DB] Database initialized.")
@@ -292,6 +430,82 @@ async def db_mark_changelog_seen(token, check_only=False):
                 user["username"], CURRENT_VERSION
             )
         return not already_seen
+
+# ─── Economy DB helpers ──────────────────────────────────────────────────────
+async def db_get_economy(username):
+    if not db_pool:
+        return {"balance":1000,"inventory":[],"equipped":{},"idle_money":0,"idle_upgrades":{},"idle_last_collect":None}
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM user_economy WHERE username=$1", username)
+        if not row:
+            await conn.execute("INSERT INTO user_economy (username) VALUES ($1) ON CONFLICT DO NOTHING", username)
+            return {"balance":1000,"inventory":[],"equipped":{},"idle_money":0,"idle_upgrades":{},"idle_last_collect":None}
+        return {
+            "balance": row["balance"],
+            "inventory": list(row["inventory"] or []),
+            "equipped": dict(row["equipped"] or {}),
+            "idle_money": float(row["idle_money"] or 0),
+            "idle_upgrades": dict(row["idle_upgrades"] or {}),
+            "idle_last_collect": row["idle_last_collect"],
+        }
+
+async def db_save_economy(username, data):
+    if not db_pool: return
+    async with db_pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO user_economy (username,balance,inventory,equipped,idle_money,idle_upgrades)
+            VALUES ($1,$2,$3::jsonb,$4::jsonb,$5,$6::jsonb)
+            ON CONFLICT (username) DO UPDATE SET
+                balance=EXCLUDED.balance, inventory=EXCLUDED.inventory,
+                equipped=EXCLUDED.equipped, idle_money=EXCLUDED.idle_money,
+                idle_upgrades=EXCLUDED.idle_upgrades
+        """, username, data["balance"],
+            json.dumps(data.get("inventory",[])), json.dumps(data.get("equipped",{})),
+            float(data.get("idle_money",0)), json.dumps(data.get("idle_upgrades",{})))
+
+async def db_add_transaction(username, amount, reason):
+    if not db_pool: return
+    async with db_pool.acquire() as conn:
+        await conn.execute("INSERT INTO transactions (username,amount,reason) VALUES ($1,$2,$3)",
+                           username, int(amount), reason[:200])
+
+async def db_get_transactions(username, limit=15):
+    if not db_pool: return []
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT amount,reason,created_at FROM transactions WHERE username=$1 ORDER BY created_at DESC LIMIT $2",
+            username, limit)
+        return [{"amount":r["amount"],"reason":r["reason"],"ts":r["created_at"].isoformat()} for r in rows]
+
+async def db_get_savings(username):
+    if not db_pool: return []
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("SELECT id,name,goal,saved,color FROM savings_plans WHERE username=$1 ORDER BY id", username)
+        return [{"id":r["id"],"name":r["name"],"goal":r["goal"],"saved":r["saved"],"color":r["color"]} for r in rows]
+
+async def db_create_savings(username, name, goal, color):
+    if not db_pool: return 0
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "INSERT INTO savings_plans (username,name,goal,color) VALUES ($1,$2,$3,$4) RETURNING id",
+            username, name, goal, color)
+        return row["id"]
+
+async def db_update_savings(plan_id, username, amount, mode):
+    if not db_pool: return
+    async with db_pool.acquire() as conn:
+        if mode == "deposit":
+            await conn.execute("UPDATE savings_plans SET saved=LEAST(saved+$1,goal) WHERE id=$2 AND username=$3",
+                               amount, plan_id, username)
+        else:
+            await conn.execute("UPDATE savings_plans SET saved=GREATEST(saved-$1,0) WHERE id=$2 AND username=$3",
+                               amount, plan_id, username)
+
+async def db_delete_savings(plan_id, username):
+    if not db_pool: return
+    async with db_pool.acquire() as conn:
+        await conn.execute("DELETE FROM savings_plans WHERE id=$1 AND username=$2", plan_id, username)
+
 
 USERNAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,20}$')
 RESERVED_RE = re.compile(r'admin|mod|owner', re.IGNORECASE)
@@ -3789,6 +4003,10 @@ function handleMessage(data) {
     }
   } else if (data.type === 'bj_room_created' || data.type === 'bj_joined' || data.type === 'bj_state' || data.type === 'bj_error') {
     if (window._bjMultiHandler) window._bjMultiHandler(data);
+  } else if (data.type === 'balance_data' || data.type === 'shop_result' || data.type === 'equip_result' ||
+             data.type === 'savings_result' || data.type === 'gamble_result' ||
+             data.type === 'idle_result' || data.type === 'idle_collect_result') {
+    document.dispatchEvent(new CustomEvent('_balance_msg', {detail: data}));
   }
 }
 
@@ -5208,6 +5426,7 @@ function renderTabBar() {
     if (tab.type === 'chat') icon.textContent = '💬';
     else if (tab.type === 'games') icon.textContent = '🎮';
     else if (tab.type === 'browser') icon.textContent = '🌐';
+    else if (tab.type === 'balance') icon.textContent = '💰';
     else icon.textContent = '+';
     item.appendChild(icon);
 
@@ -5266,7 +5485,7 @@ var allNewTabItems = [
   { id: 'chat', type: 'chat', name: 'Chat', desc: 'Group chat and direct messages', badge: '' },
   { id: 'games', type: 'games', name: 'Games', desc: 'Browse and play mini-games', badge: '' },
   { id: 'embedded', type: 'embedded', name: 'Embedded Games', desc: '200+ popular unblocked games playable in-browser', badge: 'NEW' },
-  { id: 'browser', type: 'browser', name: 'Browser', desc: 'Built-in web browser with proxy support', badge: 'NEW' },
+  { id: 'balance', type: 'balance', name: 'Balance', desc: 'Your wallet, shop, savings, gambling & idle game', badge: 'NEW' },
 ];
 
 function openBrowserTab(url) {
@@ -5358,8 +5577,10 @@ function openNewTab() {
           else { convertTabToGames(id); }
         } else if (item.type === 'embedded') {
           convertTabToEmbedded(id);
-        } else if (item.type === 'browser') {
-          convertTabToBrowser(id);
+        } else if (item.type === 'balance') {
+          var bTab = findTabByType('balance');
+          if (bTab) { closeTab(id); switchTab(bTab.id); }
+          else { convertTabToBalance(id); }
         }
       });
       listDiv.appendChild(row);
@@ -6594,6 +6815,696 @@ function convertTabToBrowser(tabId) {
   updateVpnBtn();renderBmBar();addBtab();renderTabBar();
 }
 
+// ── Balance / Economy Tab ────────────────────────────────────────────────────
+function convertTabToBalance(tabId) {
+  for(var i=0;i<tabs.length;i++){if(tabs[i].id===tabId){tabs[i].type='balance';tabs[i].label='Balance';break;}}
+  renderTabBar();
+  var el=document.getElementById('tabContent-'+tabId);
+  el.innerHTML='';
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S={bal:0,inv:[],eqp:{},savings:[],txns:[],idleMoney:0,idleUpgrades:{},
+    idleCps:0,idleClickVal:1,activeGame:null,gambleBet:100,isGuest:false,
+    shopCat:'nameplate',shopCatalog:[],idleUpgDef:[],innerTab:'dashboard',
+    hiloDrawn:7};
+
+  // ── CSS ───────────────────────────────────────────────────────────────────
+  var _st=document.createElement('style');
+  _st.textContent=
+    '.bal-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg-secondary)}'+
+    '.bal-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px;'+
+      'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border-bottom:1px solid rgba(255,255,255,.07)}'+
+    '.bal-hdr-left{display:flex;flex-direction:column}'+
+    '.bal-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.4);margin-bottom:2px}'+
+    '.bal-amount{font-size:30px;font-weight:900;background:linear-gradient(135deg,#FFD700,#FFA500);'+
+      '-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:monospace;transition:all .3s}'+
+    '.bal-guest-badge{font-size:10px;color:rgba(255,180,0,.6);margin-top:2px}'+
+    '.bal-nav{display:flex;gap:3px;padding:7px 10px;background:var(--bg-tertiary);border-bottom:1px solid rgba(255,255,255,.05);overflow-x:auto;scrollbar-width:none}'+
+    '.bal-nav::-webkit-scrollbar{display:none}'+
+    '.bal-nav-btn{flex:0 0 auto;padding:6px 13px;border:none;border-radius:18px;font-size:12px;font-weight:700;cursor:pointer;'+
+      'background:transparent;color:var(--text-muted);transition:all .2s;white-space:nowrap}'+
+    '.bal-nav-btn:hover{background:rgba(255,255,255,.08);color:var(--text-primary)}'+
+    '.bal-nav-btn.active{background:var(--accent);color:#fff}'+
+    '.bal-content{flex:1;overflow:hidden;position:relative}'+
+    '.bal-panel{position:absolute;inset:0;overflow-y:auto;padding:14px;display:none}'+
+    '.bal-panel.active{display:block}'+
+    // Dashboard
+    '.dash-hero{text-align:center;padding:24px 16px;background:linear-gradient(135deg,rgba(79,156,249,.1),rgba(168,85,247,.1));'+
+      'border-radius:16px;margin-bottom:14px;border:1px solid rgba(255,255,255,.07)}'+
+    '.dash-big-bal{font-size:52px;font-weight:900;background:linear-gradient(135deg,#FFD700,#FFA500,#FF6B6B);'+
+      '-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:monospace;line-height:1.1}'+
+    '.dash-bal-sub{font-size:11px;color:rgba(255,255,255,.35);margin-top:6px}'+
+    '.dash-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}'+
+    '.dash-stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;'+
+      'padding:13px;text-align:center;transition:background .2s;cursor:default}'+
+    '.dash-stat:hover{background:rgba(255,255,255,.08)}'+
+    '.ds-emoji{font-size:20px;margin-bottom:3px}'+
+    '.ds-val{font-size:15px;font-weight:800;color:var(--text-primary);font-family:monospace}'+
+    '.ds-lbl{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}'+
+    '.dash-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:14px}'+
+    '.dash-act-btn{padding:9px 12px;background:rgba(79,156,249,.12);border:1px solid rgba(79,156,249,.25);'+
+      'border-radius:10px;color:#4f9cf9;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}'+
+    '.dash-act-btn:hover{background:rgba(79,156,249,.25);transform:translateY(-1px)}'+
+    '.sec-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:7px}'+
+    '.dash-tx-list{display:flex;flex-direction:column;gap:3px}'+
+    '.dash-tx-row{display:flex;justify-content:space-between;align-items:center;padding:7px 11px;'+
+      'background:rgba(255,255,255,.03);border-radius:8px;font-size:12px}'+
+    '.dash-tx-row:hover{background:rgba(255,255,255,.06)}'+
+    '.tx-reason{color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;margin-right:8px}'+
+    '.tx-amt{font-weight:800;font-family:monospace;flex-shrink:0}'+
+    '.tx-pos{color:#22c55e}.tx-neg{color:#ef4444}'+
+    '.bal-empty{text-align:center;color:var(--text-muted);padding:28px;font-size:13px;line-height:2}'+
+    // Shop
+    '.shop-cats{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}'+
+    '.shop-cat-btn{padding:5px 11px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:transparent;'+
+      'color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}'+
+    '.shop-cat-btn:hover{background:rgba(255,255,255,.08);color:var(--text-primary)}'+
+    '.shop-cat-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}'+
+    '.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px}'+
+    '.shop-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;'+
+      'padding:13px 10px;display:flex;flex-direction:column;gap:5px;transition:all .2s;cursor:default}'+
+    '.shop-card:hover{background:rgba(255,255,255,.08);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}'+
+    '.shop-card.owned{border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.05)}'+
+    '.shop-card.equipped{border-color:rgba(79,156,249,.55);box-shadow:0 0 10px rgba(79,156,249,.2)}'+
+    '.sc-emoji{font-size:26px;text-align:center}'+
+    '.sc-name{font-size:12px;font-weight:800;color:var(--text-primary);text-align:center}'+
+    '.sc-rarity{font-size:9px;font-weight:900;text-align:center;letter-spacing:.8px}'+
+    '.sc-desc{font-size:10px;color:var(--text-muted);text-align:center;line-height:1.4}'+
+    '.sc-price{font-size:13px;font-weight:900;color:var(--accent);text-align:center;font-family:monospace}'+
+    '.sc-btn{width:100%;padding:6px;border:none;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;'+
+      'background:var(--accent);color:#fff;transition:all .2s;margin-top:auto}'+
+    '.sc-btn:hover:not(:disabled){opacity:.85}'+
+    '.sc-btn.eqp-btn{background:rgba(79,156,249,.15);color:#4f9cf9;border:1px solid rgba(79,156,249,.4)}'+
+    '.sc-btn.no-afford{background:rgba(255,255,255,.07);color:var(--text-muted);cursor:not-allowed}'+
+    // Savings
+    '.sav-create{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;margin-bottom:13px}'+
+    '.sav-create-title{font-size:13px;font-weight:800;color:var(--text-primary);margin-bottom:9px}'+
+    '.sav-in{width:100%;padding:7px 11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);'+
+      'border-radius:8px;color:var(--text-primary);font-size:13px;box-sizing:border-box;margin-bottom:5px}'+
+    '.sav-in::placeholder{color:var(--text-muted)}'+
+    '.sav-create-btn{width:100%;padding:8px;background:var(--accent);border:none;border-radius:8px;'+
+      'color:#fff;font-size:12px;font-weight:800;cursor:pointer;margin-top:5px;transition:all .2s}'+
+    '.sav-create-btn:hover{opacity:.85}'+
+    '.sav-plan{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:13px;margin-bottom:9px}'+
+    '.sav-plan-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}'+
+    '.sav-plan-name{font-size:14px;font-weight:800;color:var(--text-primary)}'+
+    '.sav-plan-amts{font-size:11px;color:var(--text-muted);font-family:monospace}'+
+    '.sav-bar{height:7px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin-bottom:3px}'+
+    '.sav-fill{height:100%;border-radius:4px;transition:width .4s ease}'+
+    '.sav-pct{font-size:10px;color:var(--text-muted);margin-bottom:8px}'+
+    '.sav-btns{display:flex;gap:5px;align-items:center;flex-wrap:wrap}'+
+    '.sav-amt-in{flex:1;min-width:70px;padding:5px 9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:7px;color:var(--text-primary);font-size:12px}'+
+    '.sav-btn{padding:5px 11px;border:none;border-radius:7px;font-size:11px;font-weight:800;cursor:pointer;transition:all .2s}'+
+    '.sav-dep{background:rgba(34,197,94,.18);color:#22c55e;border:1px solid rgba(34,197,94,.3)}'+
+    '.sav-dep:hover{background:rgba(34,197,94,.32)}'+
+    '.sav-wd{background:rgba(251,191,36,.18);color:#fbbf24;border:1px solid rgba(251,191,36,.3)}'+
+    '.sav-wd:hover{background:rgba(251,191,36,.32)}'+
+    '.sav-del{background:rgba(239,68,68,.18);color:#ef4444;border:1px solid rgba(239,68,68,.3)}'+
+    '.sav-del:hover{background:rgba(239,68,68,.32)}'+
+    // Gambling
+    '.gam-title{font-size:22px;font-weight:900;text-align:center;margin-bottom:16px;'+
+      'background:linear-gradient(135deg,#FFD700,#FF6B6B);-webkit-background-clip:text;-webkit-text-fill-color:transparent}'+
+    '.gam-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px;margin-bottom:14px}'+
+    '.gam-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:16px;'+
+      'padding:18px 12px;text-align:center;cursor:pointer;transition:all .25s}'+
+    '.gam-card:hover{background:rgba(255,255,255,.1);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.4)}'+
+    '.gam-card-emoji{font-size:38px;margin-bottom:7px}'+
+    '.gam-card-name{font-size:14px;font-weight:900;color:var(--text-primary);margin-bottom:4px}'+
+    '.gam-card-desc{font-size:11px;color:var(--text-muted)}'+
+    '.gam-back{padding:6px 13px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);'+
+      'border-radius:8px;color:var(--text-muted);font-size:12px;cursor:pointer}'+
+    '.gam-back:hover{background:rgba(255,255,255,.13)}'+
+    '.gam-hdr{display:flex;align-items:center;gap:11px;margin-bottom:13px}'+
+    '.gam-hdr-title{font-size:17px;font-weight:900;color:var(--text-primary)}'+
+    '.gam-arena{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:15px}'+
+    '.gam-bet-row{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}'+
+    '.gam-bet-row label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted)}'+
+    '.gam-bet-in{padding:8px 11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);'+
+      'border-radius:8px;color:var(--text-primary);font-size:15px;font-weight:800;font-family:monospace;width:100%;box-sizing:border-box}'+
+    '.gam-quick{display:flex;gap:5px;flex-wrap:wrap}'+
+    '.gam-qbtn{padding:4px 9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);'+
+      'border-radius:6px;color:var(--text-secondary);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s}'+
+    '.gam-qbtn:hover{background:rgba(255,255,255,.13);color:var(--text-primary)}'+
+    '.gam-result{min-height:70px;display:flex;flex-direction:column;align-items:center;justify-content:center;'+
+      'gap:6px;padding:12px;border-radius:12px;margin-bottom:10px;font-size:30px;transition:all .3s}'+
+    '.gam-result.win{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.35)}'+
+    '.gam-result.lose{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35)}'+
+    '.gam-result.push{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35)}'+
+    '.gam-result.idle2{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)}'+
+    '.gam-result-lbl{font-size:13px;font-weight:800}'+
+    '.gam-result-amt{font-size:15px;font-weight:900;font-family:monospace}'+
+    '.coin-choices{display:flex;gap:9px;margin-bottom:10px}'+
+    '.coin-btn{flex:1;padding:12px;background:rgba(79,156,249,.13);border:1px solid rgba(79,156,249,.28);'+
+      'border-radius:12px;color:#4f9cf9;font-size:14px;font-weight:800;cursor:pointer;transition:all .2s}'+
+    '.coin-btn:hover:not(:disabled){background:rgba(79,156,249,.28)}'+
+    '.coin-btn:disabled{opacity:.38;cursor:not-allowed}'+
+    '.dice-area{display:flex;justify-content:center;gap:20px;padding:14px;font-size:64px}'+
+    '.dice-roll-btn,.slots-spin-btn,.hilo-play-btn{width:100%;padding:11px;background:linear-gradient(135deg,#4f9cf9,#a855f7);'+
+      'border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:900;cursor:pointer;transition:all .2s;margin-bottom:9px}'+
+    '.dice-roll-btn:hover:not(:disabled),.slots-spin-btn:hover:not(:disabled),.hilo-play-btn:hover:not(:disabled){opacity:.85;transform:translateY(-1px)}'+
+    '.dice-roll-btn:disabled,.slots-spin-btn:disabled,.hilo-play-btn:disabled{opacity:.38;cursor:not-allowed}'+
+    '.slots-reels{display:flex;justify-content:center;gap:7px;padding:12px 0}'+
+    '.slot-reel{width:68px;height:68px;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.14);'+
+      'border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:38px;transition:all .3s}'+
+    '.roul-choices{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px}'+
+    '.roul-btn{padding:13px 6px;border:none;border-radius:12px;font-size:13px;font-weight:900;cursor:pointer;transition:all .2s}'+
+    '.roul-btn:hover:not(:disabled){opacity:.82;transform:translateY(-1px)}'+
+    '.roul-btn:disabled{opacity:.38;cursor:not-allowed}'+
+    '.hilo-card-area{display:flex;justify-content:center;align-items:center;gap:20px;padding:10px}'+
+    '.hilo-card{width:60px;height:86px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.2);'+
+      'border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:var(--text-primary)}'+
+    '.hilo-choices{display:flex;gap:9px;margin-bottom:10px}'+
+    '.hilo-btn{flex:1;padding:11px;border:none;border-radius:12px;font-size:13px;font-weight:900;cursor:pointer;transition:all .2s}'+
+    '.hilo-btn:hover:not(:disabled){opacity:.85}'+
+    '.hilo-btn:disabled{opacity:.38;cursor:not-allowed}'+
+    // Idle
+    '.idle-top{text-align:center;margin-bottom:10px;padding:14px;background:rgba(255,255,255,.04);'+
+      'border-radius:14px;border:1px solid rgba(255,255,255,.07)}'+
+    '.idle-money-val{font-size:38px;font-weight:900;font-family:monospace;'+
+      'background:linear-gradient(135deg,#FFD700,#FFA500);-webkit-background-clip:text;-webkit-text-fill-color:transparent}'+
+    '.idle-cps-row{font-size:11px;color:var(--text-muted);margin-top:3px}'+
+    '.idle-click-wrap{display:flex;justify-content:center;margin-bottom:10px}'+
+    '.idle-coin{width:110px;height:110px;background:radial-gradient(circle at 35% 35%,#FFD700,#B8860B);'+
+      'border:none;border-radius:50%;font-size:52px;cursor:pointer;transition:all .15s;'+
+      'box-shadow:0 8px 28px rgba(255,215,0,.3);display:flex;align-items:center;justify-content:center}'+
+    '.idle-coin:hover{transform:scale(1.07);box-shadow:0 12px 38px rgba(255,215,0,.5)}'+
+    '.idle-coin:active{transform:scale(0.93)}'+
+    '.idle-collect-btn{width:100%;padding:9px;background:linear-gradient(135deg,#22c55e,#16a34a);'+
+      'border:none;border-radius:11px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;margin-bottom:12px;transition:all .2s}'+
+    '.idle-collect-btn:hover{opacity:.85}'+
+    '.idle-upg-list{display:flex;flex-direction:column;gap:6px}'+
+    '.idle-upg{display:flex;align-items:center;gap:9px;padding:11px;background:rgba(255,255,255,.04);'+
+      'border:1px solid rgba(255,255,255,.06);border-radius:12px;transition:background .2s}'+
+    '.idle-upg:hover{background:rgba(255,255,255,.07)}'+
+    '.idle-upg-ico{font-size:22px;flex-shrink:0}'+
+    '.idle-upg-body{flex:1;min-width:0}'+
+    '.idle-upg-name{font-size:12px;font-weight:800;color:var(--text-primary)}'+
+    '.idle-upg-desc{font-size:10px;color:var(--text-muted)}'+
+    '.idle-upg-cnt{font-size:9px;color:var(--accent);font-weight:800;margin-top:1px}'+
+    '.idle-upg-buy{flex-shrink:0;padding:7px 11px;background:rgba(79,156,249,.15);border:1px solid rgba(79,156,249,.3);'+
+      'border-radius:8px;color:#4f9cf9;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;transition:all .2s}'+
+    '.idle-upg-buy:hover:not(:disabled){background:rgba(79,156,249,.3)}'+
+    '.idle-upg-buy:disabled{opacity:.38;cursor:not-allowed}'+
+    '@keyframes balPop{0%{transform:scale(0.95)}50%{transform:scale(1.04)}100%{transform:scale(1)}}';
+  el.appendChild(_st);
+
+  // ── Outer structure ────────────────────────────────────────────────────────
+  var wrap=document.createElement('div');
+  wrap.className='bal-wrap';
+  el.appendChild(wrap);
+
+  // Header
+  var hdr=document.createElement('div');hdr.className='bal-hdr';
+  var hdrL=document.createElement('div');hdrL.className='bal-hdr-left';
+  var balLbl=document.createElement('div');balLbl.className='bal-label';balLbl.textContent='Your Balance';
+  var balAmt=document.createElement('div');balAmt.className='bal-amount';balAmt.id='bal-amount-'+tabId;balAmt.textContent='$0';
+  var guestBadge=document.createElement('div');guestBadge.className='bal-guest-badge';guestBadge.id='bal-gbadge-'+tabId;
+  hdrL.appendChild(balLbl);hdrL.appendChild(balAmt);hdrL.appendChild(guestBadge);hdr.appendChild(hdrL);
+  wrap.appendChild(hdr);
+
+  // Nav
+  var nav=document.createElement('div');nav.className='bal-nav';
+  var _navTabs=[['dashboard','📈 Overview'],['shop','🛑 Shop'],['savings','🏦 Savings'],['gamble','🎰 Gamble'],['idle','\u26A1 Idle']];
+  var navBtns={};
+  _navTabs.forEach(function(t){
+    var b=document.createElement('button');b.className='bal-nav-btn'+(t[0]==='dashboard'?' active':'');
+    b.dataset.tab=t[0];b.textContent=t[1];
+    b.addEventListener('click',function(){switchInner(t[0]);});
+    nav.appendChild(b);navBtns[t[0]]=b;
+  });
+  wrap.appendChild(nav);
+
+  // Content
+  var content=document.createElement('div');content.className='bal-content';
+  wrap.appendChild(content);
+  var panels={};
+  ['dashboard','shop','savings','gamble','idle'].forEach(function(t){
+    var p=document.createElement('div');p.className='bal-panel'+(t==='dashboard'?' active':'');p.id='bpan-'+tabId+'-'+t;
+    content.appendChild(p);panels[t]=p;
+  });
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function fmtBal(n){return '$'+Math.floor(n).toLocaleString();}
+  function fmtIdleMoney(n){
+    if(n>=1e9) return '$'+n.toExponential(2);
+    if(n>=1e6) return '$'+(n/1e6).toFixed(2)+'M';
+    if(n>=1e3) return '$'+(n/1e3).toFixed(1)+'K';
+    return '$'+n.toFixed(1);
+  }
+  function rarityColor(r){return{common:'#9CA3AF',uncommon:'#22c55e',rare:'#3b82f6',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444'}[r]||'#9CA3AF';}
+  function updateBalDisplay(){
+    var a=document.getElementById('bal-amount-'+tabId);
+    if(a){a.textContent=fmtBal(S.bal);}
+    var g=document.getElementById('bal-gbadge-'+tabId);
+    if(g){g.textContent=S.isGuest?'\u26A0\uFE0F Guest \u2014 balance resets on disconnect':'';}
+  }
+  function _recalcIdle(){
+    S.idleClickVal=1;S.idleCps=0;
+    S.idleUpgDef.forEach(function(u){
+      var cnt=(S.idleUpgrades[u.id]||0);
+      if(u.type==='click') S.idleClickVal+=u.value*cnt;
+      else if(u.type==='cps') S.idleCps+=u.value*cnt;
+    });
+  }
+  function switchInner(tab){
+    S.innerTab=tab;
+    Object.keys(panels).forEach(function(k){panels[k].classList.toggle('active',k===tab);});
+    Object.keys(navBtns).forEach(function(k){navBtns[k].classList.toggle('active',k===tab);});
+    if(tab==='dashboard') renderDashboard();
+    else if(tab==='shop') renderShop();
+    else if(tab==='savings') renderSavings();
+    else if(tab==='gamble') renderGamble();
+    else if(tab==='idle') renderIdle();
+  }
+
+  // ── Dashboard ─────────────────────────────────────────────────────────────
+  function renderDashboard(){
+    var p=panels['dashboard'];p.innerHTML='';
+    var hero=document.createElement('div');hero.className='dash-hero';
+    hero.innerHTML='<div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.35);margin-bottom:5px">Your Balance</div>'+
+      '<div class="dash-big-bal" id="dash-big-'+tabId+'">'+fmtBal(S.bal)+'</div>'+
+      '<div class="dash-bal-sub">'+(S.isGuest?'\u26A0\uFE0F Guest account \u2014 balance resets on disconnect':'✅ Registered \u2014 balance saved permanently')+'</div>';
+    p.appendChild(hero);
+    var statsWrap=document.createElement('div');statsWrap.className='dash-stats';
+    var totalSaved=S.savings.reduce(function(a,s){return a+s.saved;},0);
+    [['💰','Balance',fmtBal(S.bal)],['🛍️','Items Owned',S.inv.length+' items'],['🏦','In Savings',fmtBal(totalSaved)],['⚡','Idle Earnings',fmtIdleMoney(S.idleMoney)]].forEach(function(s){
+      var c=document.createElement('div');c.className='dash-stat';
+      c.innerHTML='<div class="ds-emoji">'+s[0]+'</div><div class="ds-val">'+s[2]+'</div><div class="ds-lbl">'+s[1]+'</div>';
+      statsWrap.appendChild(c);
+    });
+    p.appendChild(statsWrap);
+    var actWrap=document.createElement('div');actWrap.className='dash-actions';
+    [['🛍️ Visit Shop','shop'],['🏦 Savings','savings'],['🎰 Gamble','gamble'],['⚡ Idle Game','idle']].forEach(function(a){
+      var b=document.createElement('button');b.className='dash-act-btn';b.textContent=a[0];
+      b.addEventListener('click',function(){switchInner(a[1]);});actWrap.appendChild(b);
+    });
+    p.appendChild(actWrap);
+    var t=document.createElement('div');t.className='sec-title';t.textContent='Recent Transactions';p.appendChild(t);
+    var txList=document.createElement('div');txList.className='dash-tx-list';
+    if(!S.txns.length){txList.innerHTML='<div class="bal-empty">💸<br>No transactions yet.<br><span style="font-size:11px">Go spend some money!</span></div>';}
+    else{S.txns.forEach(function(tx){
+      var r=document.createElement('div');r.className='dash-tx-row';
+      r.innerHTML='<span class="tx-reason">'+escapeHtml(tx.reason)+'</span>'+
+        '<span class="tx-amt '+(tx.amount>=0?'tx-pos':'tx-neg')+'">'+(tx.amount>=0?'+':'')+fmtBal(tx.amount)+'</span>';
+      txList.appendChild(r);
+    });}
+    p.appendChild(txList);
+  }
+
+  // ── Shop ──────────────────────────────────────────────────────────────────
+  var SHOP_CATS=[
+    {id:'nameplate',name:'Nameplates',emoji:'🏷️'},{id:'font',name:'Fonts',emoji:'✍️'},
+    {id:'ring',name:'Avatar Rings',emoji:'💫'},{id:'effect',name:'Profile FX',emoji:'✨'},
+    {id:'theme',name:'Themes',emoji:'🎨'},{id:'title',name:'Titles',emoji:'🏆'},
+    {id:'bubble',name:'Chat Bubbles',emoji:'💬'},{id:'message',name:'Msg Effects',emoji:'⚡'}
+  ];
+  function renderShop(){
+    var p=panels['shop'];p.innerHTML='';
+    var catBar=document.createElement('div');catBar.className='shop-cats';
+    SHOP_CATS.forEach(function(cat){
+      var b=document.createElement('button');b.className='shop-cat-btn'+(S.shopCat===cat.id?' active':'');
+      b.textContent=cat.emoji+' '+cat.name;
+      b.addEventListener('click',function(){S.shopCat=cat.id;renderShop();});
+      catBar.appendChild(b);
+    });
+    p.appendChild(catBar);
+    if(!S.shopCatalog.length){p.innerHTML+='<div class="bal-empty">Loading shop...</div>';return;}
+    var grid=document.createElement('div');grid.className='shop-grid';
+    var items=S.shopCatalog.filter(function(i){return i.cat===S.shopCat;});
+    if(!items.length){p.appendChild(document.createElement('div')).className='bal-empty';p.lastChild.textContent='No items in this category yet.';}
+    items.forEach(function(item){
+      var owned=S.inv.indexOf(item.id)!==-1;
+      var equipped=S.eqp[item.cat]===item.id;
+      var canAfford=S.bal>=item.price;
+      var card=document.createElement('div');card.className='shop-card'+(owned?' owned':'')+(equipped?' equipped':'');
+      var rc=rarityColor(item.rarity);
+      card.innerHTML='<div class="sc-emoji">'+escapeHtml(item.emoji)+'</div>'+
+        '<div class="sc-name">'+escapeHtml(item.name)+'</div>'+
+        '<div class="sc-rarity" style="color:'+rc+'">'+item.rarity.toUpperCase()+'</div>'+
+        '<div class="sc-desc">'+escapeHtml(item.desc)+'</div>'+
+        '<div class="sc-price">'+(owned?'✅ Owned':fmtBal(item.price))+'</div>';
+      var btn=document.createElement('button');btn.className='sc-btn';
+      if(owned){btn.classList.add('eqp-btn');btn.textContent=equipped?'✓ Equipped':'Equip';}
+      else{btn.textContent=canAfford?'Buy':'Need '+fmtBal(item.price-S.bal)+' more';if(!canAfford)btn.classList.add('no-afford');}
+      btn.disabled=!owned&&!canAfford;
+      btn.addEventListener('click',(function(iid,icat,isOwned){return function(){
+        if(!ws||ws.readyState!==1){showToast('Not connected','error');return;}
+        if(isOwned) ws.send(JSON.stringify({type:'shop_equip',item_id:iid,category:icat}));
+        else ws.send(JSON.stringify({type:'shop_buy',item_id:iid}));
+      };})(item.id,item.cat,owned));
+      card.appendChild(btn);grid.appendChild(card);
+    });
+    p.appendChild(grid);
+  }
+
+  // ── Savings ───────────────────────────────────────────────────────────────
+  function renderSavings(){
+    var p=panels['savings'];p.innerHTML='';
+    var form=document.createElement('div');form.className='sav-create';
+    form.innerHTML='<div class="sav-create-title">+ New Savings Plan</div>';
+    var nameIn=document.createElement('input');nameIn.type='text';nameIn.placeholder='Plan name (e.g. New PC)';nameIn.maxLength=50;nameIn.className='sav-in';
+    var goalIn=document.createElement('input');goalIn.type='number';goalIn.placeholder='Goal amount ($)';goalIn.min=1;goalIn.className='sav-in';
+    var crow=document.createElement('div');crow.style.cssText='display:flex;gap:7px;align-items:center;margin-bottom:4px;';
+    var clbl=document.createElement('span');clbl.style.cssText='font-size:11px;color:var(--text-muted);';clbl.textContent='Color:';
+    var colorIn=document.createElement('input');colorIn.type='color';colorIn.value='#4f9cf9';colorIn.style.cssText='height:30px;width:44px;border:none;border-radius:6px;cursor:pointer;padding:0;';
+    crow.appendChild(clbl);crow.appendChild(colorIn);
+    var createBtn=document.createElement('button');createBtn.className='sav-create-btn';createBtn.textContent='+ Create Plan';
+    createBtn.addEventListener('click',function(){
+      var n=nameIn.value.trim(),g=parseInt(goalIn.value),c=colorIn.value;
+      if(!n){showToast('Enter a plan name','error');return;}
+      if(!g||g<1){showToast('Enter a valid goal amount','error');return;}
+      if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'savings_create',name:n,goal:g,color:c}));
+      nameIn.value='';goalIn.value='';
+    });
+    form.appendChild(nameIn);form.appendChild(goalIn);form.appendChild(crow);form.appendChild(createBtn);p.appendChild(form);
+    if(!S.savings.length){var em=document.createElement('div');em.className='bal-empty';em.innerHTML='🏦<br>No savings plans yet.<br><span style="font-size:11px;color:var(--text-muted)">Create one above to start saving!</span>';p.appendChild(em);return;}
+    S.savings.forEach(function(plan){
+      var pct=plan.goal>0?Math.min(100,Math.round(plan.saved/plan.goal*100)):0;
+      var card=document.createElement('div');card.className='sav-plan';
+      card.innerHTML='<div class="sav-plan-hdr"><div class="sav-plan-name">'+escapeHtml(plan.name)+'</div>'+
+        '<div class="sav-plan-amts">'+fmtBal(plan.saved)+' / '+fmtBal(plan.goal)+'</div></div>'+
+        '<div class="sav-bar"><div class="sav-fill" style="width:'+pct+'%;background:'+plan.color+'"></div></div>'+
+        '<div class="sav-pct">'+pct+'% complete'+(pct>=100?' 🎉':'')+'</div>';
+      var brow=document.createElement('div');brow.className='sav-btns';
+      var amtIn=document.createElement('input');amtIn.type='number';amtIn.placeholder='Amount';amtIn.min=1;amtIn.className='sav-amt-in';
+      var dep=document.createElement('button');dep.className='sav-btn sav-dep';dep.textContent='Deposit';
+      dep.addEventListener('click',(function(pid,inp){return function(){
+        var a=parseInt(inp.value);if(!a||a<1){showToast('Enter amount','error');return;}
+        if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'savings_deposit',plan_id:pid,amount:a}));
+        inp.value='';
+      };})(plan.id,amtIn));
+      var wd=document.createElement('button');wd.className='sav-btn sav-wd';wd.textContent='Withdraw';
+      wd.addEventListener('click',(function(pid,inp){return function(){
+        var a=parseInt(inp.value);if(!a||a<1){showToast('Enter amount','error');return;}
+        if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'savings_withdraw',plan_id:pid,amount:a}));
+        inp.value='';
+      };})(plan.id,amtIn));
+      var del=document.createElement('button');del.className='sav-btn sav-del';del.textContent='🗑 Delete';
+      del.addEventListener('click',(function(pid){return function(){
+        if(confirm('Delete this plan? Saved amount will be returned to your balance.'))
+          if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'savings_delete',plan_id:pid}));
+      };})(plan.id));
+      brow.appendChild(amtIn);brow.appendChild(dep);brow.appendChild(wd);brow.appendChild(del);
+      card.appendChild(brow);p.appendChild(card);
+    });
+  }
+
+  // ── Gambling ──────────────────────────────────────────────────────────────
+  var GAMES=[
+    {id:'coinflip',name:'Coin Flip',emoji:'🪙',desc:'Call heads or tails \u2014 double or nothing!'},
+    {id:'dice',name:'Dice Duel',emoji:'🎲',desc:'Roll higher than the dealer to win!'},
+    {id:'slots',name:'Slot Machine',emoji:'🎰',desc:'Match 3 symbols for big wins!'},
+    {id:'roulette',name:'Roulette',emoji:'🔴',desc:'Red, Black, or Green \u2014 spin the wheel!'},
+    {id:'hilo',name:'Hi-Lo Cards',emoji:'🃏',desc:'Guess if the next card is higher or lower!'},
+  ];
+  var SLOT_EMOJI={cherry:'🍒',lemon:'🍋',orange:'🍊',grape:'🍇',diamond:'💎',seven:'7️⃣'};
+  function renderGamble(){
+    var p=panels['gamble'];p.innerHTML='';
+    if(!S.activeGame){
+      var title=document.createElement('div');title.className='gam-title';title.textContent='🎰 Choose Your Game';p.appendChild(title);
+      var grid=document.createElement('div');grid.className='gam-grid';
+      GAMES.forEach(function(g){
+        var c=document.createElement('div');c.className='gam-card';
+        c.innerHTML='<div class="gam-card-emoji">'+g.emoji+'</div><div class="gam-card-name">'+g.name+'</div><div class="gam-card-desc">'+g.desc+'</div>';
+        c.addEventListener('click',function(){S.activeGame=g.id;renderGamble();});
+        grid.appendChild(c);
+      });
+      p.appendChild(grid);
+    } else {
+      var gInfo=GAMES.find(function(g){return g.id===S.activeGame;});
+      var hdr=document.createElement('div');hdr.className='gam-hdr';
+      var backBtn=document.createElement('button');backBtn.className='gam-back';backBtn.textContent='\u2190 Back';
+      backBtn.addEventListener('click',function(){S.activeGame=null;renderGamble();});
+      var hTitle=document.createElement('div');hTitle.className='gam-hdr-title';hTitle.textContent=gInfo.emoji+' '+gInfo.name;
+      hdr.appendChild(backBtn);hdr.appendChild(hTitle);p.appendChild(hdr);
+      var arena=document.createElement('div');arena.className='gam-arena';p.appendChild(arena);
+      // Bet row
+      var betRow=document.createElement('div');betRow.className='gam-bet-row';
+      var betLbl=document.createElement('label');betLbl.textContent='Bet Amount';betRow.appendChild(betLbl);
+      var betIn=document.createElement('input');betIn.type='number';betIn.className='gam-bet-in';
+      betIn.value=Math.min(S.gambleBet,S.bal);betIn.min=1;betIn.max=S.bal;betRow.appendChild(betIn);
+      var qBets=document.createElement('div');qBets.className='gam-quick';
+      [10,50,100,500,'Max'].forEach(function(v){
+        var qb=document.createElement('button');qb.className='gam-qbtn';
+        qb.textContent=v==='Max'?'All In':('$'+v);
+        qb.addEventListener('click',function(){betIn.value=v==='Max'?S.bal:Math.min(parseInt(v),S.bal);});
+        qBets.appendChild(qb);
+      });
+      betRow.appendChild(qBets);arena.appendChild(betRow);
+      // Result area
+      var resDiv=document.createElement('div');resDiv.className='gam-result idle2';resDiv.innerHTML='<div style="font-size:32px">🤞</div><div class="gam-result-lbl">Place your bet!</div>';
+      arena.appendChild(resDiv);
+      function showResult(win,emoji,label,amount){
+        resDiv.className='gam-result '+(amount>0?'win':(amount<0?'lose':'push'));
+        resDiv.innerHTML='<div style="font-size:32px">'+emoji+'</div><div class="gam-result-lbl">'+label+'</div>'+
+          (amount!==null?'<div class="gam-result-amt">'+(amount>0?'+':'')+fmtBal(amount)+'</div>':'');
+      }
+      function getBet(){var b=parseInt(betIn.value);if(!b||b<1||b>S.bal){showToast('Invalid bet amount','error');return 0;}S.gambleBet=b;return b;}
+      // Game-specific UI
+      if(S.activeGame==='coinflip'){
+        var coinDisp=document.createElement('div');coinDisp.style.cssText='text-align:center;font-size:72px;padding:8px;';coinDisp.textContent='🪙';arena.appendChild(coinDisp);
+        var choices=document.createElement('div');choices.className='coin-choices';
+        ['heads','tails'].forEach(function(c){
+          var btn=document.createElement('button');btn.className='coin-btn';
+          btn.textContent=c==='heads'?'🦅 Heads':'🦁 Tails';
+          btn.addEventListener('click',(function(ch){return function(){
+            var bet=getBet();if(!bet)return;
+            choices.querySelectorAll('button').forEach(function(b){b.disabled=true;});
+            coinDisp.textContent='🪙';
+            if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'gamble',game:'coinflip',bet:bet,choice:ch}));
+          };})(c));
+          choices.appendChild(btn);
+        });
+        arena.appendChild(choices);
+        arena.querySelector('.gam-result').remove();arena.appendChild(resDiv);
+        arena._onResult=function(d){
+          coinDisp.textContent=d.data.flip==='heads'?'🦅':'🦁';
+          var won=d.won>0;var push=d.won===0;
+          showResult(won,won?'🎉':push?'😐':'💸',won?'You Won!':push?'Push!':'You Lost!',d.won);
+          choices.querySelectorAll('button').forEach(function(b){b.disabled=false;});
+        };
+      } else if(S.activeGame==='dice'){
+        var diceArea=document.createElement('div');diceArea.className='dice-area';
+        var myDie=document.createElement('span');myDie.textContent='🎲';
+        var vs=document.createElement('span');vs.style.cssText='font-size:22px;align-self:center;color:var(--text-muted);';vs.textContent='vs';
+        var dlDie=document.createElement('span');dlDie.textContent='🎲';
+        diceArea.appendChild(myDie);diceArea.appendChild(vs);diceArea.appendChild(dlDie);arena.appendChild(diceArea);
+        var rollBtn=document.createElement('button');rollBtn.className='dice-roll-btn';rollBtn.textContent='🎲 Roll Dice!';
+        rollBtn.addEventListener('click',function(){
+          var bet=getBet();if(!bet)return;
+          rollBtn.disabled=true;
+          if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'gamble',game:'dice',bet:bet}));
+        });
+        arena.querySelector('.gam-result').remove();arena.appendChild(rollBtn);arena.appendChild(resDiv);
+        var DICE_FACES=['','⚀','⚁','⚂','⚃','⚄','⚅'];
+        arena._onResult=function(d){
+          myDie.textContent=DICE_FACES[d.data.my_roll]||d.data.my_roll;
+          dlDie.textContent=DICE_FACES[d.data.dealer_roll]||d.data.dealer_roll;
+          var won=d.won>0;var push=d.won===0;
+          showResult(won,won?'🎉':push?'😐':'💸',won?'You Won!':push?'Tie \u2014 Push!':'Dealer Wins!',d.won);
+          rollBtn.disabled=false;
+        };
+      } else if(S.activeGame==='slots'){
+        var reelsDiv=document.createElement('div');reelsDiv.className='slots-reels';
+        var reelEls=[];
+        for(var ri=0;ri<3;ri++){
+          var reel=document.createElement('div');reel.className='slot-reel';reel.textContent='🎰';reelsDiv.appendChild(reel);reelEls.push(reel);
+        }
+        arena.appendChild(reelsDiv);
+        var spinBtn=document.createElement('button');spinBtn.className='slots-spin-btn';spinBtn.textContent='🎰 SPIN!';
+        spinBtn.addEventListener('click',function(){
+          var bet=getBet();if(!bet)return;
+          spinBtn.disabled=true;
+          reelEls.forEach(function(r){r.textContent='⏳';});
+          if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'gamble',game:'slots',bet:bet}));
+        });
+        arena.querySelector('.gam-result').remove();arena.appendChild(spinBtn);arena.appendChild(resDiv);
+        arena._onResult=function(d){
+          d.data.reels.forEach(function(sym,i){reelEls[i].textContent=SLOT_EMOJI[sym]||sym;});
+          var won=d.won>0;var push=d.won===0;
+          var lbl=won?(d.won>=bet*7?'JACKPOT!':'You Won!'):(push?'Two of a Kind \u2014 Push!':'No Match!');
+          showResult(won,won?'🎉':push?'😅':'💸',lbl,d.won);
+          spinBtn.disabled=false;
+        };
+      } else if(S.activeGame==='roulette'){
+        var roulDisp=document.createElement('div');roulDisp.style.cssText='text-align:center;font-size:48px;padding:8px;';roulDisp.textContent='🎡';arena.appendChild(roulDisp);
+        var roulChoices=document.createElement('div');roulChoices.className='roul-choices';
+        [['red','🔴 Red','#ef4444',17],['black','⚫ Black','#374151',17],['green','💚 Green','#16a34a',34]].forEach(function(c){
+          var btn=document.createElement('button');btn.className='roul-btn';
+          btn.style.cssText='background:'+c[2]+';color:#fff;';
+          btn.innerHTML=c[0]==='green'?c[1]+' <small>(17x)</small>':c[1]+' <small>(2x)</small>';
+          btn.addEventListener('click',(function(ch){return function(){
+            var bet=getBet();if(!bet)return;
+            roulChoices.querySelectorAll('button').forEach(function(b){b.disabled=true;});
+            roulDisp.textContent='🎡';
+            if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'gamble',game:'roulette',bet:bet,choice:ch}));
+          };})(c[0]));
+          roulChoices.appendChild(btn);
+        });
+        arena.appendChild(roulChoices);
+        arena.querySelector('.gam-result').remove();arena.appendChild(resDiv);
+        arena._onResult=function(d){
+          var colEmoji={red:'🔴',black:'⚫',green:'💚'}[d.data.color]||'?';
+          roulDisp.textContent=colEmoji+' '+d.data.number;
+          var won=d.won>0;var push=d.won===0;
+          showResult(won,won?'🎉':push?'😐':'💸',won?'You Won!':push?'Push!':'You Lost!',d.won);
+          roulChoices.querySelectorAll('button').forEach(function(b){b.disabled=false;});
+        };
+      } else if(S.activeGame==='hilo'){
+        S.hiloDrawn=Math.floor(Math.random()*13)+1;
+        var CARD_LABELS=['','A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+        var hiloCardArea=document.createElement('div');hiloCardArea.className='hilo-card-area';
+        var curCard=document.createElement('div');curCard.className='hilo-card';curCard.textContent=CARD_LABELS[S.hiloDrawn];
+        var arrow=document.createElement('span');arrow.style.cssText='font-size:28px;color:var(--text-muted);';arrow.textContent='→';
+        var nextCard=document.createElement('div');nextCard.className='hilo-card';nextCard.style.cssText='background:rgba(79,156,249,.1);border-color:rgba(79,156,249,.3);';nextCard.textContent='?';
+        hiloCardArea.appendChild(curCard);hiloCardArea.appendChild(arrow);hiloCardArea.appendChild(nextCard);
+        arena.appendChild(hiloCardArea);
+        var hiloChoices=document.createElement('div');hiloChoices.className='hilo-choices';
+        [['higher','\u2191 Higher','#22c55e'],['lower','\u2193 Lower','#ef4444']].forEach(function(c){
+          var btn=document.createElement('button');btn.className='hilo-btn';
+          btn.style.cssText='background:rgba(255,255,255,.06);color:'+c[2]+';border:1px solid '+c[2]+'40;';
+          btn.textContent=c[1];
+          btn.addEventListener('click',(function(ch){return function(){
+            var bet=getBet();if(!bet)return;
+            hiloChoices.querySelectorAll('button').forEach(function(b){b.disabled=true;});
+            if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'gamble',game:'hilo',bet:bet,choice:ch,drawn:S.hiloDrawn}));
+          };})(c[0]));
+          hiloChoices.appendChild(btn);
+        });
+        arena.appendChild(hiloChoices);
+        arena.querySelector('.gam-result').remove();arena.appendChild(resDiv);
+        arena._onResult=function(d){
+          nextCard.textContent=CARD_LABELS[d.data.next]||d.data.next;
+          S.hiloDrawn=Math.floor(Math.random()*13)+1;
+          curCard.textContent=CARD_LABELS[S.hiloDrawn];nextCard.textContent='?';
+          var won=d.won>0;var push=d.won===0;
+          showResult(won,won?'🎉':push?'😐':'💸',won?'You Won!':push?'Tie \u2014 Push!':'Wrong call!',d.won);
+          setTimeout(function(){hiloChoices.querySelectorAll('button').forEach(function(b){b.disabled=false;});},700);
+        };
+        arena._onResult._resDiv=resDiv;
+      }
+    }
+  }
+
+  // ── Idle Game ─────────────────────────────────────────────────────────────
+  var _idleTimer=null;
+  var _idleDisplay=null;
+  function renderIdle(){
+    var p=panels['idle'];p.innerHTML='';
+    _idleDisplay=null;
+    var top=document.createElement('div');top.className='idle-top';
+    var idleMoneyEl=document.createElement('div');idleMoneyEl.className='idle-money-val';idleMoneyEl.textContent=fmtIdleMoney(S.idleMoney);
+    var idleCpsEl=document.createElement('div');idleCpsEl.className='idle-cps-row';idleCpsEl.textContent=S.idleCps>0?'+'+S.idleCps.toLocaleString()+'/s (click the coin!)':'Click the coin to earn!';
+    top.appendChild(idleMoneyEl);top.appendChild(idleCpsEl);p.appendChild(top);
+    _idleDisplay={money:idleMoneyEl,cps:idleCpsEl};
+    var clickWrap=document.createElement('div');clickWrap.className='idle-click-wrap';
+    var coinBtn=document.createElement('button');coinBtn.className='idle-coin';coinBtn.textContent='🪙';
+    coinBtn.addEventListener('click',function(){
+      if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'idle_click'}));
+    });
+    clickWrap.appendChild(coinBtn);p.appendChild(clickWrap);
+    var collectBtn=document.createElement('button');collectBtn.className='idle-collect-btn';
+    collectBtn.textContent=S.idleMoney>=1?('💰 Collect '+fmtIdleMoney(S.idleMoney)+' to Balance'):'No earnings to collect yet';
+    collectBtn.disabled=S.idleMoney<1;
+    collectBtn.addEventListener('click',function(){
+      if(S.idleMoney<1){showToast('Nothing to collect yet','error');return;}
+      if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'idle_collect',amount:S.idleMoney}));
+    });
+    p.appendChild(collectBtn);
+    var upgTitle=document.createElement('div');upgTitle.className='sec-title';upgTitle.textContent='Upgrades';p.appendChild(upgTitle);
+    var upgList=document.createElement('div');upgList.className='idle-upg-list';
+    (S.idleUpgDef||[]).forEach(function(u){
+      var cnt=S.idleUpgrades[u.id]||0;
+      var price=Math.round(u.base_price*Math.pow(1.15,cnt));
+      var canAfford=S.idleMoney>=price;
+      var card=document.createElement('div');card.className='idle-upg';
+      card.innerHTML='<div class="idle-upg-ico">'+escapeHtml(u.emoji)+'</div>'+
+        '<div class="idle-upg-body"><div class="idle-upg-name">'+escapeHtml(u.name)+'</div>'+
+        '<div class="idle-upg-desc">'+escapeHtml(u.desc)+'</div>'+
+        (cnt>0?'<div class="idle-upg-cnt">Owned: '+cnt+'</div>':'')+'</div>';
+      var buyBtn=document.createElement('button');buyBtn.className='idle-upg-buy'+(canAfford?'':' cant-afford');
+      buyBtn.textContent=fmtIdleMoney(price);buyBtn.disabled=!canAfford;
+      buyBtn.addEventListener('click',(function(uid){return function(){
+        if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'idle_upgrade',upgrade_id:uid}));
+      };})(u.id));
+      card.appendChild(buyBtn);upgList.appendChild(card);
+    });
+    p.appendChild(upgList);
+    // Start CPS ticker (client-side accumulation for display; server is source of truth for upgrades)
+    if(_idleTimer) clearInterval(_idleTimer);
+    _idleTimer=setInterval(function(){
+      if(S.innerTab!=='idle') return;
+      if(S.idleCps>0){
+        S.idleMoney+=S.idleCps/10;
+        if(_idleDisplay&&_idleDisplay.money){
+          _idleDisplay.money.textContent=fmtIdleMoney(S.idleMoney);
+          _idleDisplay.cps.textContent='+'+S.idleCps.toLocaleString()+'/s \u2014 '+fmtIdleMoney(S.idleMoney);
+        }
+      }
+    },100);
+  }
+
+  // ── Message handler ───────────────────────────────────────────────────────
+  function onMsg(e){
+    var d=e.detail;
+    if(d.type==='balance_data'){
+      S.bal=d.balance||0;S.inv=d.inventory||[];S.eqp=d.equipped||{};
+      S.savings=d.savings||[];S.txns=d.transactions||[];
+      S.idleMoney=d.idle_money||0;S.idleUpgrades=d.idle_upgrades||{};
+      S.isGuest=!!d.is_guest;S.shopCatalog=d.shop_catalog||[];S.idleUpgDef=d.idle_upgrades_def||[];
+      _recalcIdle();updateBalDisplay();
+      if(S.innerTab==='dashboard') renderDashboard();
+      else if(S.innerTab==='shop') renderShop();
+      else if(S.innerTab==='savings') renderSavings();
+      else if(S.innerTab==='idle') renderIdle();
+      else renderGamble();
+    } else if(d.type==='shop_result'){
+      if(d.ok){S.bal=d.balance;S.inv=d.inventory||S.inv;updateBalDisplay();renderShop();showToast('Item purchased! 🛍️','success');}
+      else showToast(d.error||'Purchase failed','error');
+    } else if(d.type==='equip_result'){
+      if(d.ok){S.eqp=d.equipped;renderShop();showToast('Equipped!','success');}
+    } else if(d.type==='savings_result'){
+      if(d.ok){S.savings=d.savings||S.savings;if(d.balance!==undefined){S.bal=d.balance;updateBalDisplay();}renderSavings();}
+      else showToast(d.error||'Error','error');
+    } else if(d.type==='gamble_result'){
+      if(d.ok){
+        S.bal=d.new_balance;updateBalDisplay();
+        var aEl=panels['gamble'].querySelector('.gam-arena');
+        if(aEl&&aEl._onResult) aEl._onResult(d);
+        else renderGamble();
+        showToast(d.won>0?'You won '+fmtBal(d.won)+'!':'d.won'===0?'Push!':'You lost '+fmtBal(-d.won),d.won>0?'success':'error');
+      } else showToast(d.error||'Gamble error','error');
+    } else if(d.type==='idle_result'){
+      if(d.ok){
+        S.idleMoney=d.idle_money||S.idleMoney;
+        S.idleUpgrades=d.idle_upgrades||S.idleUpgrades;
+        S.idleClickVal=d.click_val||S.idleClickVal;S.idleCps=d.cps||S.idleCps;
+        if(_idleDisplay&&_idleDisplay.money) _idleDisplay.money.textContent=fmtIdleMoney(S.idleMoney);
+        if(S.innerTab==='idle') renderIdle();
+      }
+    } else if(d.type==='idle_collect_result'){
+      if(d.ok){S.bal=d.balance;S.idleMoney=0;updateBalDisplay();showToast('Collected! 💰','success');if(S.innerTab==='idle') renderIdle();}
+    }
+  }
+  document.addEventListener('_balance_msg',onMsg);
+
+  // Cleanup when tab element removed
+  var _mo=new MutationObserver(function(){
+    if(!document.getElementById('tabContent-'+tabId)){
+      document.removeEventListener('_balance_msg',onMsg);
+      if(_idleTimer) clearInterval(_idleTimer);
+      _mo.disconnect();
+    }
+  });
+  var _tc=document.getElementById('tabContents');
+  if(_tc) _mo.observe(_tc,{childList:true});
+
+  // Initial load
+  switchInner('dashboard');
+  if(typeof ws!=='undefined'&&ws&&ws.readyState===1) ws.send(JSON.stringify({type:'get_balance'}));
+  else setTimeout(function(){if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'get_balance'}));},800);
+}
+
 var allGames = [
   { id: 'tictactoe', name: 'Tic-Tac-Toe', desc: 'Classic strategy game, play X vs O against the computer', badge: 'single' },
   { id: 'snake', name: 'Snake', desc: 'Navigate the snake to eat food and grow without hitting walls', badge: 'single' },
@@ -7784,6 +8695,22 @@ async def handle_client_ws(request):
                         "pfp_data": pfp_data, "bio": bio,
                         "is_guest": not bool(session_token)
                     }
+                    # Load or initialise economy
+                    _is_reg = bool(session_token) and db_pool
+                    if _is_reg:
+                        _econ = await db_get_economy(username)
+                        connected[ws]["balance"]       = _econ["balance"]
+                        connected[ws]["inventory"]     = _econ["inventory"]
+                        connected[ws]["equipped"]      = _econ["equipped"]
+                        connected[ws]["idle_money"]    = _econ["idle_money"]
+                        connected[ws]["idle_upgrades"] = _econ["idle_upgrades"]
+                    else:
+                        connected[ws]["balance"]       = 1000
+                        connected[ws]["inventory"]     = []
+                        connected[ws]["equipped"]      = {}
+                        connected[ws]["idle_money"]    = 0.0
+                        connected[ws]["idle_upgrades"] = {}
+                    connected[ws]["savings"] = []  # loaded on-demand
                     print(f"[+] {username} ({display_name}) joined  ({len(connected)} online)")
 
                     await ws.send_str(json.dumps({
@@ -7945,6 +8872,249 @@ async def handle_client_ws(request):
                             if "bio" in data:
                                 connected[ws]["bio"] = data.get("bio", "")
                         await send_user_list()
+
+                # ── Economy handlers ─────────────────────────────────────────
+                elif data.get("type") == "get_balance":
+                    if ws not in connected: continue
+                    u = username
+                    _guest = connected[ws].get("is_guest", True)
+                    savings = await db_get_savings(u) if not _guest and db_pool else connected[ws].get("savings", [])
+                    txns    = await db_get_transactions(u, 15) if not _guest and db_pool else []
+                    await ws.send_str(json.dumps({
+                        "type": "balance_data",
+                        "balance":       connected[ws].get("balance", 1000),
+                        "inventory":     connected[ws].get("inventory", []),
+                        "equipped":      connected[ws].get("equipped", {}),
+                        "savings":       savings,
+                        "idle_money":    connected[ws].get("idle_money", 0.0),
+                        "idle_upgrades": connected[ws].get("idle_upgrades", {}),
+                        "transactions":  txns,
+                        "is_guest":      _guest,
+                        "idle_upgrades_def": IDLE_UPGRADES,
+                        "shop_catalog":  list({"id":k,**v} for k,v in SHOP_CATALOG.items()),
+                    }))
+
+                elif data.get("type") == "shop_buy":
+                    if ws not in connected: continue
+                    item_id = data.get("item_id","")
+                    item = SHOP_CATALOG.get(item_id)
+                    if not item:
+                        await ws.send_str(json.dumps({"type":"shop_result","ok":False,"error":"Unknown item"})); continue
+                    bal = connected[ws].get("balance", 0)
+                    inv = list(connected[ws].get("inventory", []))
+                    if item_id in inv:
+                        await ws.send_str(json.dumps({"type":"shop_result","ok":False,"error":"Already owned"})); continue
+                    if bal < item["price"]:
+                        await ws.send_str(json.dumps({"type":"shop_result","ok":False,"error":"Not enough balance"})); continue
+                    new_bal = bal - item["price"]
+                    inv.append(item_id)
+                    connected[ws]["balance"]   = new_bal
+                    connected[ws]["inventory"] = inv
+                    _guest = connected[ws].get("is_guest", True)
+                    if not _guest and db_pool:
+                        await db_save_economy(username, {"balance":new_bal,"inventory":inv,"equipped":connected[ws].get("equipped",{}),"idle_money":connected[ws].get("idle_money",0),"idle_upgrades":connected[ws].get("idle_upgrades",{})})
+                        await db_add_transaction(username, -item["price"], f"Bought: {item['name']}")
+                    await ws.send_str(json.dumps({"type":"shop_result","ok":True,"item_id":item_id,"balance":new_bal,"inventory":inv}))
+
+                elif data.get("type") == "shop_equip":
+                    if ws not in connected: continue
+                    item_id = data.get("item_id","")
+                    inv = connected[ws].get("inventory", [])
+                    if item_id not in inv:
+                        await ws.send_str(json.dumps({"type":"equip_result","ok":False,"error":"Not owned"})); continue
+                    item = SHOP_CATALOG.get(item_id, {})
+                    cat  = item.get("cat", "")
+                    eqp  = dict(connected[ws].get("equipped", {}))
+                    if eqp.get(cat) == item_id: del eqp[cat]
+                    else: eqp[cat] = item_id
+                    connected[ws]["equipped"] = eqp
+                    _guest = connected[ws].get("is_guest", True)
+                    if not _guest and db_pool:
+                        await db_save_economy(username, {"balance":connected[ws].get("balance",1000),"inventory":inv,"equipped":eqp,"idle_money":connected[ws].get("idle_money",0),"idle_upgrades":connected[ws].get("idle_upgrades",{})})
+                    await ws.send_str(json.dumps({"type":"equip_result","ok":True,"equipped":eqp}))
+
+                elif data.get("type") == "savings_create":
+                    if ws not in connected: continue
+                    _guest = connected[ws].get("is_guest", True)
+                    sname  = data.get("name","").strip()[:50]
+                    sgoal  = max(1, int(data.get("goal", 100)))
+                    scol   = data.get("color","#4f9cf9")[:30]
+                    if not sname:
+                        await ws.send_str(json.dumps({"type":"savings_result","ok":False,"error":"Name required"})); continue
+                    if not _guest and db_pool:
+                        await db_create_savings(username, sname, sgoal, scol)
+                        savings = await db_get_savings(username)
+                    else:
+                        if "savings" not in connected[ws]: connected[ws]["savings"] = []
+                        _pid = int(_time.time()*1000) % 999999
+                        connected[ws]["savings"].append({"id":_pid,"name":sname,"goal":sgoal,"saved":0,"color":scol})
+                        savings = connected[ws]["savings"]
+                    await ws.send_str(json.dumps({"type":"savings_result","ok":True,"savings":savings,"balance":connected[ws].get("balance",0)}))
+
+                elif data.get("type") == "savings_deposit":
+                    if ws not in connected: continue
+                    _guest  = connected[ws].get("is_guest", True)
+                    plan_id = int(data.get("plan_id", 0))
+                    amount  = max(1, int(data.get("amount", 0)))
+                    bal = connected[ws].get("balance", 0)
+                    if bal < amount:
+                        await ws.send_str(json.dumps({"type":"savings_result","ok":False,"error":"Insufficient balance"})); continue
+                    connected[ws]["balance"] = bal - amount
+                    if not _guest and db_pool:
+                        await db_update_savings(plan_id, username, amount, "deposit")
+                        await db_add_transaction(username, -amount, "Savings deposit")
+                        await db_save_economy(username, {"balance":connected[ws]["balance"],"inventory":connected[ws].get("inventory",[]),"equipped":connected[ws].get("equipped",{}),"idle_money":connected[ws].get("idle_money",0),"idle_upgrades":connected[ws].get("idle_upgrades",{})})
+                        savings = await db_get_savings(username)
+                    else:
+                        if "savings" not in connected[ws]: connected[ws]["savings"] = []
+                        for p in connected[ws]["savings"]:
+                            if p["id"] == plan_id: p["saved"] = min(p["saved"]+amount, p["goal"]); break
+                        savings = connected[ws]["savings"]
+                    await ws.send_str(json.dumps({"type":"savings_result","ok":True,"balance":connected[ws]["balance"],"savings":savings}))
+
+                elif data.get("type") == "savings_withdraw":
+                    if ws not in connected: continue
+                    _guest  = connected[ws].get("is_guest", True)
+                    plan_id = int(data.get("plan_id", 0))
+                    amount  = max(1, int(data.get("amount", 0)))
+                    if not _guest and db_pool:
+                        savings = await db_get_savings(username)
+                        plan = next((p for p in savings if p["id"] == plan_id), None)
+                        if not plan or plan["saved"] < amount:
+                            await ws.send_str(json.dumps({"type":"savings_result","ok":False,"error":"Not enough in plan"})); continue
+                        await db_update_savings(plan_id, username, amount, "withdraw")
+                        await db_add_transaction(username, amount, "Savings withdrawal")
+                        connected[ws]["balance"] = connected[ws].get("balance",0) + amount
+                        await db_save_economy(username, {"balance":connected[ws]["balance"],"inventory":connected[ws].get("inventory",[]),"equipped":connected[ws].get("equipped",{}),"idle_money":connected[ws].get("idle_money",0),"idle_upgrades":connected[ws].get("idle_upgrades",{})})
+                        savings = await db_get_savings(username)
+                    else:
+                        if "savings" not in connected[ws]: connected[ws]["savings"] = []
+                        plan = next((p for p in connected[ws]["savings"] if p["id"] == plan_id), None)
+                        if not plan or plan["saved"] < amount:
+                            await ws.send_str(json.dumps({"type":"savings_result","ok":False,"error":"Not enough in plan"})); continue
+                        plan["saved"] -= amount
+                        connected[ws]["balance"] = connected[ws].get("balance",0) + amount
+                        savings = connected[ws]["savings"]
+                    await ws.send_str(json.dumps({"type":"savings_result","ok":True,"balance":connected[ws]["balance"],"savings":savings}))
+
+                elif data.get("type") == "savings_delete":
+                    if ws not in connected: continue
+                    _guest  = connected[ws].get("is_guest", True)
+                    plan_id = int(data.get("plan_id", 0))
+                    if not _guest and db_pool:
+                        savings = await db_get_savings(username)
+                        plan = next((p for p in savings if p["id"] == plan_id), None)
+                        if plan and plan["saved"] > 0:
+                            connected[ws]["balance"] = connected[ws].get("balance",0) + plan["saved"]
+                            await db_add_transaction(username, plan["saved"], "Savings plan deleted (refund)")
+                        await db_delete_savings(plan_id, username)
+                        if plan and plan["saved"] > 0:
+                            await db_save_economy(username, {"balance":connected[ws]["balance"],"inventory":connected[ws].get("inventory",[]),"equipped":connected[ws].get("equipped",{}),"idle_money":connected[ws].get("idle_money",0),"idle_upgrades":connected[ws].get("idle_upgrades",{})})
+                        savings = await db_get_savings(username)
+                    else:
+                        if "savings" not in connected[ws]: connected[ws]["savings"] = []
+                        for p in connected[ws]["savings"]:
+                            if p["id"] == plan_id and p["saved"] > 0:
+                                connected[ws]["balance"] = connected[ws].get("balance",0) + p["saved"]
+                        connected[ws]["savings"] = [p for p in connected[ws]["savings"] if p["id"] != plan_id]
+                        savings = connected[ws]["savings"]
+                    await ws.send_str(json.dumps({"type":"savings_result","ok":True,"balance":connected[ws].get("balance",0),"savings":savings}))
+
+                elif data.get("type") == "gamble":
+                    if ws not in connected: continue
+                    game   = data.get("game","")
+                    bet    = int(data.get("bet", 0))
+                    choice = data.get("choice","")
+                    bal    = connected[ws].get("balance", 0)
+                    if bet <= 0 or bet > bal:
+                        await ws.send_str(json.dumps({"type":"gamble_result","ok":False,"error":"Invalid bet amount"})); continue
+                    won = 0; result_data = {}
+                    if game == "coinflip":
+                        flip = random.choice(["heads","tails"])
+                        won  = bet if flip == choice else -bet
+                        result_data = {"flip": flip, "choice": choice}
+                    elif game == "dice":
+                        my_r = random.randint(1,6); dl_r = random.randint(1,6)
+                        won  = bet if my_r > dl_r else (-bet if my_r < dl_r else 0)
+                        result_data = {"my_roll": my_r, "dealer_roll": dl_r}
+                    elif game == "slots":
+                        syms  = ["cherry","lemon","orange","grape","diamond","seven"]
+                        reels = [random.choice(syms) for _ in range(3)]
+                        if reels[0]==reels[1]==reels[2]:
+                            won = bet*(10 if reels[0]=="diamond" else (7 if reels[0]=="seven" else 3))
+                        elif reels[0]==reels[1] or reels[1]==reels[2] or reels[0]==reels[2]:
+                            won = 0
+                        else:
+                            won = -bet
+                        result_data = {"reels": reels}
+                    elif game == "roulette":
+                        num = random.randint(0,36)
+                        red_nums = {1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36}
+                        col = "green" if num==0 else ("red" if num in red_nums else "black")
+                        if choice=="green": won = bet*17 if num==0 else -bet
+                        elif choice=="red":   won = bet if col=="red" else -bet
+                        elif choice=="black": won = bet if col=="black" else -bet
+                        result_data = {"number": num, "color": col}
+                    elif game == "hilo":
+                        drawn    = int(data.get("drawn", 7))
+                        next_num = random.randint(1,13)
+                        if (choice=="higher" and next_num>drawn) or (choice=="lower" and next_num<drawn): won = bet
+                        elif next_num == drawn: won = 0
+                        else: won = -bet
+                        result_data = {"drawn": drawn, "next": next_num}
+                    else:
+                        await ws.send_str(json.dumps({"type":"gamble_result","ok":False,"error":"Unknown game"})); continue
+                    new_bal = max(0, bal + won)
+                    connected[ws]["balance"] = new_bal
+                    _guest = connected[ws].get("is_guest", True)
+                    if not _guest and db_pool:
+                        await db_save_economy(username, {"balance":new_bal,"inventory":connected[ws].get("inventory",[]),"equipped":connected[ws].get("equipped",{}),"idle_money":connected[ws].get("idle_money",0),"idle_upgrades":connected[ws].get("idle_upgrades",{})})
+                        await db_add_transaction(username, won, f"Gamble: {game} (bet ${bet})")
+                    await ws.send_str(json.dumps({"type":"gamble_result","ok":True,"won":won,"new_balance":new_bal,"game":game,"data":result_data}))
+
+                elif data.get("type") == "idle_upgrade":
+                    if ws not in connected: continue
+                    upg_id  = data.get("upgrade_id","")
+                    upg     = next((u for u in IDLE_UPGRADES if u["id"]==upg_id), None)
+                    if not upg:
+                        await ws.send_str(json.dumps({"type":"idle_result","ok":False,"error":"Unknown upgrade"})); continue
+                    idle_money    = float(connected[ws].get("idle_money", 0))
+                    idle_upgrades = dict(connected[ws].get("idle_upgrades", {}))
+                    cnt   = idle_upgrades.get(upg_id, 0)
+                    price = int(upg["base_price"] * (1.15 ** cnt))
+                    if idle_money < price:
+                        await ws.send_str(json.dumps({"type":"idle_result","ok":False,"error":"Not enough idle money"})); continue
+                    idle_money -= price
+                    idle_upgrades[upg_id] = cnt + 1
+                    connected[ws]["idle_money"]    = idle_money
+                    connected[ws]["idle_upgrades"] = idle_upgrades
+                    cv, cps = _calc_idle_stats(idle_upgrades)
+                    _guest = connected[ws].get("is_guest", True)
+                    if not _guest and db_pool:
+                        await db_save_economy(username, {"balance":connected[ws].get("balance",1000),"inventory":connected[ws].get("inventory",[]),"equipped":connected[ws].get("equipped",{}),"idle_money":idle_money,"idle_upgrades":idle_upgrades})
+                    await ws.send_str(json.dumps({"type":"idle_result","ok":True,"idle_money":idle_money,"idle_upgrades":idle_upgrades,"click_val":cv,"cps":cps}))
+
+                elif data.get("type") == "idle_click":
+                    if ws not in connected: continue
+                    idle_upgrades = connected[ws].get("idle_upgrades", {})
+                    cv, _ = _calc_idle_stats(idle_upgrades)
+                    idle_money = float(connected[ws].get("idle_money", 0)) + cv
+                    connected[ws]["idle_money"] = idle_money
+                    _, cps = _calc_idle_stats(idle_upgrades)
+                    await ws.send_str(json.dumps({"type":"idle_result","ok":True,"idle_money":idle_money,"click_val":cv,"cps":cps,"idle_upgrades":idle_upgrades}))
+
+                elif data.get("type") == "idle_collect":
+                    if ws not in connected: continue
+                    amt = max(0.0, float(data.get("amount", 0)))
+                    if amt > 0:
+                        new_bal = connected[ws].get("balance",0) + int(amt)
+                        connected[ws]["balance"]    = new_bal
+                        connected[ws]["idle_money"] = max(0.0, connected[ws].get("idle_money",0) - amt)
+                        _guest = connected[ws].get("is_guest", True)
+                        if not _guest and db_pool:
+                            await db_save_economy(username, {"balance":new_bal,"inventory":connected[ws].get("inventory",[]),"equipped":connected[ws].get("equipped",{}),"idle_money":connected[ws]["idle_money"],"idle_upgrades":connected[ws].get("idle_upgrades",{})})
+                            await db_add_transaction(username, int(amt), "Idle game earnings collected")
+                        await ws.send_str(json.dumps({"type":"idle_collect_result","ok":True,"balance":new_bal}))
 
             except Exception as e:
                 print(f"[!] Error: {e}")
