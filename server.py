@@ -1726,7 +1726,7 @@ body.theme-rose {
     </div>
     <!-- Guest Panel -->
     <div id="guestPanel" style="display:none;">
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px;">Guest mode — no account needed, but your data won't be saved.</p>
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px;">Guest mode — no account needed, but your data won’t be saved.</p>
       <div class="join-error" id="joinError"></div>
       <label for="usernameInput">Username</label>
       <input type="text" id="usernameInput" data-testid="input-username" placeholder="Enter username..." maxlength="20" />
@@ -1841,6 +1841,7 @@ body.theme-rose {
 <div class="chat-screen" id="chatScreen">
   <header>
     <h1 data-testid="text-header">Chat</h1>
+    <div id="headerBalChip" style="display:none;font-size:11px;font-weight:800;color:#FFD700;font-family:monospace;padding:3px 10px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.25);border-radius:12px;cursor:pointer;white-space:nowrap;transition:all .3s;" title="Open Balance Tab">💰 $0</div>
     <button id="sidebarToggleBtn" title="Toggle Sidebar" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:4px 8px;border-radius:4px;line-height:1;">&#x2630;</button>
     <div class="header-right">
       <div class="status" id="chatStatus"><div class="dot" id="chatStatusDot"></div><span id="chatStatusText">Connected</span></div>
@@ -1901,10 +1902,12 @@ body.theme-rose {
         <div class="dm-spy-item" id="exportLogsBtn" style="cursor:pointer;display:none;"><span class="dm-spy-icon" style="color:var(--text-secondary);">📥</span><span>Export Logs</span></div>
       </div>
       <div id="suggestBoxSection" class="dm-spy-section" style="display:none;">
-        <div class="dm-spy-label" style="color:var(--green);">Send Suggestion</div>
-        <div style="padding:4px 0;">
+        <div class="dm-spy-label" id="suggestBoxToggle" style="color:var(--green);cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;" title="Toggle suggestion box">
+          <span>✉ Suggestion Box</span><span id="suggestBoxArrow" style="font-size:10px;transition:transform .25s;display:inline-block;">▶</span>
+        </div>
+        <div id="suggestBoxContent" style="display:none;padding:4px 0;">
           <input type="text" id="suggestInput" data-testid="input-suggestion" placeholder="Type a suggestion..." style="width:100%;padding:6px 8px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:12px;outline:none;box-sizing:border-box;" />
-          <button id="suggestSendBtn" data-testid="button-send-suggestion" style="margin-top:4px;width:100%;padding:4px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;">Send</button>
+          <button id="suggestSendBtn" data-testid="button-send-suggestion" style="margin-top:4px;width:100%;padding:4px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;">✉ Send</button>
         </div>
       </div>
     </div>
@@ -3102,212 +3105,145 @@ function loadUserSettings() {
 }
 
 function showSettingsModal() {
-  var overlay = document.createElement('div');
-  overlay.className = 'gc-overlay';
-  overlay.setAttribute('data-testid', 'settings-modal');
-  var modal = document.createElement('div');
-  modal.className = 'gc-modal';
-  modal.style.maxHeight = '85vh';
-  modal.style.overflowY = 'auto';
-  var title = document.createElement('div');
-  title.className = 'gc-modal-title';
-  title.textContent = 'User Settings';
-  modal.appendChild(title);
-
-  function addRow(labelText, inputEl) {
-    var row = document.createElement('div');
-    row.className = 'settings-row';
-    var lbl = document.createElement('span');
-    lbl.className = 'settings-label';
-    lbl.textContent = labelText;
-    row.appendChild(lbl);
-    row.appendChild(inputEl);
-    modal.appendChild(row);
-    return row;
+  var ov=document.createElement('div');
+  ov.setAttribute('data-testid','settings-modal');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  var modal=document.createElement('div');
+  modal.style.cssText='display:flex;width:min(880px,95vw);height:min(76vh,640px);background:var(--bg-secondary);border-radius:16px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.06);position:relative;';
+  /* ── All inputs ── */
+  var bgInput=document.createElement('input');bgInput.type='text';bgInput.placeholder='https://...';bgInput.value=localStorage.getItem('chat-bg-url')||'';bgInput.setAttribute('data-testid','input-settings-bg');bgInput.addEventListener('keydown',function(e){e.stopPropagation();});
+  var blurInput=document.createElement('input');blurInput.type='range';blurInput.min='0';blurInput.max='20';blurInput.step='1';blurInput.value=localStorage.getItem('chat-bg-blur')||'0';blurInput.style.cssText='flex:1;cursor:pointer;width:120px;';blurInput.setAttribute('data-testid','input-settings-blur');
+  var accentInput=document.createElement('input');accentInput.type='color';accentInput.value=localStorage.getItem('chat-accent-color')||'#5865f2';accentInput.setAttribute('data-testid','input-settings-accent');
+  var textInput=document.createElement('input');textInput.type='color';textInput.value=localStorage.getItem('chat-text-color')||'#ffffff';textInput.setAttribute('data-testid','input-settings-text');
+  var fontSelect=document.createElement('select');fontSelect.style.cssText='padding:5px 9px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:13px;';fontSelect.setAttribute('data-testid','select-settings-font-size');[['Small','13'],['Normal','14'],['Large','16'],['Extra Large','18']].forEach(function(o){var op=document.createElement('option');op.value=o[1];op.textContent=o[0];fontSelect.appendChild(op);});fontSelect.value=localStorage.getItem('chat-font-size')||'14';
+  var densitySelect=document.createElement('select');densitySelect.style.cssText='padding:5px 9px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:13px;';densitySelect.setAttribute('data-testid','select-settings-density');[['Default','default'],['Compact','compact'],['Cozy','cozy']].forEach(function(o){var op=document.createElement('option');op.value=o[1];op.textContent=o[0];densitySelect.appendChild(op);});densitySelect.value=localStorage.getItem('chat-density')||'default';
+  var fontFamilySelect=document.createElement('select');fontFamilySelect.style.cssText='padding:5px 9px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:13px;';fontFamilySelect.setAttribute('data-testid','select-settings-font-family');[['Default',''],['Monospace','monospace'],['Serif','serif'],['Comic Sans','Comic Sans MS, cursive']].forEach(function(o){var op=document.createElement('option');op.value=o[1];op.textContent=o[0];fontFamilySelect.appendChild(op);});fontFamilySelect.value=localStorage.getItem('chat-font-family')||'';
+  var usernameColorInput=document.createElement('input');usernameColorInput.type='color';usernameColorInput.value=localStorage.getItem('chat-username-color')||'#5865f2';usernameColorInput.setAttribute('data-testid','input-settings-username-color');
+  var timestampsCheck=document.createElement('input');timestampsCheck.type='checkbox';timestampsCheck.checked=localStorage.getItem('chat-show-timestamps')!=='off';timestampsCheck.style.cssText='width:18px;height:18px;cursor:pointer;';timestampsCheck.setAttribute('data-testid','input-settings-timestamps');
+  var avatarsCheck=document.createElement('input');avatarsCheck.type='checkbox';avatarsCheck.checked=localStorage.getItem('chat-show-avatars')!=='off';avatarsCheck.style.cssText='width:18px;height:18px;cursor:pointer;';avatarsCheck.setAttribute('data-testid','input-settings-avatars');
+  var animCheck=document.createElement('input');animCheck.type='checkbox';animCheck.checked=localStorage.getItem('chat-msg-animate')!=='off';animCheck.style.cssText='width:18px;height:18px;cursor:pointer;';animCheck.setAttribute('data-testid','input-settings-animations');
+  var soundCheck=document.createElement('input');soundCheck.type='checkbox';soundCheck.checked=localStorage.getItem('chat-sounds')!=='off';soundCheck.style.cssText='width:18px;height:18px;cursor:pointer;';soundCheck.setAttribute('data-testid','input-settings-sounds');
+  var IS='padding:5px 9px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:13px;';
+  bgInput.style.cssText=IS+'min-width:160px;max-width:220px;';
+  function mkRow(lbl,inp,hint){
+    var r=document.createElement('div');r.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05);gap:16px;';
+    var left=document.createElement('div');left.style.cssText='flex:1;';
+    var l=document.createElement('div');l.style.cssText='font-size:13px;font-weight:600;color:var(--text-primary);';l.textContent=lbl;left.appendChild(l);
+    if(hint){var h=document.createElement('div');h.style.cssText='font-size:11px;color:var(--text-muted);margin-top:2px;';h.textContent=hint;left.appendChild(h);}
+    r.appendChild(left);r.appendChild(inp);return r;
   }
-
-  var bgInput = document.createElement('input');
-  bgInput.type = 'text';
-  bgInput.placeholder = 'https://...';
-  bgInput.value = localStorage.getItem('chat-bg-url') || '';
-  bgInput.setAttribute('data-testid', 'input-settings-bg');
-  bgInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
-  addRow('Background Image URL', bgInput);
-
-  var blurInput = document.createElement('input');
-  blurInput.type = 'range';
-  blurInput.min = '0'; blurInput.max = '20'; blurInput.step = '1';
-  blurInput.value = localStorage.getItem('chat-bg-blur') || '0';
-  blurInput.style.cssText = 'flex:1;cursor:pointer;';
-  blurInput.setAttribute('data-testid', 'input-settings-blur');
-  addRow('Background Blur', blurInput);
-
-  var accentInput = document.createElement('input');
-  accentInput.type = 'color';
-  accentInput.value = localStorage.getItem('chat-accent-color') || '#5865f2';
-  accentInput.setAttribute('data-testid', 'input-settings-accent');
-  addRow('Accent Color', accentInput);
-
-  var textInput = document.createElement('input');
-  textInput.type = 'color';
-  textInput.value = localStorage.getItem('chat-text-color') || '#ffffff';
-  textInput.setAttribute('data-testid', 'input-settings-text');
-  addRow('Text Color', textInput);
-
-  var fontSelect = document.createElement('select');
-  fontSelect.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:13px;';
-  fontSelect.setAttribute('data-testid', 'select-settings-font-size');
-  [['Small', '13'], ['Normal', '14'], ['Large', '16'], ['Extra Large', '18']].forEach(function(opt) {
-    var o = document.createElement('option');
-    o.value = opt[1]; o.textContent = opt[0];
-    fontSelect.appendChild(o);
-  });
-  fontSelect.value = localStorage.getItem('chat-font-size') || '14';
-  addRow('Font Size', fontSelect);
-
-  var densitySelect = document.createElement('select');
-  densitySelect.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:13px;';
-  densitySelect.setAttribute('data-testid', 'select-settings-density');
-  [['Default', 'default'], ['Compact', 'compact'], ['Cozy', 'cozy']].forEach(function(opt) {
-    var o = document.createElement('option');
-    o.value = opt[1]; o.textContent = opt[0];
-    densitySelect.appendChild(o);
-  });
-  densitySelect.value = localStorage.getItem('chat-density') || 'default';
-  addRow('Chat Density', densitySelect);
-
-  var soundCheck = document.createElement('input');
-  soundCheck.type = 'checkbox';
-  soundCheck.checked = localStorage.getItem('chat-sounds') !== 'off';
-  soundCheck.style.cssText = 'width:18px;height:18px;cursor:pointer;';
-  soundCheck.setAttribute('data-testid', 'input-settings-sounds');
-  addRow('Notification Sounds', soundCheck);
-
-  var fontFamilySelect = document.createElement('select');
-  fontFamilySelect.style.cssText = 'padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);color:var(--text-primary);font-size:13px;';
-  fontFamilySelect.setAttribute('data-testid', 'select-settings-font-family');
-  [['Default',''],['Monospace','monospace'],['Serif','serif'],['Comic Sans','Comic Sans MS, cursive']].forEach(function(opt) {
-    var o = document.createElement('option');
-    o.value = opt[1]; o.textContent = opt[0];
-    fontFamilySelect.appendChild(o);
-  });
-  fontFamilySelect.value = localStorage.getItem('chat-font-family') || '';
-  addRow('Font Family', fontFamilySelect);
-
-  var usernameColorInput = document.createElement('input');
-  usernameColorInput.type = 'color';
-  usernameColorInput.value = localStorage.getItem('chat-username-color') || '#5865f2';
-  usernameColorInput.setAttribute('data-testid', 'input-settings-username-color');
-  addRow('Username Color', usernameColorInput);
-
-  var timestampsCheck = document.createElement('input');
-  timestampsCheck.type = 'checkbox';
-  timestampsCheck.checked = localStorage.getItem('chat-show-timestamps') !== 'off';
-  timestampsCheck.style.cssText = 'width:18px;height:18px;cursor:pointer;';
-  timestampsCheck.setAttribute('data-testid', 'input-settings-timestamps');
-  addRow('Show Timestamps', timestampsCheck);
-
-  var avatarsCheck = document.createElement('input');
-  avatarsCheck.type = 'checkbox';
-  avatarsCheck.checked = localStorage.getItem('chat-show-avatars') !== 'off';
-  avatarsCheck.style.cssText = 'width:18px;height:18px;cursor:pointer;';
-  avatarsCheck.setAttribute('data-testid', 'input-settings-avatars');
-  addRow('Show Avatars', avatarsCheck);
-
-  var animCheck = document.createElement('input');
-  animCheck.type = 'checkbox';
-  animCheck.checked = localStorage.getItem('chat-msg-animate') !== 'off';
-  animCheck.style.cssText = 'width:18px;height:18px;cursor:pointer;';
-  animCheck.setAttribute('data-testid', 'input-settings-animations');
-  addRow('Message Animations', animCheck);
-
-  var btns = document.createElement('div');
-  btns.className = 'gc-modal-btns';
-  var resetBtn = document.createElement('button');
-  resetBtn.className = 'gc-cancel';
-  resetBtn.textContent = 'Reset All';
-  resetBtn.setAttribute('data-testid', 'button-settings-reset');
-  resetBtn.addEventListener('click', function() {
-    ['chat-bg-url','chat-accent-color','chat-text-color','chat-font-size','chat-density','chat-bg-blur','chat-sounds','chat-font-family','chat-username-color','chat-show-timestamps','chat-show-avatars','chat-msg-animate'].forEach(function(k) {
-      localStorage.removeItem(k);
+  function mkSec(rows){var div=document.createElement('div');rows.forEach(function(x){div.appendChild(mkRow(x[0],x[1],x[2]));});return div;}
+  var secData={
+    appearance:mkSec([
+      ['Background Image URL',bgInput,'Paste any image link (jpg, png, gif, webp)'],
+      ['Background Blur',blurInput,'0 = no blur · 20 = max blur'],
+      ['Accent Color',accentInput,'Buttons, highlights, and interactive elements'],
+      ['Text Color',textInput,'Main body text color'],
+    ]),
+    chat:mkSec([
+      ['Font Size',fontSelect],
+      ['Chat Density',densitySelect,'How much space between messages'],
+      ['Font Family',fontFamilySelect],
+      ['Username Color',usernameColorInput],
+      ['Show Timestamps',timestampsCheck],
+      ['Show Avatars',avatarsCheck],
+      ['Message Animations',animCheck,'Slide-in animation for new messages'],
+    ]),
+    notifications:mkSec([
+      ['Notification Sounds',soundCheck,'Beep sound when new messages or DMs arrive'],
+    ]),
+  };
+  /* Profile section */
+  var profileDiv=document.createElement('div');
+  if(isOwner||isAdmin){
+    var dnL=document.createElement('div');dnL.style.cssText='font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:6px;';dnL.textContent='Display Name';profileDiv.appendChild(dnL);
+    var dnI=document.createElement('input');dnI.type='text';dnI.value=myDisplayName||'';dnI.placeholder='Your display name';dnI.style.cssText=IS+'width:100%;max-width:220px;';dnI.addEventListener('keydown',function(e){e.stopPropagation();});profileDiv.appendChild(dnI);
+    var dnB=document.createElement('button');dnB.textContent='Update Name';dnB.style.cssText='margin-top:8px;padding:7px 16px;background:var(--accent);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:700;';
+    dnB.addEventListener('click',function(){var n=dnI.value.trim();if(!n)return;if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'change_display_name',name:n}));showToast('Display name updated!','success');});
+    profileDiv.appendChild(dnB);
+  }else{var pid=document.createElement('div');pid.style.cssText='color:var(--text-muted);font-size:13px;line-height:1.7;';pid.innerHTML='<div style="font-size:36px;margin-bottom:10px;">🔒</div>Log in as Admin or Owner to edit your profile.';profileDiv.appendChild(pid);}
+  secData.profile=profileDiv;
+  /* About section */
+  var aboutDiv=document.createElement('div');
+  aboutDiv.innerHTML='<div style="text-align:center;padding:16px 0;"><div style="font-size:56px;margin-bottom:14px;">💬</div>'+
+    '<div style="font-size:22px;font-weight:900;color:var(--text-primary);margin-bottom:6px;">Chat App</div>'+
+    '<div style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Version 2.7</div>'+
+    '<div style="font-size:13px;color:var(--text-secondary);line-height:1.8;">Group chat · DMs · Group chats<br>Games · Economy · Idle game<br>20 gambling games · Savings plans<br>8 themes · Custom settings</div></div>';
+  secData.about=aboutDiv;
+  /* ── Sidebar ── */
+  var sidebar=document.createElement('div');
+  sidebar.style.cssText='width:192px;background:var(--bg-tertiary);padding:14px 8px;display:flex;flex-direction:column;gap:1px;overflow-y:auto;flex-shrink:0;border-right:1px solid rgba(255,255,255,.05);';
+  var sHdr=document.createElement('div');sHdr.style.cssText='font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-muted);padding:8px 10px 10px;';sHdr.textContent='User Settings';
+  sidebar.appendChild(sHdr);
+  var sidebarSecs=[{id:'appearance',icon:'🎨',label:'Appearance'},{id:'chat',icon:'💬',label:'Chat'},{id:'notifications',icon:'🔔',label:'Notifications'},{id:'profile',icon:'👤',label:'Profile'},{id:'about',icon:'ℹ️',label:'About'}];
+  var activeSecId='appearance'; var sideBtns={};
+  var rightContent=document.createElement('div');
+  rightContent.style.cssText='flex:1;overflow-y:auto;padding:24px 28px 24px;';
+  function switchSec(id){
+    activeSecId=id;
+    Object.keys(sideBtns).forEach(function(k){
+      sideBtns[k].style.background=k===id?'var(--accent)':'';
+      sideBtns[k].style.color=k===id?'#fff':'var(--text-secondary)';
     });
-    document.body.style.backgroundImage = '';
-    document.body.style.backdropFilter = '';
-    document.documentElement.style.removeProperty('--accent');
-    document.documentElement.style.removeProperty('--text-primary');
-    document.documentElement.style.removeProperty('--text-secondary');
-    document.documentElement.style.removeProperty('--text-tertiary');
-    document.documentElement.style.removeProperty('--text-muted');
-    document.documentElement.style.removeProperty('font-size');
-    document.documentElement.style.removeProperty('--msg-padding');
-    overlay.remove();
+    rightContent.innerHTML='';
+    var sec=sidebarSecs.find(function(s){return s.id===id;});
+    var titleEl=document.createElement('div');
+    titleEl.style.cssText='font-size:18px;font-weight:900;color:var(--text-primary);margin-bottom:16px;';
+    titleEl.textContent=(sec?sec.icon+' ':'')+sec.label;
+    rightContent.appendChild(titleEl);
+    if(secData[id]) rightContent.appendChild(secData[id]);
+    if(id!=='about'&&id!=='profile'){
+      var bRow=document.createElement('div');bRow.style.cssText='display:flex;gap:10px;margin-top:22px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06);';
+      var sv=document.createElement('button');sv.style.cssText='padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;';sv.textContent='Save';sv.setAttribute('data-testid','button-settings-save');sv.addEventListener('click',doSave);
+      var rs=document.createElement('button');rs.style.cssText='padding:8px 16px;background:rgba(255,255,255,.08);color:var(--text-secondary);border:none;border-radius:8px;cursor:pointer;font-size:13px;';rs.textContent='Reset All';rs.setAttribute('data-testid','button-settings-reset');rs.addEventListener('click',doReset);
+      bRow.appendChild(sv);bRow.appendChild(rs);rightContent.appendChild(bRow);
+    }
+  }
+  sidebarSecs.forEach(function(sec){
+    var btn=document.createElement('div');
+    btn.style.cssText='padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text-secondary);transition:all .15s;display:flex;align-items:center;gap:9px;user-select:none;';
+    btn.innerHTML='<span style="font-size:15px;">'+sec.icon+'</span><span>'+sec.label+'</span>';
+    btn.addEventListener('click',function(){switchSec(sec.id);});
+    btn.addEventListener('mouseenter',function(){if(activeSecId!==sec.id)btn.style.background='rgba(255,255,255,.06)';});
+    btn.addEventListener('mouseleave',function(){if(activeSecId!==sec.id)btn.style.background='';});
+    sideBtns[sec.id]=btn;sidebar.appendChild(btn);
   });
-  btns.appendChild(resetBtn);
-  var saveBtn = document.createElement('button');
-  saveBtn.className = 'gc-confirm';
-  saveBtn.textContent = 'Save';
-  saveBtn.setAttribute('data-testid', 'button-settings-save');
-  saveBtn.addEventListener('click', function() {
-    var bgUrl = bgInput.value.trim();
-    var accent = accentInput.value;
-    var textClr = textInput.value;
-    var fSize = fontSelect.value;
-    var density = densitySelect.value;
-    var blur = blurInput.value;
-    var sounds = soundCheck.checked;
-    if (bgUrl) {
-      localStorage.setItem('chat-bg-url', bgUrl);
-      document.body.style.backgroundImage = 'url(' + bgUrl + ')';
-      document.body.style.backgroundSize = 'cover';
-      document.body.style.backgroundPosition = 'center';
-    } else {
-      localStorage.removeItem('chat-bg-url');
-      document.body.style.backgroundImage = '';
-    }
-    localStorage.setItem('chat-bg-blur', blur);
-    if (parseInt(blur) > 0) {
-      document.body.style.backdropFilter = 'blur(' + blur + 'px)';
-    } else {
-      document.body.style.backdropFilter = '';
-    }
-    if (accent) {
-      localStorage.setItem('chat-accent-color', accent);
-      document.documentElement.style.setProperty('--accent', accent);
-    }
-    if (textClr) {
-      localStorage.setItem('chat-text-color', textClr);
-      applyTextColor(textClr);
-    }
-    localStorage.setItem('chat-font-size', fSize);
-    document.documentElement.style.setProperty('font-size', fSize + 'px');
-    localStorage.setItem('chat-density', density);
-    if (density === 'compact') {
-      document.documentElement.style.setProperty('--msg-padding', '2px 16px');
-    } else if (density === 'cozy') {
-      document.documentElement.style.setProperty('--msg-padding', '8px 16px');
-    } else {
-      document.documentElement.style.removeProperty('--msg-padding');
-    }
-    localStorage.setItem('chat-sounds', sounds ? 'on' : 'off');
-    var ff = fontFamilySelect.value;
-    if (ff) { localStorage.setItem('chat-font-family', ff); document.documentElement.style.setProperty('font-family', ff); }
-    else { localStorage.removeItem('chat-font-family'); document.documentElement.style.removeProperty('font-family'); }
-    var uclr = usernameColorInput.value;
-    localStorage.setItem('chat-username-color', uclr);
-    document.documentElement.style.setProperty('--username-color-custom', uclr);
-    localStorage.setItem('chat-show-timestamps', timestampsCheck.checked ? 'on' : 'off');
-    document.body.classList.toggle('hide-timestamps', !timestampsCheck.checked);
-    localStorage.setItem('chat-show-avatars', avatarsCheck.checked ? 'on' : 'off');
-    document.body.classList.toggle('hide-avatars', !avatarsCheck.checked);
-    localStorage.setItem('chat-msg-animate', animCheck.checked ? 'on' : 'off');
-    _msgAnimations = animCheck.checked;
-    overlay.remove();
-  });
-  btns.appendChild(saveBtn);
-  modal.appendChild(btns);
-  overlay.appendChild(modal);
-  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
-  document.body.appendChild(overlay);
+  /* ── Save / Reset ── */
+  function doSave(){
+    var bgUrl=bgInput.value.trim();
+    if(bgUrl){localStorage.setItem('chat-bg-url',bgUrl);document.body.style.backgroundImage='url('+bgUrl+')';document.body.style.backgroundSize='cover';document.body.style.backgroundPosition='center';}else{localStorage.removeItem('chat-bg-url');document.body.style.backgroundImage='';}
+    var blur=blurInput.value;localStorage.setItem('chat-bg-blur',blur);if(parseInt(blur)>0){document.body.style.backdropFilter='blur('+blur+'px)';}else{document.body.style.backdropFilter='';}
+    var accent=accentInput.value;localStorage.setItem('chat-accent-color',accent);document.documentElement.style.setProperty('--accent',accent);
+    var textClr=textInput.value;localStorage.setItem('chat-text-color',textClr);applyTextColor(textClr);
+    var fSize=fontSelect.value;localStorage.setItem('chat-font-size',fSize);document.documentElement.style.setProperty('font-size',fSize+'px');
+    var density=densitySelect.value;localStorage.setItem('chat-density',density);
+    if(density==='compact'){document.documentElement.style.setProperty('--msg-padding','2px 16px');}else if(density==='cozy'){document.documentElement.style.setProperty('--msg-padding','8px 16px');}else{document.documentElement.style.removeProperty('--msg-padding');}
+    localStorage.setItem('chat-sounds',soundCheck.checked?'on':'off');
+    var ff=fontFamilySelect.value;if(ff){localStorage.setItem('chat-font-family',ff);document.documentElement.style.setProperty('font-family',ff);}else{localStorage.removeItem('chat-font-family');document.documentElement.style.removeProperty('font-family');}
+    var uclr=usernameColorInput.value;localStorage.setItem('chat-username-color',uclr);document.documentElement.style.setProperty('--username-color-custom',uclr);
+    localStorage.setItem('chat-show-timestamps',timestampsCheck.checked?'on':'off');document.body.classList.toggle('hide-timestamps',!timestampsCheck.checked);
+    localStorage.setItem('chat-show-avatars',avatarsCheck.checked?'on':'off');document.body.classList.toggle('hide-avatars',!avatarsCheck.checked);
+    localStorage.setItem('chat-msg-animate',animCheck.checked?'on':'off');_msgAnimations=animCheck.checked;
+    showToast('Settings saved!','success');ov.remove();
+  }
+  function doReset(){
+    ['chat-bg-url','chat-accent-color','chat-text-color','chat-font-size','chat-density','chat-bg-blur','chat-sounds','chat-font-family','chat-username-color','chat-show-timestamps','chat-show-avatars','chat-msg-animate'].forEach(function(k){localStorage.removeItem(k);});
+    document.body.style.backgroundImage='';document.body.style.backdropFilter='';
+    document.documentElement.style.removeProperty('--accent');document.documentElement.style.removeProperty('--text-primary');document.documentElement.style.removeProperty('--text-secondary');document.documentElement.style.removeProperty('--text-tertiary');document.documentElement.style.removeProperty('--text-muted');document.documentElement.style.removeProperty('font-size');document.documentElement.style.removeProperty('--msg-padding');
+    showToast('Settings reset!','info');ov.remove();
+  }
+  /* ── Close btn ── */
+  var closeBtn=document.createElement('button');
+  closeBtn.style.cssText='position:absolute;top:14px;right:14px;background:rgba(255,255,255,.1);border:none;color:var(--text-secondary);cursor:pointer;width:30px;height:30px;border-radius:50%;font-size:15px;z-index:10;transition:all .15s;';
+  closeBtn.textContent='✕';closeBtn.addEventListener('click',function(){ov.remove();});
+  closeBtn.addEventListener('mouseenter',function(){closeBtn.style.background='rgba(255,255,255,.2)';closeBtn.style.color='var(--text-primary)';});
+  closeBtn.addEventListener('mouseleave',function(){closeBtn.style.background='rgba(255,255,255,.1)';closeBtn.style.color='var(--text-secondary)';});
+  modal.appendChild(sidebar);modal.appendChild(rightContent);modal.appendChild(closeBtn);
+  ov.appendChild(modal);
+  ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+  document.addEventListener('keydown',function _esc(e){if(e.key==='Escape'){ov.remove();document.removeEventListener('keydown',_esc);}});
+  document.body.appendChild(ov);
+  switchSec('appearance');
 }
 
 function showLogsModal(logs, filterOpts) {
@@ -4006,6 +3942,30 @@ function handleMessage(data) {
   } else if (data.type === 'balance_data' || data.type === 'shop_result' || data.type === 'equip_result' ||
              data.type === 'savings_result' || data.type === 'gamble_result' ||
              data.type === 'idle_result' || data.type === 'idle_collect_result') {
+    if (window._GECO) {
+      if (data.type === 'balance_data') {
+        window._GECO.bal = data.balance || 0;
+        window._GECO.idleMoney = data.idle_money || 0;
+        window._GECO.idleUpgDef = data.idle_upgrades_def || [];
+        window._GECO.idleUpgrades = data.idle_upgrades || {};
+        window._GECO.initialized = true; window._GECO.recalc();
+        var _hbc = document.getElementById('headerBalChip');
+        if (_hbc) _hbc.style.display = 'inline-flex';
+      } else if (data.new_balance !== undefined) {
+        window._GECO.bal = data.new_balance;
+      } else if (data.balance !== undefined && data.type !== 'savings_result') {
+        window._GECO.bal = data.balance;
+      }
+      if (data.type === 'idle_result') {
+        if (data.idle_money !== undefined) window._GECO.idleMoney = data.idle_money;
+        if (data.cps !== undefined) window._GECO.idleCps = data.cps;
+        if (data.click_val !== undefined) window._GECO.idleClickVal = data.click_val;
+        if (data.idle_upgrades !== undefined) { window._GECO.idleUpgrades = data.idle_upgrades; window._GECO.recalc(); }
+      } else if (data.type === 'idle_collect_result') {
+        window._GECO.idleMoney = 0;
+        if (data.balance !== undefined) window._GECO.bal = data.balance;
+      }
+    }
     document.dispatchEvent(new CustomEvent('_balance_msg', {detail: data}));
   }
 }
@@ -4158,6 +4118,40 @@ document.getElementById('viewLogsBtn').addEventListener('click', function() {
   ws.send(JSON.stringify({type: 'get_logs'}));
 });
 
+// ── Global Economy State ──────────────────────────────────────────────────────
+window._GECO = {
+  bal: 0, idleMoney: 0, idleCps: 0, idleClickVal: 1,
+  idleUpgDef: [], idleUpgrades: {}, initialized: false,
+  recalc: function() {
+    var cps=0, cv=1;
+    (this.idleUpgDef||[]).forEach(function(u){
+      var cnt = window._GECO.idleUpgrades[u.id]||0;
+      if(u.type==='cps') cps+=u.value*cnt;
+      else if(u.type==='click') cv+=u.value*cnt;
+    });
+    this.idleCps=cps; this.idleClickVal=cv;
+  }
+};
+(function(){
+  setInterval(function(){
+    if(!window._GECO.initialized) return;
+    if(window._GECO.idleCps>0) window._GECO.idleMoney+=window._GECO.idleCps/10;
+    var chip=document.getElementById('headerBalChip');
+    if(chip&&chip.style.display!=='none')
+      chip.textContent='💰 $'+Math.floor(window._GECO.bal).toLocaleString();
+  },100);
+})();
+document.getElementById('headerBalChip').addEventListener('click', function() {
+  var bTab=findTabByType('balance');
+  if(bTab){switchTab(bTab.id);}
+  else {
+    var _id=createTabId();
+    tabs.push({id:_id,type:'balance',label:'Balance'});
+    var _c=document.createElement('div');_c.className='tab-content';_c.id='tabContent-'+_id;
+    document.getElementById('tabContents').appendChild(_c);
+    renderTabBar();switchTab(_id);convertTabToBalance(_id);
+  }
+});
 document.getElementById('settingsBtn').addEventListener('click', function() {
   showSettingsModal();
 });
@@ -4544,6 +4538,13 @@ document.getElementById('manageAdminsBtn').addEventListener('click', function() 
 
 document.getElementById('suggestionsBtn').addEventListener('click', function() {
   ws.send(JSON.stringify({type: 'get_suggestions'}));
+});
+document.getElementById('suggestBoxToggle').addEventListener('click', function() {
+  var c=document.getElementById('suggestBoxContent');
+  var a=document.getElementById('suggestBoxArrow');
+  var open=c.style.display!=='none';
+  c.style.display=open?'none':'block';
+  a.style.transform=open?'':'rotate(90deg)';
 });
 
 document.getElementById('broadcastBtn').addEventListener('click', function() {
@@ -5427,6 +5428,7 @@ function renderTabBar() {
     else if (tab.type === 'games') icon.textContent = '🎮';
     else if (tab.type === 'browser') icon.textContent = '🌐';
     else if (tab.type === 'balance') icon.textContent = '💰';
+    else if (tab.type === 'coming_soon') icon.textContent = '🚧';
     else icon.textContent = '+';
     item.appendChild(icon);
 
@@ -5484,8 +5486,10 @@ function closeTab(id) {
 var allNewTabItems = [
   { id: 'chat', type: 'chat', name: 'Chat', desc: 'Group chat and direct messages', badge: '' },
   { id: 'games', type: 'games', name: 'Games', desc: 'Browse and play mini-games', badge: '' },
-  { id: 'embedded', type: 'embedded', name: 'Embedded Games', desc: '200+ popular unblocked games playable in-browser', badge: 'NEW' },
-  { id: 'balance', type: 'balance', name: 'Balance', desc: 'Your wallet, shop, savings, gambling & idle game', badge: 'NEW' },
+  { id: 'embedded', type: 'embedded', name: 'Embedded Games', desc: '200+ popular unblocked games playable in-browser', badge: '' },
+  { id: 'balance', type: 'balance', name: 'Balance', desc: 'Your wallet, shop, savings, 20 gambling games & idle game', badge: 'NEW' },
+  { id: 'browser', type: 'browser', name: 'Browser', desc: 'Built-in web browser — work in progress', badge: 'WIP' },
+  { id: 'game_hub', type: 'coming_soon', name: 'Game Hub', desc: 'A dedicated gaming center — coming soon!', badge: 'SOON' },
 ];
 
 function openBrowserTab(url) {
@@ -5581,6 +5585,12 @@ function openNewTab() {
           var bTab = findTabByType('balance');
           if (bTab) { closeTab(id); switchTab(bTab.id); }
           else { convertTabToBalance(id); }
+        } else if (item.type === 'coming_soon') {
+          var csTab = findTabByType('coming_soon');
+          if (csTab) { closeTab(id); switchTab(csTab.id); }
+          else { convertTabToComingSoon(id, item.name); }
+        } else if (item.type === 'browser') {
+          convertTabToBrowser(id);
         }
       });
       listDiv.appendChild(row);
@@ -6502,6 +6512,26 @@ function convertTabToEmbedded(tabId) {
   renderTabBar();
 }
 
+function convertTabToComingSoon(tabId, name) {
+  for(var i=0;i<tabs.length;i++){if(tabs[i].id===tabId){tabs[i].type='coming_soon';tabs[i].label=name||'Coming Soon';break;}}
+  renderTabBar();
+  var el=document.getElementById('tabContent-'+tabId);
+  if(!el)return;
+  el.innerHTML='';
+  el.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:var(--bg-secondary);';
+  var w=document.createElement('div');
+  w.style.cssText='text-align:center;padding:32px;max-width:360px;';
+  w.innerHTML='<div style="font-size:80px;margin-bottom:20px;animation:csFloat 3s ease-in-out infinite;display:inline-block;">\\uD83D\\uDEA7</div>'+
+    '<div style="font-size:22px;font-weight:900;color:var(--text-primary);margin-bottom:10px;">'+(name||'Coming Soon')+'</div>'+
+    '<div style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:20px;">We\u2019re working hard on this! Check back in a future update.</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">'+
+      '<span style="padding:5px 14px;background:rgba(79,156,249,.12);border:1px solid rgba(79,156,249,.25);border-radius:20px;font-size:12px;color:#4f9cf9;font-weight:600;">\\uD83D\\uDD28 In Development</span>'+
+      '<span style="padding:5px 14px;background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.25);border-radius:20px;font-size:12px;color:#a855f7;font-weight:600;">\u2728 Stay Tuned</span>'+
+    '</div>'+
+    '<style>@keyframes csFloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-14px) rotate(3deg)}}</style>';
+  el.appendChild(w);
+}
+
 function convertTabToBrowser(tabId) {
   for (var i=0;i<tabs.length;i++){if(tabs[i].id===tabId){tabs[i].type='browser';tabs[i].label='Browser';break;}}
   var el=document.getElementById('tabContent-'+tabId);
@@ -7211,11 +7241,26 @@ function convertTabToBalance(tabId) {
 
   // ── Gambling ──────────────────────────────────────────────────────────────
   var GAMES=[
-    {id:'coinflip',name:'Coin Flip',emoji:'🪙',desc:'Call heads or tails \u2014 double or nothing!'},
-    {id:'dice',name:'Dice Duel',emoji:'🎲',desc:'Roll higher than the dealer to win!'},
-    {id:'slots',name:'Slot Machine',emoji:'🎰',desc:'Match 3 symbols for big wins!'},
-    {id:'roulette',name:'Roulette',emoji:'🔴',desc:'Red, Black, or Green \u2014 spin the wheel!'},
-    {id:'hilo',name:'Hi-Lo Cards',emoji:'🃏',desc:'Guess if the next card is higher or lower!'},
+    {id:'coinflip',  name:'Coin Flip',      emoji:'\\uD83E\\uDE99', desc:'Call heads or tails — double or nothing!'},
+    {id:'dice',      name:'Dice Duel',      emoji:'\\uD83C\\uDFB2', desc:'Roll higher than the dealer to win!'},
+    {id:'slots',     name:'Slot Machine',   emoji:'\\uD83C\\uDFB0', desc:'Match 3 symbols for big wins!'},
+    {id:'roulette',  name:'Roulette',       emoji:'\\uD83D\\uDD34', desc:'Red, Black, or Green — spin the wheel!'},
+    {id:'hilo',      name:'Hi-Lo Cards',    emoji:'\\uD83C\\uDCCF', desc:'Guess if the next card is higher or lower!'},
+    {id:'blackjack', name:'Blackjack',      emoji:'\\uD83C\\uDCA1', desc:'Beat the dealer without busting 21!'},
+    {id:'rps',       name:'Rock Paper Scissors', emoji:'\u270A', desc:'Classic RPS — beat the computer!'},
+    {id:'numguess',  name:'Number Guess',   emoji:'\\uD83D\\uDD22', desc:'Pick a number 1-10, hit 8x on match!'},
+    {id:'wheel',     name:'Wheel of Fortune', emoji:'\\uD83C\\uDFA1', desc:'Spin for multipliers up to 5x!'},
+    {id:'crash',     name:'Crash',          emoji:'\\uD83D\\uDCC8', desc:'Set your cashout multiplier, don\u2019t crash!'},
+    {id:'lucky_cards', name:'Lucky Cards',  emoji:'\\uD83C\\uDCB4', desc:'Pick 1 of 5 hidden cards — 4x on win!'},
+    {id:'keno',      name:'Keno',           emoji:'\\uD83C\\uDFB1', desc:'Pick 5 numbers, match draws for prizes!'},
+    {id:'poker_dice', name:'Poker Dice',    emoji:'\\uD83C\\uDFB2', desc:'Roll 5 dice, make the best poker hand!'},
+    {id:'three_card', name:'Three Card Monte', emoji:'\\uD83C\\uDCBD', desc:'Find the queen in 3 face-down cards!'},
+    {id:'dragon_tiger', name:'Dragon vs Tiger', emoji:'\\uD83D\\uDC09', desc:'Bet on which card is higher!'},
+    {id:'even_odd',  name:'Even or Odd',    emoji:'\u2696\uFE0F', desc:'Guess if the dice roll is even or odd!'},
+    {id:'baccarat',  name:'Baccarat',       emoji:'\\uD83C\\uDCA0', desc:'Player or Banker — who scores closer to 9?'},
+    {id:'color_pick', name:'Color Pick',    emoji:'\\uD83C\\uDFA8', desc:'Pick 1 of 4 colors for a 3x win!'},
+    {id:'double_nothing', name:'Double or Nothing', emoji:'\\uD83D\\uDCB0', desc:'Risk it all for a double — 48% chance!'},
+    {id:'plinko',    name:'Plinko',         emoji:'\\uD83C\\uDFB3', desc:'Drop the ball down the peg board!'},
   ];
   var SLOT_EMOJI={cherry:'🍒',lemon:'🍋',orange:'🍊',grape:'🍇',diamond:'💎',seven:'7️⃣'};
   function renderGamble(){
@@ -7375,13 +7420,245 @@ function convertTabToBalance(tabId) {
         arena.querySelector('.gam-result').remove();arena.appendChild(resDiv);
         arena._onResult=function(d){
           nextCard.textContent=CARD_LABELS[d.data.next]||d.data.next;
-          S.hiloDrawn=Math.floor(Math.random()*13)+1;
-          curCard.textContent=CARD_LABELS[S.hiloDrawn];nextCard.textContent='?';
+          nextCard.style.background='rgba(255,215,0,.15)';nextCard.style.borderColor='rgba(255,215,0,.4)';
           var won=d.won>0;var push=d.won===0;
-          showResult(won,won?'🎉':push?'😐':'💸',won?'You Won!':push?'Tie \u2014 Push!':'Wrong call!',d.won);
-          setTimeout(function(){hiloChoices.querySelectorAll('button').forEach(function(b){b.disabled=false;});},700);
+          showResult(won,won?'\\uD83C\\uDF89':push?'\\uD83D\\uDE10':'\\uD83D\\uDCB8',won?'You Won!':push?'Tie \u2014 Push!':'Wrong call!',d.won);
+          setTimeout(function(){
+            S.hiloDrawn=d.data.next;
+            curCard.textContent=CARD_LABELS[S.hiloDrawn];
+            nextCard.textContent='?';nextCard.style.background='';nextCard.style.borderColor='';
+            hiloChoices.querySelectorAll('button').forEach(function(b){b.disabled=false;});
+          },1800);
         };
-        arena._onResult._resDiv=resDiv;
+      } else if(S.activeGame==='blackjack'){
+        var BJCL=['','A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+        var bjArea=document.createElement('div');bjArea.style.cssText='display:flex;flex-direction:column;gap:12px;width:100%;';
+        function mkBJRow(lbl){
+          var row=document.createElement('div');row.style.cssText='background:rgba(255,255,255,.04);border-radius:10px;padding:10px 14px;';
+          var rl=document.createElement('div');rl.style.cssText='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;';rl.textContent=lbl;
+          var cards=document.createElement('div');cards.style.cssText='display:flex;gap:6px;flex-wrap:wrap;';
+          row.appendChild(rl);row.appendChild(cards);return {row:row,cards:cards,lbl:rl};
+        }
+        var pBJ=mkBJRow('Your Hand');var dBJ=mkBJRow('Dealer Hand');
+        bjArea.appendChild(pBJ.row);bjArea.appendChild(dBJ.row);arena.appendChild(bjArea);
+        var bjBtn=document.createElement('button');bjBtn.className='dice-roll-btn';bjBtn.textContent='\\uD83C\\uDCA1 Deal Cards!';
+        bjBtn.addEventListener('click',function(){
+          var bet=getBet();if(!bet)return;bjBtn.disabled=true;
+          pBJ.cards.innerHTML='\u23F3';dBJ.cards.innerHTML='\u23F3';
+          if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'blackjack',bet:bet}));
+        });
+        arena.querySelector('.gam-result').remove();arena.appendChild(bjBtn);arena.appendChild(resDiv);
+        function mkPCard(v){var c=document.createElement('span');c.style.cssText='display:inline-flex;align-items:center;justify-content:center;width:32px;height:44px;background:white;color:#222;border-radius:6px;font-weight:900;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,.3);';c.textContent=BJCL[v]||v;return c;}
+        arena._onResult=function(d){
+          pBJ.cards.innerHTML='';dBJ.cards.innerHTML='';
+          d.data.player.forEach(function(v){pBJ.cards.appendChild(mkPCard(v));});
+          d.data.dealer.forEach(function(v){dBJ.cards.appendChild(mkPCard(v));});
+          pBJ.lbl.textContent='Your Hand ('+d.data.psum+')';dBJ.lbl.textContent='Dealer Hand ('+d.data.dsum+')';
+          var won=d.won>0;var push=d.won===0;
+          showResult(won,won?'\\uD83C\\uDFA4':push?'\\uD83D\\uDE10':'\\uD83D\\uDCB8',won?'You Win!':(push?'Push \u2014 Tie!':(d.data.psum>21?'Bust!':'Dealer Wins!')),d.won);
+          bjBtn.disabled=false;
+        };
+      } else if(S.activeGame==='rps'){
+        var rpsDisp=document.createElement('div');rpsDisp.style.cssText='display:flex;align-items:center;justify-content:center;gap:24px;font-size:56px;padding:12px;';
+        var rpsY=document.createElement('span');rpsY.textContent='?';
+        var rpsVs=document.createElement('span');rpsVs.style.cssText='font-size:18px;color:var(--text-muted);';rpsVs.textContent='vs';
+        var rpsC=document.createElement('span');rpsC.textContent='?';
+        rpsDisp.appendChild(rpsY);rpsDisp.appendChild(rpsVs);rpsDisp.appendChild(rpsC);arena.appendChild(rpsDisp);
+        var rpsRow=document.createElement('div');rpsRow.className='coin-choices';
+        [['rock','\u270A Rock'],['paper','\\uD83D\\uDD90\uFE0F Paper'],['scissors','\u2702\uFE0F Scissors']].forEach(function(c){
+          var btn=document.createElement('button');btn.className='coin-btn';btn.textContent=c[1];
+          btn.addEventListener('click',(function(ch){return function(){
+            var bet=getBet();if(!bet)return;rpsRow.querySelectorAll('button').forEach(function(b){b.disabled=true;});
+            rpsY.textContent=ch==='rock'?'\u270A':ch==='paper'?'\\uD83D\\uDD90\uFE0F':'\u2702\uFE0F';rpsC.textContent='\u23F3';
+            if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'rps',bet:bet,choice:ch}));
+          };})(c[0]));rpsRow.appendChild(btn);
+        });
+        arena.appendChild(rpsRow);arena.querySelector('.gam-result').remove();arena.appendChild(resDiv);
+        arena._onResult=function(d){
+          var RE={rock:'\u270A',paper:'\\uD83D\\uDD90\uFE0F',scissors:'\u2702\uFE0F'};
+          rpsY.textContent=RE[d.data.player]||'?';rpsC.textContent=RE[d.data.computer]||'?';
+          var won=d.won>0;var push=d.won===0;
+          showResult(won,won?'\\uD83C\\uDFA4':push?'\\uD83E\\uDD1D':'\\uD83D\\uDCB8',won?'You Win!':push?'Draw!':'Computer Wins!',d.won);
+          rpsRow.querySelectorAll('button').forEach(function(b){b.disabled=false;});
+        };
+      } else if(S.activeGame==='numguess'){
+        var ngDisp=document.createElement('div');ngDisp.style.cssText='text-align:center;font-size:48px;padding:6px;';ngDisp.textContent='\\uD83D\\uDD22';arena.appendChild(ngDisp);
+        var ngInfo2=document.createElement('div');ngInfo2.style.cssText='text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:8px;';ngInfo2.textContent='Pick 1-10. Exact match = 8x your bet!';arena.appendChild(ngInfo2);
+        var ngGrid=document.createElement('div');ngGrid.style.cssText='display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:6px 0;';
+        var ngPick=1;
+        for(var ngi=1;ngi<=10;ngi++){(function(num){
+          var nb=document.createElement('button');nb.style.cssText='width:40px;height:40px;border-radius:8px;border:2px solid var(--border);background:rgba(255,255,255,.05);color:var(--text-primary);cursor:pointer;font-weight:700;font-size:14px;transition:all .15s;';
+          nb.textContent=num;
+          nb.addEventListener('click',function(){ngGrid.querySelectorAll('button').forEach(function(b){b.style.background='rgba(255,255,255,.05)';b.style.borderColor='var(--border)';b.style.color='var(--text-primary)';});nb.style.background='var(--accent)';nb.style.borderColor='var(--accent)';nb.style.color='#fff';ngPick=num;});
+          ngGrid.appendChild(nb);
+        })(ngi);}
+        arena.appendChild(ngGrid);
+        var ngBtn=document.createElement('button');ngBtn.className='dice-roll-btn';ngBtn.textContent='\\uD83C\\uDFAF Guess!';
+        ngBtn.addEventListener('click',function(){var bet=getBet();if(!bet)return;ngBtn.disabled=true;if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'numguess',bet:bet,number:ngPick}));});
+        arena.querySelector('.gam-result').remove();arena.appendChild(ngBtn);arena.appendChild(resDiv);
+        arena._onResult=function(d){
+          ngDisp.textContent=d.data.server;
+          ngGrid.querySelectorAll('button').forEach(function(b,i){
+            if(i+1===d.data.server){b.style.background='#22c55e';b.style.borderColor='#22c55e';b.style.color='#fff';}
+            else if(i+1===d.data.player&&i+1!==d.data.server){b.style.background='#ef4444';b.style.borderColor='#ef4444';b.style.color='#fff';}
+          });
+          showResult(d.won>0,d.won>0?'\\uD83C\\uDFAF':'\\uD83D\\uDCB8',d.won>0?'Exact Match! 8x!':'Wrong! Server: '+d.data.server,d.won);
+          setTimeout(function(){ngBtn.disabled=false;},1200);
+        };
+      } else if(S.activeGame==='wheel'){
+        var whlDisp=document.createElement('div');whlDisp.style.cssText='text-align:center;font-size:52px;margin:8px;transition:transform .6s cubic-bezier(.17,.67,.35,1.2);';whlDisp.textContent='\\uD83C\\uDFA1';arena.appendChild(whlDisp);
+        var whlInfo=document.createElement('div');whlInfo.style.cssText='display:flex;gap:5px;flex-wrap:wrap;justify-content:center;font-size:10px;margin-bottom:6px;';
+        ['5x','3x','2x','1.5x','\\uD83D\\uDCB8 0x'].forEach(function(s){var sp=document.createElement('span');sp.style.cssText='padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.07);color:var(--text-muted);font-weight:700;';sp.textContent=s;whlInfo.appendChild(sp);});
+        arena.appendChild(whlInfo);
+        var whlBtn=document.createElement('button');whlBtn.className='slots-spin-btn';whlBtn.textContent='\\uD83C\\uDFA1 SPIN!';
+        whlBtn.addEventListener('click',function(){var bet=getBet();if(!bet)return;whlBtn.disabled=true;whlDisp.style.transform='rotate(720deg)';if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'wheel',bet:bet}));});
+        arena.querySelector('.gam-result').remove();arena.appendChild(whlBtn);arena.appendChild(resDiv);
+        arena._onResult=function(d){setTimeout(function(){whlDisp.style.transform='';whlDisp.textContent=d.data.segment;var won=d.won>0;showResult(won,won?'\\uD83C\\uDFA4':'\\uD83D\\uDCB8','Segment: '+d.data.segment,d.won);whlBtn.disabled=false;},650);};
+      } else if(S.activeGame==='crash'){
+        var crDisp=document.createElement('div');crDisp.style.cssText='text-align:center;font-size:52px;margin:4px;';crDisp.textContent='\\uD83D\\uDCC8';arena.appendChild(crDisp);
+        var crRow=document.createElement('div');crRow.style.cssText='display:flex;align-items:center;gap:10px;margin:8px 0;justify-content:center;';
+        var crLbl=document.createElement('label');crLbl.style.cssText='font-size:13px;color:var(--text-muted);';crLbl.textContent='Cash out at:';
+        var crIn=document.createElement('input');crIn.type='number';crIn.className='gam-bet-in';crIn.style.cssText='width:88px;';crIn.value='1.5';crIn.min='1.1';crIn.max='20';crIn.step='0.1';
+        var crSfx=document.createElement('span');crSfx.style.cssText='font-size:14px;font-weight:800;color:var(--green);';crSfx.textContent='x';
+        crRow.appendChild(crLbl);crRow.appendChild(crIn);crRow.appendChild(crSfx);arena.appendChild(crRow);
+        var crInfo=document.createElement('div');crInfo.style.cssText='text-align:center;font-size:11px;color:var(--text-muted);margin-bottom:6px;';crInfo.textContent='If it crashes before your multiplier, you lose!';arena.appendChild(crInfo);
+        var crBtn=document.createElement('button');crBtn.className='dice-roll-btn';crBtn.textContent='\\uD83D\\uDCC8 Launch!';
+        crBtn.addEventListener('click',function(){var bet=getBet();if(!bet)return;var co=parseFloat(crIn.value)||1.5;crBtn.disabled=true;crDisp.textContent='\\uD83D\\uDCB9';if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'crash',bet:bet,cashout:co}));});
+        arena.querySelector('.gam-result').remove();arena.appendChild(crBtn);arena.appendChild(resDiv);
+        arena._onResult=function(d){var won=d.won>0;crDisp.textContent=won?'\\uD83D\\uDCC8':'\\uD83D\\uDCA5';showResult(won,won?'\\uD83C\\uDFA4':'\\uD83D\\uDCA5',won?'Cashed out '+d.data.cash_out+'x!':'Crashed at '+d.data.crash_at+'x!',d.won);crBtn.disabled=false;};
+      } else if(S.activeGame==='lucky_cards'){
+        var lcInfo2=document.createElement('div');lcInfo2.style.cssText='text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:6px;';lcInfo2.textContent='Pick 1 of 5 hidden cards. 1 is the winner \u2014 4x!';arena.appendChild(lcInfo2);
+        var lcRow=document.createElement('div');lcRow.style.cssText='display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:8px 0;';
+        var lcPick=-1;var lcBtns=[];
+        for(var lci=0;lci<5;lci++){(function(idx){
+          var cb=document.createElement('button');cb.style.cssText='width:54px;height:76px;border-radius:8px;border:2px solid var(--border);background:rgba(79,156,249,.06);cursor:pointer;font-size:26px;transition:all .2s;';cb.textContent='\\uD83C\\uDCBF';
+          cb.addEventListener('click',function(){lcBtns.forEach(function(b,i){b.style.background=i===idx?'rgba(79,156,249,.2)':'rgba(79,156,249,.06)';b.style.borderColor=i===idx?'var(--accent)':'var(--border)';});lcPick=idx;});
+          lcRow.appendChild(cb);lcBtns.push(cb);
+        })(lci);}
+        arena.appendChild(lcRow);
+        var lcBtn2=document.createElement('button');lcBtn2.className='dice-roll-btn';lcBtn2.textContent='\\uD83C\\uDCBF Reveal!';
+        lcBtn2.addEventListener('click',function(){if(lcPick<0){showToast('Pick a card!','error');return;}var bet=getBet();if(!bet)return;lcBtn2.disabled=true;if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'lucky_cards',bet:bet,card:lcPick}));});
+        arena.querySelector('.gam-result').remove();arena.appendChild(lcBtn2);arena.appendChild(resDiv);
+        arena._onResult=function(d){
+          lcBtns.forEach(function(b,i){if(i===d.data.winner){b.textContent='\u2B50';b.style.background='rgba(34,197,94,.2)';b.style.borderColor='#22c55e';}else if(i===lcPick&&i!==d.data.winner){b.textContent='\u2716\uFE0F';b.style.background='rgba(239,68,68,.12)';b.style.borderColor='#ef4444';}else{b.textContent='\\uD83C\\uDCBF';}});
+          showResult(d.won>0,d.won>0?'\u2B50':'\\uD83D\\uDCB8',d.won>0?'Found it! 4x!':'Wrong card!',d.won);lcPick=-1;lcBtn2.disabled=false;
+        };
+      } else if(S.activeGame==='keno'){
+        var kenoInf=document.createElement('div');kenoInf.style.cssText='text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:6px;';kenoInf.textContent='Pick up to 5 numbers (1-20). Match draws for prizes!';arena.appendChild(kenoInf);
+        var kenoGrid=document.createElement('div');kenoGrid.style.cssText='display:grid;grid-template-columns:repeat(5,1fr);gap:5px;max-width:220px;margin:0 auto 8px;';
+        var kenoPicks=[],kenoBtns=[];
+        var kPickLbl=document.createElement('div');kPickLbl.style.cssText='text-align:center;font-size:11px;color:var(--text-muted);margin-bottom:4px;';kPickLbl.textContent='Selected: 0/5';
+        for(var ki=1;ki<=20;ki++){(function(num){
+          var kb=document.createElement('button');kb.style.cssText='padding:6px 0;border-radius:6px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text-primary);cursor:pointer;font-size:12px;font-weight:700;transition:all .15s;';kb.textContent=num;
+          kb.addEventListener('click',function(){var ix=kenoPicks.indexOf(num);if(ix>=0){kenoPicks.splice(ix,1);kb.style.background='rgba(255,255,255,.04)';kb.style.borderColor='var(--border)';kb.style.color='var(--text-primary)';}else if(kenoPicks.length<5){kenoPicks.push(num);kb.style.background='var(--accent)';kb.style.borderColor='var(--accent)';kb.style.color='#fff';}else{showToast('Max 5!','error');}kPickLbl.textContent='Selected: '+kenoPicks.length+'/5';});
+          kenoGrid.appendChild(kb);kenoBtns.push({btn:kb,num:num});
+        })(ki);}
+        arena.appendChild(kenoGrid);arena.appendChild(kPickLbl);
+        var kenoBtn=document.createElement('button');kenoBtn.className='dice-roll-btn';kenoBtn.textContent='\\uD83C\\uDFB1 Draw!';
+        kenoBtn.addEventListener('click',function(){if(!kenoPicks.length){showToast('Pick a number!','error');return;}var bet=getBet();if(!bet)return;kenoBtn.disabled=true;if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'keno',bet:bet,picks:kenoPicks}));});
+        arena.querySelector('.gam-result').remove();arena.appendChild(kenoBtn);arena.appendChild(resDiv);
+        arena._onResult=function(d){
+          kenoBtns.forEach(function(x){var isH=d.data.draws.indexOf(x.num)>=0;var isP=d.data.picks.indexOf(x.num)>=0;if(isH&&isP){x.btn.style.background='#22c55e';x.btn.style.borderColor='#22c55e';}else if(isH){x.btn.style.background='rgba(255,255,255,.15)';}else if(isP){x.btn.style.background='#ef4444';x.btn.style.borderColor='#ef4444';}});
+          kPickLbl.textContent='Hits: '+d.data.hits+' / Picks: '+d.data.picks.length;
+          showResult(d.won>0,d.won>0?'\\uD83C\\uDFB1':'\\uD83D\\uDCB8',d.data.hits+' match'+(d.data.hits!==1?'es':'')+'!',d.won);
+          setTimeout(function(){kenoPicks=[];kenoBtns.forEach(function(x){x.btn.style.background='rgba(255,255,255,.04)';x.btn.style.borderColor='var(--border)';x.btn.style.color='var(--text-primary)';});kPickLbl.textContent='Selected: 0/5';kenoBtn.disabled=false;},2000);
+        };
+      } else if(S.activeGame==='poker_dice'){
+        var pdDice=document.createElement('div');pdDice.style.cssText='display:flex;gap:10px;justify-content:center;font-size:44px;margin:8px 0;';
+        var pdEls=[];for(var pdi=0;pdi<5;pdi++){var de=document.createElement('span');de.textContent='\\uD83C\\uDFB2';pdDice.appendChild(de);pdEls.push(de);}
+        arena.appendChild(pdDice);
+        var pdHand=document.createElement('div');pdHand.style.cssText='text-align:center;font-size:13px;color:var(--text-muted);margin-bottom:4px;';pdHand.textContent='Roll 5 dice for the best poker hand!';arena.appendChild(pdHand);
+        var pdPO=document.createElement('div');pdPO.style.cssText='display:flex;gap:4px;flex-wrap:wrap;justify-content:center;font-size:10px;margin-bottom:6px;';
+        [['Pair','0.5x'],['2 Pair','1.5x'],['3 of Kind','2x'],['Full House','3x'],['4 of Kind','5x'],['5 of Kind','10x']].forEach(function(h){var s=document.createElement('span');s.style.cssText='padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.06);color:var(--text-muted);';s.textContent=h[0]+': '+h[1];pdPO.appendChild(s);});
+        arena.appendChild(pdPO);
+        var pdBtn=document.createElement('button');pdBtn.className='dice-roll-btn';pdBtn.textContent='\\uD83C\\uDFB2 Roll!';
+        var PDF=['','⚀','⚁','⚂','⚃','⚄','⚅'];
+        pdBtn.addEventListener('click',function(){var bet=getBet();if(!bet)return;pdBtn.disabled=true;pdEls.forEach(function(e){e.textContent='\u23F3';});pdHand.textContent='Rolling...';if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'poker_dice',bet:bet}));});
+        arena.querySelector('.gam-result').remove();arena.appendChild(pdBtn);arena.appendChild(resDiv);
+        arena._onResult=function(d){d.data.dice.forEach(function(v,i){pdEls[i].textContent=PDF[v]||v;});pdHand.textContent=d.data.hand+' ('+d.data.mult+'x)';showResult(d.won>0,d.won>0?'\\uD83C\\uDFB2':'\\uD83D\\uDCB8',d.data.hand,d.won);pdBtn.disabled=false;};
+      } else if(S.activeGame==='three_card'){
+        var tcInf=document.createElement('div');tcInf.style.cssText='text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:8px;';tcInf.textContent='Find the Queen! 1 of 3 cards \u2014 2x win!';arena.appendChild(tcInf);
+        var tcCards=document.createElement('div');tcCards.style.cssText='display:flex;gap:16px;justify-content:center;margin:8px 0;';
+        var tcPick=-1;var tcBtns=[];
+        for(var tci=0;tci<3;tci++){(function(idx){
+          var tb=document.createElement('button');tb.style.cssText='width:64px;height:88px;border-radius:10px;border:2px solid var(--border);background:rgba(79,156,249,.05);cursor:pointer;font-size:32px;transition:all .2s;';tb.textContent='\\uD83C\\uDCA0';
+          tb.addEventListener('click',function(){tcBtns.forEach(function(b,i){b.style.background=i===idx?'rgba(79,156,249,.2)':'rgba(79,156,249,.05)';b.style.borderColor=i===idx?'var(--accent)':'var(--border)';});tcPick=idx;});
+          tcCards.appendChild(tb);tcBtns.push(tb);
+        })(tci);}
+        arena.appendChild(tcCards);
+        var tcBtn=document.createElement('button');tcBtn.className='dice-roll-btn';tcBtn.textContent='\\uD83D\\uDC51 Find the Queen!';
+        tcBtn.addEventListener('click',function(){if(tcPick<0){showToast('Pick a card!','error');return;}var bet=getBet();if(!bet)return;tcBtn.disabled=true;if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'three_card',bet:bet,pick:tcPick}));});
+        arena.querySelector('.gam-result').remove();arena.appendChild(tcBtn);arena.appendChild(resDiv);
+        arena._onResult=function(d){
+          tcBtns.forEach(function(b,i){if(i===d.data.queen){b.textContent='\\uD83D\\uDC51';b.style.background='rgba(34,197,94,.2)';b.style.borderColor='#22c55e';}else if(i===tcPick&&i!==d.data.queen){b.textContent='\u2716\uFE0F';b.style.background='rgba(239,68,68,.12)';b.style.borderColor='#ef4444';}else{b.textContent='\\uD83C\\uDCA0';}});
+          showResult(d.won>0,d.won>0?'\\uD83D\\uDC51':'\\uD83D\\uDCB8',d.won>0?'Found the Queen! 2x!':'Wrong card!',d.won);tcPick=-1;tcBtn.disabled=false;
+        };
+      } else if(S.activeGame==='dragon_tiger'){
+        var dtArea=document.createElement('div');dtArea.style.cssText='display:flex;gap:20px;justify-content:center;margin:8px 0;';
+        function mkDTS(lbl,icon){var d=document.createElement('div');d.style.cssText='text-align:center;padding:8px 14px;background:rgba(255,255,255,.04);border-radius:10px;';var i=document.createElement('div');i.style.cssText='font-size:44px;';i.textContent=icon;var l=document.createElement('div');l.style.cssText='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin:4px 0;';l.textContent=lbl;var v=document.createElement('div');v.style.cssText='font-size:22px;font-weight:900;color:var(--text-primary);min-height:28px;';v.textContent='?';d.appendChild(i);d.appendChild(l);d.appendChild(v);return {el:d,val:v};}
+        var dtD=mkDTS('Dragon','\\uD83D\\uDC09');var dtT=mkDTS('Tiger','\\uD83D\\uDC2F');
+        dtArea.appendChild(dtD.el);dtArea.appendChild(dtT.el);arena.appendChild(dtArea);
+        var dtRow=document.createElement('div');dtRow.className='coin-choices';
+        [['dragon','\\uD83D\\uDC09 Dragon'],['tiger','\\uD83D\\uDC2F Tiger']].forEach(function(c){
+          var btn=document.createElement('button');btn.className='coin-btn';btn.textContent=c[1];
+          btn.addEventListener('click',(function(ch){return function(){var bet=getBet();if(!bet)return;dtRow.querySelectorAll('button').forEach(function(b){b.disabled=true;});dtD.val.textContent='?';dtT.val.textContent='?';if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'dragon_tiger',bet:bet,choice:ch}));};})(c[0]));dtRow.appendChild(btn);
+        });
+        arena.appendChild(dtRow);arena.querySelector('.gam-result').remove();arena.appendChild(resDiv);
+        var DTCL=['','A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+        arena._onResult=function(d){dtD.val.textContent=DTCL[d.data.dragon]||d.data.dragon;dtT.val.textContent=DTCL[d.data.tiger]||d.data.tiger;var won=d.won>0;var push=d.won===0;showResult(won,won?'\\uD83C\\uDFA4':push?'\\uD83D\\uDE10':'\\uD83D\\uDCB8',won?'You Win!':push?'Tie!':'Wrong Side!',d.won);dtRow.querySelectorAll('button').forEach(function(b){b.disabled=false;});};
+      } else if(S.activeGame==='even_odd'){
+        var eoDie=document.createElement('div');eoDie.style.cssText='text-align:center;font-size:72px;margin:8px;';eoDie.textContent='\\uD83C\\uDFB2';arena.appendChild(eoDie);
+        var eoRow=document.createElement('div');eoRow.className='coin-choices';
+        [['even','\u2B1C Even'],['odd','\u25FC Odd']].forEach(function(c){
+          var btn=document.createElement('button');btn.className='coin-btn';btn.textContent=c[1];
+          btn.addEventListener('click',(function(ch){return function(){var bet=getBet();if(!bet)return;eoRow.querySelectorAll('button').forEach(function(b){b.disabled=true;});eoDie.textContent='\u23F3';if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'even_odd',bet:bet,choice:ch}));};})(c[0]));eoRow.appendChild(btn);
+        });
+        arena.appendChild(eoRow);arena.querySelector('.gam-result').remove();arena.appendChild(resDiv);
+        var EOF=['','⚀','⚁','⚂','⚃','⚄','⚅'];
+        arena._onResult=function(d){eoDie.textContent=EOF[d.data.roll]||d.data.roll;var won=d.won>0;showResult(won,won?'\\uD83C\\uDFA4':'\\uD83D\\uDCB8',won?'Correct! Roll was '+(d.data.is_even?'Even':'Odd'):'Wrong! Was '+(d.data.is_even?'Even':'Odd'),d.won);eoRow.querySelectorAll('button').forEach(function(b){b.disabled=false;});};
+      } else if(S.activeGame==='baccarat'){
+        var bacArea=document.createElement('div');bacArea.style.cssText='display:flex;gap:16px;justify-content:center;margin:8px 0;';
+        function mkBacSide(lbl){var d=document.createElement('div');d.style.cssText='text-align:center;padding:10px 20px;background:rgba(255,255,255,.04);border-radius:10px;';var l=document.createElement('div');l.style.cssText='font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px;';l.textContent=lbl;var v=document.createElement('div');v.style.cssText='font-size:28px;font-weight:900;color:var(--text-primary);';v.textContent='?';d.appendChild(l);d.appendChild(v);return {el:d,val:v};}
+        var bP=mkBacSide('Player');var bB=mkBacSide('Banker');
+        bacArea.appendChild(bP.el);bacArea.appendChild(bB.el);arena.appendChild(bacArea);
+        var bacRow=document.createElement('div');bacRow.className='coin-choices';
+        [['player','Player Wins'],['banker','Banker Wins']].forEach(function(c){
+          var btn=document.createElement('button');btn.className='coin-btn';btn.textContent=c[1];
+          btn.addEventListener('click',(function(ch){return function(){var bet=getBet();if(!bet)return;bacRow.querySelectorAll('button').forEach(function(b){b.disabled=true;});bP.val.textContent='?';bB.val.textContent='?';if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'baccarat',bet:bet,choice:ch}));};})(c[0]));bacRow.appendChild(btn);
+        });
+        arena.appendChild(bacRow);arena.querySelector('.gam-result').remove();arena.appendChild(resDiv);
+        arena._onResult=function(d){bP.val.textContent=d.data.player_score;bB.val.textContent=d.data.banker_score;var won=d.won>0;var push=d.won===0;showResult(won,won?'\\uD83C\\uDFA4':push?'\\uD83D\\uDE10':'\\uD83D\\uDCB8',won?'You Win!':push?'Tie!':'You Lose!',d.won);bacRow.querySelectorAll('button').forEach(function(b){b.disabled=false;});};
+      } else if(S.activeGame==='color_pick'){
+        var cpInf=document.createElement('div');cpInf.style.cssText='text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:8px;';cpInf.textContent='Pick 1 of 4 colors \u2014 3x your bet on a win!';arena.appendChild(cpInf);
+        var cpDisp=document.createElement('div');cpDisp.style.cssText='text-align:center;font-size:42px;margin:6px;';cpDisp.textContent='\\uD83C\\uDFA8';arena.appendChild(cpDisp);
+        var cpRow=document.createElement('div');cpRow.className='coin-choices';
+        [['red','\\uD83D\\uDD34 Red','#ef4444'],['blue','\\uD83D\\uDD35 Blue','#3b82f6'],['green','\\uD83D\\uDFE2 Green','#22c55e'],['yellow','\\uD83D\\uDFE1 Yellow','#eab308']].forEach(function(c){
+          var btn=document.createElement('button');btn.className='coin-btn';btn.style.cssText='background:'+c[2]+'22;border:2px solid '+c[2]+'66;';btn.textContent=c[1];
+          btn.addEventListener('click',(function(ch){return function(){var bet=getBet();if(!bet)return;cpRow.querySelectorAll('button').forEach(function(b){b.disabled=true;});cpDisp.textContent='\u23F3';if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'color_pick',bet:bet,choice:ch}));};})(c[0]));cpRow.appendChild(btn);
+        });
+        arena.appendChild(cpRow);arena.querySelector('.gam-result').remove();arena.appendChild(resDiv);
+        var CPE={red:'\\uD83D\\uDD34',blue:'\\uD83D\\uDD35',green:'\\uD83D\\uDFE2',yellow:'\\uD83D\\uDFE1'};
+        arena._onResult=function(d){cpDisp.textContent=CPE[d.data.server_color]||'\\uD83C\\uDFA8';var won=d.won>0;showResult(won,won?'\\uD83C\\uDFA4':'\\uD83D\\uDCB8',won?'Correct color! 3x!':'Wrong! Was '+d.data.server_color,d.won);cpRow.querySelectorAll('button').forEach(function(b){b.disabled=false;});};
+      } else if(S.activeGame==='double_nothing'){
+        var dnD=document.createElement('div');dnD.style.cssText='text-align:center;margin:8px 0;';
+        var dnIcon=document.createElement('div');dnIcon.style.cssText='font-size:64px;margin-bottom:8px;';dnIcon.textContent='\\uD83D\\uDCB0';
+        var dnInfo=document.createElement('div');dnInfo.style.cssText='font-size:13px;color:var(--text-muted);';dnInfo.textContent='48% chance to DOUBLE your bet. All or nothing!';
+        dnD.appendChild(dnIcon);dnD.appendChild(dnInfo);arena.appendChild(dnD);
+        var dnBtn=document.createElement('button');dnBtn.className='dice-roll-btn';dnBtn.style.cssText='font-size:17px;padding:14px 28px;';dnBtn.textContent='\\uD83D\\uDCB0 DOUBLE OR NOTHING!';
+        dnBtn.addEventListener('click',function(){var bet=getBet();if(!bet)return;dnBtn.disabled=true;dnIcon.textContent='\u23F3';if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'double_nothing',bet:bet}));});
+        arena.querySelector('.gam-result').remove();arena.appendChild(dnBtn);arena.appendChild(resDiv);
+        arena._onResult=function(d){var won=d.won>0;dnIcon.textContent=won?'\\uD83D\\uDCB0':'\\uD83D\\uDCA5';showResult(won,won?'\\uD83C\\uDFA4':'\\uD83D\\uDCA5',won?'DOUBLED! +'+fmtBal(d.won):'\\uD83D\\uDCA5 Nothing. Better luck next time!',d.won);setTimeout(function(){dnIcon.textContent='\\uD83D\\uDCB0';dnBtn.disabled=false;},1200);};
+      } else if(S.activeGame==='plinko'){
+        var plkDisp=document.createElement('div');plkDisp.style.cssText='text-align:center;font-size:36px;margin-bottom:4px;';plkDisp.textContent='\\uD83D\\uDFE1';
+        var plkPegs=document.createElement('div');plkPegs.style.cssText='font-family:monospace;font-size:14px;color:var(--text-muted);line-height:1.6;margin-bottom:4px;white-space:pre;text-align:center;';
+        plkPegs.textContent='  \u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6\\n\u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6\\n  \u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6\\n\u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6 \u25E6';
+        var plkSlots=document.createElement('div');plkSlots.style.cssText='display:flex;gap:2px;justify-content:center;font-size:9px;font-weight:700;margin-bottom:6px;';
+        ['0x','0.5x','1x','2x','5x','2x','1x','0.5x','0x'].forEach(function(s){var sl=document.createElement('div');sl.style.cssText='flex:1;max-width:36px;text-align:center;padding:3px 0;border-radius:4px;background:rgba(255,255,255,.06);color:var(--text-muted);';sl.textContent=s;plkSlots.appendChild(sl);});
+        arena.appendChild(plkDisp);arena.appendChild(plkPegs);arena.appendChild(plkSlots);
+        var plkBtn=document.createElement('button');plkBtn.className='dice-roll-btn';plkBtn.textContent='\\uD83D\\uDFE1 Drop Ball!';
+        plkBtn.addEventListener('click',function(){var bet=getBet();if(!bet)return;plkBtn.disabled=true;plkDisp.textContent='\u23F3';if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'gamble',game:'plinko',bet:bet}));});
+        arena.querySelector('.gam-result').remove();arena.appendChild(plkBtn);arena.appendChild(resDiv);
+        arena._onResult=function(d){plkDisp.textContent='\\uD83D\\uDFE1';var slEls=plkSlots.querySelectorAll('div');slEls.forEach(function(sl,i){sl.style.background=i===d.data.slot?'rgba(255,215,0,.25)':'rgba(255,255,255,.06)';sl.style.color=i===d.data.slot?'#FFD700':'var(--text-muted)';});var won=d.won>0;var push=d.won===0;showResult(won,won?'\\uD83C\\uDFAF':push?'\\uD83D\\uDE10':'\\uD83D\\uDCB8','Slot '+d.data.slot+': '+d.data.mult+'x',d.won);plkBtn.disabled=false;};
       }
     }
   }
@@ -7389,57 +7666,124 @@ function convertTabToBalance(tabId) {
   // ── Idle Game ─────────────────────────────────────────────────────────────
   var _idleTimer=null;
   var _idleDisplay=null;
-  function renderIdle(){
+  function showIdleUpgPreview(u, cnt) {
+    var price=Math.round(u.base_price*Math.pow(1.15,cnt));
+    var nextPrice=Math.round(u.base_price*Math.pow(1.15,cnt+1));
+    var canAfford=S.idleMoney>=price;
+    var ov=document.createElement('div');ov.className='gc-overlay';ov.style.zIndex='9100';
+    var m=document.createElement('div');m.className='gc-modal';m.style.cssText='max-width:360px;';
+    var hdr=document.createElement('div');hdr.className='gc-modal-title';
+    hdr.innerHTML='<span style="font-size:26px;margin-right:8px;">'+u.emoji+'</span>'+escapeHtml(u.name);
+    m.appendChild(hdr);
+    var body=document.createElement('div');body.style.cssText='padding:16px;display:flex;flex-direction:column;gap:12px;';
+    var catColor=u.type==='click'?'#3b82f6':u.type==='auto'?'#22c55e':'#a855f7';
+    var catLabel=u.type==='click'?'\\uD83D\\uDD8B\uFE0F Click':u.type==='auto'?'\\uD83E\\uDD16 Auto':'\u2728 Passive';
+    var catDiv=document.createElement('div');catDiv.innerHTML='<span style="padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:'+catColor+'22;color:'+catColor+';border:1px solid '+catColor+'44;">'+catLabel+' Upgrade</span>';
+    body.appendChild(catDiv);
+    var descDiv=document.createElement('div');descDiv.style.cssText='font-size:13px;color:var(--text-secondary);line-height:1.6;';descDiv.textContent=u.desc;body.appendChild(descDiv);
+    var stats=document.createElement('div');stats.style.cssText='background:rgba(255,255,255,.04);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:7px;font-size:12px;';
+    function mkSR(lbl,val,col){var r=document.createElement('div');r.style.cssText='display:flex;justify-content:space-between;align-items:center;';r.innerHTML='<span style="color:var(--text-muted);">'+lbl+'</span><span style="font-weight:700;color:'+(col||'var(--text-primary)')+';">'+val+'</span>';return r;}
+    stats.appendChild(mkSR('Currently Owned',cnt+(cnt===1?' copy':' copies')));
+    stats.appendChild(mkSR('Click Bonus','+'+u.click_val+' per click','#3b82f6'));
+    if(u.cps>0)stats.appendChild(mkSR('Auto Income','+'+u.cps+'/sec','#22c55e'));
+    stats.appendChild(mkSR('Buy Price',fmtIdleMoney(price),canAfford?'#22c55e':'#ef4444'));
+    if(cnt>0)stats.appendChild(mkSR('Next Level Price',fmtIdleMoney(nextPrice),'var(--text-muted)'));
+    body.appendChild(stats);
+    var afford=document.createElement('div');afford.style.cssText='text-align:center;font-size:12px;font-weight:600;padding:6px;border-radius:8px;background:'+(canAfford?'rgba(34,197,94,.1)':'rgba(239,68,68,.1)')+';color:'+(canAfford?'#22c55e':'#ef4444')+';';
+    afford.textContent=canAfford?'\u2714\uFE0F You can afford this! (Balance: '+fmtIdleMoney(S.idleMoney)+')':'\u274C Need '+fmtIdleMoney(price-S.idleMoney)+' more (have '+fmtIdleMoney(S.idleMoney)+')';
+    body.appendChild(afford);
+    var btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:8px;';
+    var buyBtn=document.createElement('button');buyBtn.className='btn-primary';buyBtn.style.cssText='flex:1;padding:10px;';
+    buyBtn.textContent=canAfford?('\\uD83D\\uDECD\uFE0F Buy for '+fmtIdleMoney(price)):'Can\u2019t Afford Yet';buyBtn.disabled=!canAfford;
+    buyBtn.addEventListener('click',function(){if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'idle_upgrade',upgrade_id:u.id}));ov.remove();});
+    var closeBtn=document.createElement('button');closeBtn.className='btn-ghost';closeBtn.style.cssText='padding:10px 16px;';
+    closeBtn.textContent='Close';closeBtn.addEventListener('click',function(){ov.remove();});
+    btnRow.appendChild(buyBtn);btnRow.appendChild(closeBtn);body.appendChild(btnRow);
+    m.appendChild(body);ov.appendChild(m);
+    ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+    document.body.appendChild(ov);
+  }
+
+  function renderIdle(filterType){
+    filterType=filterType||'all';
     var p=panels['idle'];p.innerHTML='';
     _idleDisplay=null;
+    // ── Stats bar ──
     var top=document.createElement('div');top.className='idle-top';
     var idleMoneyEl=document.createElement('div');idleMoneyEl.className='idle-money-val';idleMoneyEl.textContent=fmtIdleMoney(S.idleMoney);
-    var idleCpsEl=document.createElement('div');idleCpsEl.className='idle-cps-row';idleCpsEl.textContent=S.idleCps>0?'+'+S.idleCps.toLocaleString()+'/s (click the coin!)':'Click the coin to earn!';
+    var idleCpsEl=document.createElement('div');idleCpsEl.className='idle-cps-row';
+    idleCpsEl.textContent=S.idleCps>0?'+'+S.idleCps.toLocaleString()+'/s \u2014 click the coin!':'Click the coin to earn!';
     top.appendChild(idleMoneyEl);top.appendChild(idleCpsEl);p.appendChild(top);
     _idleDisplay={money:idleMoneyEl,cps:idleCpsEl};
+    // ── Coin ──
     var clickWrap=document.createElement('div');clickWrap.className='idle-click-wrap';
-    var coinBtn=document.createElement('button');coinBtn.className='idle-coin';coinBtn.textContent='🪙';
+    var coinBtn=document.createElement('button');coinBtn.className='idle-coin';coinBtn.textContent='\\uD83E\\uDE99';
     coinBtn.addEventListener('click',function(){
-      if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'idle_click'}));
+      coinBtn.style.transform='scale(1.3)';setTimeout(function(){coinBtn.style.transform='';},120);
+      if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'idle_click'}));
     });
     clickWrap.appendChild(coinBtn);p.appendChild(clickWrap);
+    // ── Collect ──
     var collectBtn=document.createElement('button');collectBtn.className='idle-collect-btn';
-    collectBtn.textContent=S.idleMoney>=1?('💰 Collect '+fmtIdleMoney(S.idleMoney)+' to Balance'):'No earnings to collect yet';
+    collectBtn.textContent=S.idleMoney>=1?('\\uD83D\\uDCB0 Collect '+fmtIdleMoney(S.idleMoney)+' \u2192 Balance'):'No earnings to collect yet';
     collectBtn.disabled=S.idleMoney<1;
     collectBtn.addEventListener('click',function(){
       if(S.idleMoney<1){showToast('Nothing to collect yet','error');return;}
-      if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'idle_collect',amount:S.idleMoney}));
+      if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'idle_collect',amount:S.idleMoney}));
     });
     p.appendChild(collectBtn);
-    var upgTitle=document.createElement('div');upgTitle.className='sec-title';upgTitle.textContent='Upgrades';p.appendChild(upgTitle);
-    var upgList=document.createElement('div');upgList.className='idle-upg-list';
-    (S.idleUpgDef||[]).forEach(function(u){
-      var cnt=S.idleUpgrades[u.id]||0;
-      var price=Math.round(u.base_price*Math.pow(1.15,cnt));
-      var canAfford=S.idleMoney>=price;
-      var card=document.createElement('div');card.className='idle-upg';
-      card.innerHTML='<div class="idle-upg-ico">'+escapeHtml(u.emoji)+'</div>'+
-        '<div class="idle-upg-body"><div class="idle-upg-name">'+escapeHtml(u.name)+'</div>'+
-        '<div class="idle-upg-desc">'+escapeHtml(u.desc)+'</div>'+
-        (cnt>0?'<div class="idle-upg-cnt">Owned: '+cnt+'</div>':'')+'</div>';
-      var buyBtn=document.createElement('button');buyBtn.className='idle-upg-buy'+(canAfford?'':' cant-afford');
-      buyBtn.textContent=fmtIdleMoney(price);buyBtn.disabled=!canAfford;
-      buyBtn.addEventListener('click',(function(uid){return function(){
-        if(ws&&ws.readyState===1) ws.send(JSON.stringify({type:'idle_upgrade',upgrade_id:uid}));
-      };})(u.id));
-      card.appendChild(buyBtn);upgList.appendChild(card);
+    // ── Upgrades header + filters ──
+    var upgHdr=document.createElement('div');upgHdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin:12px 0 6px;flex-wrap:wrap;gap:6px;';
+    var upgTitle=document.createElement('div');upgTitle.className='sec-title';upgTitle.style.margin='0';upgTitle.textContent='Upgrades';
+    var filterRow=document.createElement('div');filterRow.style.cssText='display:flex;gap:4px;';
+    [['all','All'],['click','\\uD83D\\uDD8B\uFE0F Click'],['auto','\\uD83E\\uDD16 Auto'],['passive','\u2728 Passive']].forEach(function(fd){
+      var fb=document.createElement('button');
+      var active=fd[0]===filterType;
+      fb.style.cssText='padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;border:1px solid '+(active?'var(--accent)':'var(--border)')+';background:'+(active?'var(--accent)':'rgba(255,255,255,.04)')+';color:'+(active?'#fff':'var(--text-muted)')+';cursor:pointer;transition:all .15s;';
+      fb.textContent=fd[1];fb.addEventListener('click',function(){renderIdle(fd[0]);});filterRow.appendChild(fb);
     });
+    upgHdr.appendChild(upgTitle);upgHdr.appendChild(filterRow);p.appendChild(upgHdr);
+    // ── Upgrade cards ──
+    var upgList=document.createElement('div');upgList.className='idle-upg-list';
+    var defs=S.idleUpgDef||[];
+    var visible=filterType==='all'?defs:defs.filter(function(u){return u.type===filterType;});
+    if(!visible.length){
+      var emp=document.createElement('div');emp.style.cssText='text-align:center;color:var(--text-muted);font-size:13px;padding:24px;';
+      emp.textContent='No upgrades in this category yet.';upgList.appendChild(emp);
+    }else{
+      visible.forEach(function(u){
+        var cnt=S.idleUpgrades[u.id]||0;
+        var price=Math.round(u.base_price*Math.pow(1.15,cnt));
+        var canAfford=S.idleMoney>=price;
+        var card=document.createElement('div');card.className='idle-upg';card.style.cursor='pointer';
+        card.innerHTML='<div class="idle-upg-ico">'+escapeHtml(u.emoji)+'</div>'+
+          '<div class="idle-upg-body"><div class="idle-upg-name">'+escapeHtml(u.name)+
+          (cnt>0?'<span style="margin-left:6px;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:rgba(79,156,249,.2);color:#4f9cf9;">\xd7'+cnt+'</span>':'')+'</div>'+
+          '<div class="idle-upg-desc">'+escapeHtml(u.desc)+'</div>'+
+          (u.cps>0?'<div style="font-size:10px;color:#22c55e;margin-top:2px;">+'+u.cps+'/sec auto</div>':'')+'</div>';
+        var buyBtn=document.createElement('button');buyBtn.className='idle-upg-buy'+(canAfford?'':' cant-afford');
+        buyBtn.textContent=fmtIdleMoney(price);buyBtn.disabled=!canAfford;
+        buyBtn.addEventListener('click',(function(uid,uobj){return function(e){
+          e.stopPropagation();
+          if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'idle_upgrade',upgrade_id:uid}));
+        };})(u.id,u));
+        card.addEventListener('click',(function(uobj,c){return function(){showIdleUpgPreview(uobj,c);};})(u,cnt));
+        card.appendChild(buyBtn);upgList.appendChild(card);
+      });
+    }
     p.appendChild(upgList);
-    // Start CPS ticker (client-side accumulation for display; server is source of truth for upgrades)
-    if(_idleTimer) clearInterval(_idleTimer);
+    // ── CPS ticker ──
+    if(_idleTimer)clearInterval(_idleTimer);
     _idleTimer=setInterval(function(){
-      if(S.innerTab!=='idle') return;
+      if(S.innerTab!=='idle')return;
       if(S.idleCps>0){
         S.idleMoney+=S.idleCps/10;
         if(_idleDisplay&&_idleDisplay.money){
           _idleDisplay.money.textContent=fmtIdleMoney(S.idleMoney);
           _idleDisplay.cps.textContent='+'+S.idleCps.toLocaleString()+'/s \u2014 '+fmtIdleMoney(S.idleMoney);
         }
+        var cb=p.querySelector('.idle-collect-btn');
+        if(cb){cb.textContent='\\uD83D\\uDCB0 Collect '+fmtIdleMoney(S.idleMoney)+' \u2192 Balance';cb.disabled=S.idleMoney<1;}
       }
     },100);
   }
@@ -7472,7 +7816,7 @@ function convertTabToBalance(tabId) {
         var aEl=panels['gamble'].querySelector('.gam-arena');
         if(aEl&&aEl._onResult) aEl._onResult(d);
         else renderGamble();
-        showToast(d.won>0?'You won '+fmtBal(d.won)+'!':'d.won'===0?'Push!':'You lost '+fmtBal(-d.won),d.won>0?'success':'error');
+        showToast(d.won>0?'You won '+fmtBal(d.won)+'!':(d.won===0?'Push!':'You lost '+fmtBal(-d.won)),d.won>0?'success':'error');
       } else showToast(d.error||'Gamble error','error');
     } else if(d.type==='idle_result'){
       if(d.ok){
@@ -9062,6 +9406,114 @@ async def handle_client_ws(request):
                         elif next_num == drawn: won = 0
                         else: won = -bet
                         result_data = {"drawn": drawn, "next": next_num}
+                    elif game == "blackjack":
+                        def _bj_card(): return min(10, random.randint(1,13))
+                        p = [_bj_card(), _bj_card()]
+                        d2 = [_bj_card(), _bj_card()]
+                        ps = sum(p); ds = sum(d2)
+                        while ds < 17: c=_bj_card(); d2.append(c); ds+=c
+                        if ps > 21: won = -bet
+                        elif ds > 21: won = bet
+                        elif ps > ds: won = bet
+                        elif ps < ds: won = -bet
+                        else: won = 0
+                        result_data = {"player": p, "dealer": d2, "psum": ps, "dsum": ds}
+                    elif game == "rps":
+                        moves = ["rock","paper","scissors"]
+                        pc = random.choice(moves)
+                        wins_against = {"rock":"scissors","paper":"rock","scissors":"paper"}
+                        if wins_against.get(choice) == pc: won = bet
+                        elif choice == pc: won = 0
+                        else: won = -bet
+                        result_data = {"player": choice, "computer": pc}
+                    elif game == "numguess":
+                        server_num = random.randint(1, 10)
+                        player_num = int(data.get("number", 5))
+                        won = bet * 8 if server_num == player_num else -bet
+                        result_data = {"server": server_num, "player": player_num}
+                    elif game == "wheel":
+                        segments = [("2x", 2), ("3x", 3), ("0x", 0), ("1.5x", 1.5), ("0x", 0), ("5x", 5), ("0x", 0), ("2x", 2)]
+                        seg = random.choice(segments)
+                        mult = seg[1]
+                        won = int(bet * mult) - bet
+                        result_data = {"segment": seg[0], "multiplier": mult}
+                    elif game == "crash":
+                        crash_at = round(max(1.0, random.expovariate(0.4)), 2)
+                        cash_out = float(data.get("cashout", 1.5))
+                        won = int(bet * cash_out) - bet if cash_out <= crash_at else -bet
+                        result_data = {"crash_at": crash_at, "cash_out": cash_out}
+                    elif game == "lucky_cards":
+                        pick = int(data.get("card", 0))
+                        winner = random.randint(0, 4)
+                        won = bet * 4 if pick == winner else -bet
+                        result_data = {"winner": winner, "picked": pick}
+                    elif game == "keno":
+                        picks = data.get("picks", [])[:5]
+                        draws = random.sample(range(1,21), 7)
+                        hits  = sum(1 for p in picks if p in draws)
+                        mult  = [0, 0.5, 1.5, 3, 7, 15][min(hits, 5)]
+                        won   = int(bet * mult) - bet
+                        result_data = {"picks": picks, "draws": draws, "hits": hits}
+                    elif game == "poker_dice":
+                        dice5 = [random.randint(1,6) for _ in range(5)]
+                        counts = {}
+                        for d in dice5: counts[d] = counts.get(d,0)+1
+                        vals = sorted(counts.values(), reverse=True)
+                        if vals[0]==5: hand="Five of a Kind"; mult=10
+                        elif vals[0]==4: hand="Four of a Kind"; mult=5
+                        elif vals[0]==3 and vals[1]==2: hand="Full House"; mult=3
+                        elif vals[0]==3: hand="Three of a Kind"; mult=2
+                        elif vals[0]==2 and vals[1]==2: hand="Two Pair"; mult=1.5
+                        elif vals[0]==2: hand="Pair"; mult=0.5
+                        else: hand="Nothing"; mult=0
+                        won = int(bet * mult) - bet if mult > 0 else -bet
+                        result_data = {"dice": dice5, "hand": hand, "mult": mult}
+                    elif game == "three_card":
+                        positions = [0, 1, 2]; random.shuffle(positions)
+                        queen_pos = positions[0]
+                        pick = int(data.get("pick", 0))
+                        won = bet * 2 if pick == queen_pos else -bet
+                        result_data = {"queen": queen_pos, "picked": pick}
+                    elif game == "dragon_tiger":
+                        dragon = random.randint(1,13); tiger = random.randint(1,13)
+                        if choice=="dragon": won = bet if dragon>tiger else (-bet if dragon<tiger else 0)
+                        elif choice=="tiger": won = bet if tiger>dragon else (-bet if tiger<dragon else 0)
+                        else: won = 0
+                        result_data = {"dragon": dragon, "tiger": tiger}
+                    elif game == "even_odd":
+                        roll = random.randint(1,6)
+                        is_even = (roll % 2 == 0)
+                        won = bet if (choice=="even")==is_even else -bet
+                        result_data = {"roll": roll, "is_even": is_even}
+                    elif game == "baccarat":
+                        def _bac_val(c): return min(9, c % 10)
+                        pc1=random.randint(1,13); pc2=random.randint(1,13)
+                        bc1=random.randint(1,13); bc2=random.randint(1,13)
+                        ps2 = (_bac_val(pc1)+_bac_val(pc2)) % 10
+                        bs2 = (_bac_val(bc1)+_bac_val(bc2)) % 10
+                        if choice=="player": won = bet if ps2>bs2 else (-bet if ps2<bs2 else 0)
+                        elif choice=="banker": won = bet if bs2>ps2 else (-bet if bs2<ps2 else 0)
+                        else: won = 0
+                        result_data = {"player_hand":[pc1,pc2],"banker_hand":[bc1,bc2],"player_score":ps2,"banker_score":bs2}
+                    elif game == "color_pick":
+                        colors=["red","blue","green","yellow"]
+                        server_color=random.choice(colors)
+                        won = bet * 3 if choice==server_color else -bet
+                        result_data = {"server_color": server_color, "picked": choice}
+                    elif game == "double_nothing":
+                        won = bet if random.random() < 0.48 else -bet
+                        result_data = {"win": won > 0}
+                    elif game == "plinko":
+                        import math
+                        rows=8; pos=4
+                        path=[]
+                        for _ in range(rows):
+                            d=random.choice([-1,1]); pos+=d; path.append(d)
+                        payouts=[0,0.5,1,2,5,2,1,0.5,0]
+                        idx=max(0,min(8,pos))
+                        mult=payouts[idx]
+                        won=int(bet*mult)-bet if mult>0 else -bet
+                        result_data={"path":path,"slot":idx,"mult":mult}
                     else:
                         await ws.send_str(json.dumps({"type":"gamble_result","ok":False,"error":"Unknown game"})); continue
                     new_bal = max(0, bal + won)
@@ -9127,6 +9579,18 @@ async def handle_client_ws(request):
         left = info["username"]
         left_display = info.get("display_name", left)
         print(f"[-] {left} left  ({len(connected)} online)")
+        # Save economy on disconnect for registered users
+        if not info.get("is_guest", True) and db_pool and "balance" in info:
+            try:
+                await db_save_economy(left, {
+                    "balance":       info["balance"],
+                    "inventory":     info.get("inventory", []),
+                    "equipped":      info.get("equipped", {}),
+                    "idle_money":    info.get("idle_money", 0.0),
+                    "idle_upgrades": info.get("idle_upgrades", {}),
+                })
+            except Exception as _e:
+                print(f"[!] Economy save on disconnect failed: {_e}")
 
         await bj_handle_disconnect(left)
         await garlic_handle_disconnect(left)
