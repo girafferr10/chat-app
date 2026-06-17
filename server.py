@@ -105,7 +105,7 @@ _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 db_pool = None
-CURRENT_VERSION = "2.7"
+CURRENT_VERSION = "2.8"
 CHANGELOG_NOTES = (
     "<b>What's new in v2.8</b><br><br>"
     "&#x2022; <b>Balance System</b> — Every player starts with $1,000; registered users keep it forever across sessions<br>"
@@ -1891,7 +1891,7 @@ body.theme-rose {
     <button id="sidebarToggleBtn" title="Toggle Sidebar" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:4px 8px;border-radius:4px;line-height:1;">&#x2630;</button>
     <div class="header-right">
       <div class="status" id="chatStatus"><div class="dot" id="chatStatusDot"></div><span id="chatStatusText">Connected</span></div>
-      <button class="theme-btn" id="updatesBtn" data-testid="button-updates" title="What's New" style="font-size:13px;padding:4px 9px;font-weight:600;">&#x1F195;</button>
+      <button class="theme-btn" id="updatesBtn" data-testid="button-updates" title="What's New" style="font-size:13px;padding:4px 9px;font-weight:600;position:relative;">&#x1F195;<span id="changelogBadge" style="display:none;position:absolute;top:-4px;right:-4px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid var(--bg-secondary);"></span></button>
       <button class="theme-btn" id="helpBtn" title="Keyboard Shortcuts (?)" style="font-size:13px;padding:4px 8px;font-weight:600;">?</button>
       <button class="theme-btn" id="searchBtn" title="Search Messages (Ctrl+F)" style="font-size:14px;padding:4px 8px;">&#x1F50D;</button>
       <button class="theme-btn" id="profileBtn" data-testid="button-profile" title="Your Profile" style="padding:2px;width:30px;height:30px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">&#x1F464;</button>
@@ -3644,7 +3644,11 @@ function renderUsers(list) {
     nameEl.className = 'user-name';
     var role = typeof user === 'string' ? '' : (user.role || '');
     var roleBadge = role === 'owner' ? ' 👑' : (role === 'admin' ? ' 🛡️' : '');
-    nameEl.textContent = displayName + roleBadge + (name === myUsername ? ' (you)' : '');
+    if(name === myUsername){
+      nameEl.innerHTML = escapeHtml(displayName + roleBadge) + ' <span style="font-size:10px;font-weight:700;color:var(--accent);opacity:0.85;vertical-align:middle;">(you)</span>';
+    } else {
+      nameEl.textContent = displayName + roleBadge;
+    }
     div.appendChild(nameEl);
     if (name !== myUsername) {
       div.style.cursor = 'pointer';
@@ -3815,7 +3819,7 @@ function handleMessage(data) {
     if (!myIsGuest && mySessionToken) {
       fetch('/api/changelog-seen', {headers:{'X-Session-Token':mySessionToken}})
         .then(function(r){return r.json();})
-        .then(function(d){ if (d.show) showChangelog(); })
+        .then(function(d){ if (d.show) { showChangelog(); var _cb=document.getElementById('changelogBadge');if(_cb)_cb.style.display='block'; } })
         .catch(function(){});
     }
   } else if (data.type === 'garlic_state' || data.type === 'garlic_error' || data.type === 'garlic_draw' || data.type === 'garlic_guess' || data.type === 'garlic_reveal' || data.type === 'garlic_lobby') {
@@ -3996,7 +4000,7 @@ function handleMessage(data) {
         window._GECO.idleUpgrades = data.idle_upgrades || {};
         window._GECO.initialized = true; window._GECO.recalc();
         var _hbc = document.getElementById('headerBalChip');
-        if (_hbc) _hbc.style.display = 'inline-flex';
+        if (_hbc) { _hbc.style.display = 'inline-flex'; _hbc.textContent = '💰 $'+Math.floor(data.balance||0).toLocaleString(); }
       } else if (data.new_balance !== undefined) {
         window._GECO.bal = data.new_balance;
       } else if (data.balance !== undefined && data.type !== 'savings_result') {
@@ -4179,12 +4183,34 @@ window._GECO = {
   }
 };
 (function(){
+  // Restore idle money from localStorage if server just restarted
+  var _lsKey='_geco_idle_'+((typeof myUsername!=='undefined'&&myUsername)||'u');
+  var _lsData=null;
+  try{_lsData=JSON.parse(localStorage.getItem(_lsKey)||'null');}catch(e){}
+  var _lsSaveTimer=0;
   setInterval(function(){
     if(!window._GECO.initialized) return;
+    // Restore from localStorage on first tick if server gave us 0
+    if(_lsData&&_lsData.bal>0&&window._GECO.bal===0){
+      window._GECO.bal=_lsData.bal;
+    }
+    if(_lsData&&_lsData.idleMoney>window._GECO.idleMoney&&window._GECO.idleMoney<1){
+      window._GECO.idleMoney=_lsData.idleMoney;
+    }
+    _lsData=null;
     if(window._GECO.idleCps>0) window._GECO.idleMoney+=window._GECO.idleCps/10;
     var chip=document.getElementById('headerBalChip');
     if(chip&&chip.style.display!=='none')
-      chip.textContent='💰 $'+Math.floor(window._GECO.bal).toLocaleString();
+      chip.textContent='\U0001F4B0 $'+Math.floor(window._GECO.bal).toLocaleString();
+    // Save to localStorage every 5s
+    _lsSaveTimer++;
+    if(_lsSaveTimer>=50){
+      _lsSaveTimer=0;
+      try{
+        var k='_geco_idle_'+((typeof myUsername!=='undefined'&&myUsername)||'u');
+        localStorage.setItem(k,JSON.stringify({bal:window._GECO.bal,idleMoney:window._GECO.idleMoney,ts:Date.now()}));
+      }catch(e){}
+    }
   },100);
 })();
 document.getElementById('headerBalChip').addEventListener('click', function() {
@@ -4417,9 +4443,11 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
 
 function showChangelog() {
   document.getElementById('changelogModal').style.display = 'flex';
+  var _cb=document.getElementById('changelogBadge');if(_cb)_cb.style.display='none';
 }
 document.getElementById('updatesBtn').addEventListener('click', function() {
   document.getElementById('changelogModal').style.display = 'flex';
+  var _cb=document.getElementById('changelogBadge');if(_cb)_cb.style.display='none';
 });
 document.getElementById('helpBtn').addEventListener('click', function() {
   openShortcutsModal();
@@ -7209,12 +7237,20 @@ function convertTabToBalance(tabId) {
 
   // Nav
   var nav=document.createElement('div');nav.className='bal-nav';
-  var _navTabs=[['dashboard','📈 Overview'],['shop','🛍️ Shop'],['inventory','🎒 Inventory'],['savings','🏦 Savings'],['gamble','🎰 Gamble'],['idle','\u26A1 Idle'],['market','📊 Market'],['story','📖 Story']];
+  var _navTabs=[['dashboard','📈 Overview'],['shop','🛍️ Shop'],['inventory','🎒 Inventory'],['savings','🏦 Savings'],['gamble','🎰 Gamble'],['idle','\u26A1 Idle'],['market','📊 Market'],['story','📖 Story',true],['game','🎮 Game',true]];
   var navBtns={};
   _navTabs.forEach(function(t){
     var b=document.createElement('button');b.className='bal-nav-btn'+(t[0]==='dashboard'?' active':'');
-    b.dataset.tab=t[0];b.textContent=t[1];
-    b.addEventListener('click',function(){switchInner(t[0]);});
+    b.dataset.tab=t[0];
+    if(t[2]){
+      b.innerHTML=t[1]+' <span style="font-size:9px;opacity:0.7;">🔒</span>';
+      b.style.opacity='0.6';
+      b.title='Coming soon!';
+      b.addEventListener('click',function(){showToast(t[1]+' \u2014 Coming Soon! \U0001F512','info');});
+    } else {
+      b.textContent=t[1];
+      b.addEventListener('click',function(){switchInner(t[0]);});
+    }
     nav.appendChild(b);navBtns[t[0]]=b;
   });
   wrap.appendChild(nav);
@@ -7223,7 +7259,7 @@ function convertTabToBalance(tabId) {
   var content=document.createElement('div');content.className='bal-content';
   wrap.appendChild(content);
   var panels={};
-  ['dashboard','shop','inventory','savings','gamble','idle','market','story'].forEach(function(t){
+  ['dashboard','shop','inventory','savings','gamble','idle','market','story','game'].forEach(function(t){
     var p=document.createElement('div');p.className='bal-panel'+(t==='dashboard'?' active':'');p.id='bpan-'+tabId+'-'+t;
     content.appendChild(p);panels[t]=p;
   });
@@ -7263,6 +7299,7 @@ function convertTabToBalance(tabId) {
     else if(tab==='idle') renderIdle();
     else if(tab==='market') renderMarket();
     else if(tab==='story') renderStory();
+    else if(tab==='game') renderGame();
   }
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -7307,14 +7344,16 @@ function convertTabToBalance(tabId) {
     {id:'bubble',name:'Chat Bubbles',emoji:'💬'},{id:'message',name:'Msg Effects',emoji:'⚡'}
   ];
   var FONT_STYLES={
-    'font_bold':   'font-weight:900',
-    'font_italic': 'font-style:italic',
-    'font_mono':   'font-family:monospace',
-    'font_cursive':'font-family:cursive',
-    'font_pixel':  'font-family:"Courier New",monospace;letter-spacing:2px',
-    'font_comic':  'font-family:"Comic Sans MS",cursive',
-    'font_wide':   'letter-spacing:4px',
-    'font_tiny':   'font-variant:small-caps',
+    'font_bold':        'font-weight:900',
+    'font_italic':      'font-style:italic',
+    'font_mono':        'font-family:monospace',
+    'font_cursive':     'font-family:cursive',
+    'font_pixel':       'font-family:"Courier New",monospace;letter-spacing:2px',
+    'font_comic':       'font-family:"Comic Sans MS",cursive',
+    'font_wide':        'letter-spacing:4px',
+    'font_tiny':        'font-variant:small-caps',
+    'font_handwriting': 'font-family:cursive;font-style:italic;font-size:15px',
+    'font_typewriter':  'font-family:"Courier New","Lucida Console",monospace;letter-spacing:1px',
   };
   function openShopPopup(item){
     var existing=document.querySelector('.shop-popup-overlay');if(existing)existing.remove();
@@ -7331,11 +7370,58 @@ function convertTabToBalance(tabId) {
     var nameEl=document.createElement('div');nameEl.className='sp-name';nameEl.textContent=item.name;popup.appendChild(nameEl);
     var rarEl=document.createElement('div');rarEl.className='sp-rarity';rarEl.style.color=rc;rarEl.textContent=item.rarity.toUpperCase();popup.appendChild(rarEl);
     var descEl=document.createElement('div');descEl.className='sp-desc';descEl.textContent=item.desc;popup.appendChild(descEl);
+    // ── Preview box (font / nameplate / effect / ring) ───────────────────────
     if(item.cat==='font'&&FONT_STYLES[item.id]){
-      var prevEl=document.createElement('div');prevEl.className='sp-font-preview';
-      prevEl.textContent='Hey, this is what your messages look like!';
-      prevEl.style.cssText='background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:var(--text-primary);text-align:center;'+FONT_STYLES[item.id];
-      popup.appendChild(prevEl);
+      var prevWrap=document.createElement('div');
+      prevWrap.style.cssText='background:var(--bg-tertiary);border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1px solid rgba(255,255,255,.07)';
+      var prevLbl=document.createElement('div');prevLbl.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:700;margin-bottom:6px;';prevLbl.textContent='Preview';
+      var prevMsg=document.createElement('div');
+      prevMsg.style.cssText='display:flex;align-items:flex-start;gap:8px;';
+      var prevAvatar=document.createElement('div');prevAvatar.style.cssText='width:32px;height:32px;border-radius:50%;background:var(--accent);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;';
+      prevAvatar.textContent=(myDisplayName||myUsername||'You')[0].toUpperCase();
+      var prevText=document.createElement('div');prevText.style.cssText='flex:1;';
+      var prevName=document.createElement('div');prevName.style.cssText='font-size:11px;font-weight:700;color:var(--accent);margin-bottom:2px;';prevName.textContent=myDisplayName||myUsername||'You';
+      var prevContent=document.createElement('div');prevContent.style.cssText='font-size:13px;color:var(--text-primary);'+FONT_STYLES[item.id];
+      prevContent.textContent='This is how your chat messages will look!';
+      prevText.appendChild(prevName);prevText.appendChild(prevContent);
+      prevMsg.appendChild(prevAvatar);prevMsg.appendChild(prevText);
+      prevWrap.appendChild(prevLbl);prevWrap.appendChild(prevMsg);
+      popup.appendChild(prevWrap);
+    } else if(item.cat==='nameplate'){
+      var prevWrap=document.createElement('div');
+      prevWrap.style.cssText='background:var(--bg-tertiary);border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1px solid rgba(255,255,255,.07);text-align:center;';
+      var prevLbl=document.createElement('div');prevLbl.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:700;margin-bottom:8px;';prevLbl.textContent='Preview';
+      var nameDemo=document.createElement('span');nameDemo.style.cssText='font-size:16px;font-weight:800;padding:3px 10px;border-radius:8px;';
+      nameDemo.textContent=myDisplayName||myUsername||'You';
+      var npStyles={'np_bronze':'background:rgba(205,127,50,.2);color:#cd7f32;border:1px solid rgba(205,127,50,.4)',
+        'np_silver':'background:rgba(192,192,192,.15);color:#c0c0c0;border:1px solid rgba(192,192,192,.3)',
+        'np_gold':'background:rgba(255,215,0,.18);color:#FFD700;border:1px solid rgba(255,215,0,.4)',
+        'np_diamond':'background:rgba(185,242,255,.15);color:#b9f2ff;border:1px solid rgba(185,242,255,.3)',
+        'np_rainbow':'background:linear-gradient(90deg,#f00,#f90,#ff0,#0f0,#00f,#90f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;border:none',
+        'np_neon':'color:#0ff;text-shadow:0 0 6px #0ff,0 0 12px #0ff;border:1px solid rgba(0,255,255,.3)',
+        'np_fire':'background:linear-gradient(90deg,#f97316,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;border:none',
+        'np_glass':'background:rgba(255,255,255,.08);color:var(--text-primary);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(4px)',
+        'np_cyber':'color:#0f0;text-shadow:0 0 4px #0f0;font-family:"Courier New",monospace;border:1px solid rgba(0,255,0,.3)',
+      };
+      nameDemo.style.cssText+=(npStyles[item.id]||'border:1px solid var(--border)');
+      prevWrap.appendChild(prevLbl);prevWrap.appendChild(nameDemo);
+      popup.appendChild(prevWrap);
+    } else if(item.cat==='ring'){
+      var prevWrap=document.createElement('div');
+      prevWrap.style.cssText='background:var(--bg-tertiary);border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid rgba(255,255,255,.07);text-align:center;';
+      var prevLbl=document.createElement('div');prevLbl.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:700;margin-bottom:8px;';prevLbl.textContent='Preview';
+      var ringDemo=document.createElement('div');ringDemo.style.cssText='width:52px;height:52px;border-radius:50%;background:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;';
+      ringDemo.textContent=(myDisplayName||myUsername||'U')[0].toUpperCase();
+      var ringStyles={'ring_gold':'box-shadow:0 0 0 3px #FFD700,0 0 12px rgba(255,215,0,.6)',
+        'ring_neon':'box-shadow:0 0 0 2px #0ff,0 0 10px #0ff',
+        'ring_fire':'box-shadow:0 0 0 2px #f97316,0 0 14px rgba(249,115,22,.7)',
+        'ring_rainbow':'outline:3px solid transparent;box-shadow:0 0 0 3px #f00,0 0 0 6px #ff0',
+        'ring_crown':'box-shadow:0 0 0 3px #FFD700',
+        'ring_star':'box-shadow:0 0 0 2px #ffe066,0 0 10px rgba(255,224,102,.7)',
+      };
+      ringDemo.style.cssText+=(ringStyles[item.id]||'box-shadow:0 0 0 3px var(--accent)');
+      prevWrap.appendChild(prevLbl);prevWrap.appendChild(ringDemo);
+      popup.appendChild(prevWrap);
     }
     var priceRow=document.createElement('div');priceRow.className='sp-price-row';
     var pLbl=document.createElement('div');pLbl.className='sp-price-lbl';pLbl.textContent=owned?'You own this':'Price';
@@ -8072,7 +8158,9 @@ function convertTabToBalance(tabId) {
         '<div class="idle-event-sub">'+ev.sub+'</div>'+
         '<div class="idle-event-cta">CLICK for +'+fmtIdleMoney(bonus)+'!</div>';
       var rm=setTimeout(function(){if(banner.isConnected)banner.remove();},8000);
+      var _evClicked=false;
       banner.addEventListener('click',function(){
+        if(_evClicked)return;_evClicked=true;
         clearTimeout(rm);banner.remove();
         S.idleMoney+=bonus;
         if(_idleDisplay&&_idleDisplay.money)_idleDisplay.money.textContent=fmtIdleMoney(S.idleMoney);
@@ -8245,6 +8333,20 @@ function convertTabToBalance(tabId) {
       }
       p.appendChild(card);
     });
+  }
+
+  function renderGame(){
+    var p=panels['game'];p.innerHTML='';
+    var box=document.createElement('div');
+    box.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:200px;gap:14px;padding:32px;text-align:center;';
+    var ico=document.createElement('div');ico.style.cssText='font-size:56px;';ico.textContent='\U0001F3AE';
+    var h=document.createElement('div');h.style.cssText='font-size:20px;font-weight:900;color:var(--text-primary);';h.textContent='Game Center';
+    var sub=document.createElement('div');sub.style.cssText='font-size:13px;color:var(--text-muted);max-width:260px;line-height:1.5;';
+    sub.textContent='New multiplayer & single-player experiences coming soon. Stay tuned!';
+    var lock=document.createElement('div');lock.style.cssText='font-size:13px;font-weight:700;color:var(--accent);background:rgba(var(--accent-rgb,79,156,249),.12);padding:7px 18px;border-radius:20px;border:1px solid rgba(var(--accent-rgb,79,156,249),.2);';
+    lock.textContent='\U0001F512 Coming Soon';
+    box.appendChild(ico);box.appendChild(h);box.appendChild(sub);box.appendChild(lock);
+    p.appendChild(box);
   }
 
   var _IDLE_EVENTS=[
