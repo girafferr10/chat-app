@@ -6,6 +6,7 @@ import secrets
 import re
 import random
 import string
+import traceback
 import uuid
 import aiohttp
 from aiohttp import web
@@ -105,9 +106,15 @@ _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 db_pool = None
-CURRENT_VERSION = "2.8"
+CURRENT_VERSION = "2.9"
 CHANGELOG_NOTES = (
-    "<b>What's new in v2.8</b><br><br>"
+    "<b>What's new in v2.9</b><br><br>"
+    "&#x2022; <b>Balance Cash-Out Fixed</b> \u2014 Collecting idle coins now adds the exact server amount with no corruption or stale jumps<br>"
+    "&#x2022; <b>Everything Persists</b> \u2014 Your balance, idle upgrades and equipped cosmetics now save server-side for every player and survive restarts<br>"
+    "&#x2022; <b>Cosmetics Actually Apply</b> \u2014 Equipping a nameplate, avatar ring or font now instantly changes how you look in chat and the user list<br>"
+    "&#x2022; <b>See Yourself Reliably</b> \u2014 You always appear in the online users list with a (you) label, no matter your role<br>"
+    "&#x2022; <b>Games Tab Stacking Fixed</b> \u2014 The Games hub no longer renders on top of other tabs; switching tabs cleanly stops the running game<br>"
+    "<br><b>Previously in v2.8</b><br>"
     "&#x2022; <b>Balance System</b> — Every player starts with $1,000; registered users keep it forever across sessions<br>"
     "&#x2022; <b>Shop Popup</b> — Click any shop item for a full detail popup with preview, rarity badge, and affordability info<br>"
     "&#x2022; <b>Shop Rarity Filter</b> — Filter items by All / Common / Uncommon / Rare / Epic / Legendary / Mythic<br>"
@@ -282,6 +289,25 @@ def _calc_idle_stats(upgrades):
     return click_val, cps
 
 
+def accrue_idle(ws):
+    """Server-authoritative idle accrual: add cps * elapsed since last update.
+    Offline/away time is capped at 12h so reconnects can't mint huge sums."""
+    info = connected.get(ws)
+    if not info:
+        return
+    now = _time.time()
+    last = info.get("idle_last_update", now)
+    elapsed = now - last
+    if elapsed < 0:
+        elapsed = 0
+    if elapsed > 43200:  # cap at 12 hours
+        elapsed = 43200
+    _, cps = _calc_idle_stats(info.get("idle_upgrades", {}))
+    if cps > 0 and elapsed > 0:
+        info["idle_money"] = float(info.get("idle_money", 0) or 0) + cps * elapsed
+    info["idle_last_update"] = now
+
+
 async def init_db():
     global db_pool
     if not HAS_ASYNCPG:
@@ -413,6 +439,24 @@ async def db_login(username, password):
         }
 
 
+async def db_username_registered(username):
+    """True if this username belongs to a real registered account.
+
+    Used to stop unauthenticated guests from hijacking a registered
+    account's persisted economy by simply typing that account's name."""
+    if not db_pool:
+        return False
+    try:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT 1 FROM users WHERE username=$1", username)
+            return row is not None
+    except Exception as e:
+        # Fail closed: this is an authz guard. If we cannot verify, assume the
+        # name may belong to a registered account so guests can't slip in.
+        print(f"[!] db_username_registered lookup failed, failing closed: {e}")
+        return True
+
+
 async def db_validate_session(token):
     if not db_pool or not token:
         return None
@@ -478,6 +522,20 @@ async def db_mark_changelog_seen(token, check_only=False):
         return not already_seen
 
 # ─── Economy DB helpers ──────────────────────────────────────────────────────
+def _json_field(value, default):
+    """asyncpg returns JSONB columns as raw JSON strings (no codec is
+    registered on the pool). Decode robustly whether the driver hands us a
+    string, an already-decoded object, or NULL."""
+    if value is None:
+        return default
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except (ValueError, TypeError):
+            return default
+    return value
+
+
 async def db_get_economy(username):
     if not db_pool:
         return {"balance":1000,"inventory":[],"equipped":{},"idle_money":0,"idle_upgrades":{},"idle_last_collect":None}
@@ -488,10 +546,10 @@ async def db_get_economy(username):
             return {"balance":1000,"inventory":[],"equipped":{},"idle_money":0,"idle_upgrades":{},"idle_last_collect":None}
         return {
             "balance": row["balance"],
-            "inventory": list(row["inventory"] or []),
-            "equipped": dict(row["equipped"] or {}),
+            "inventory": list(_json_field(row["inventory"], [])),
+            "equipped": dict(_json_field(row["equipped"], {})),
             "idle_money": float(row["idle_money"] or 0),
-            "idle_upgrades": dict(row["idle_upgrades"] or {}),
+            "idle_upgrades": dict(_json_field(row["idle_upgrades"], {})),
             "idle_last_collect": row["idle_last_collect"],
         }
 
@@ -1111,6 +1169,7 @@ header h1 { font-size: 16px; font-weight: 600; }
   display: flex; align-items: center; background: var(--bg-tertiary);
   border-bottom: 1px solid var(--border); height: 36px; flex-shrink: 0;
   overflow-x: auto; overflow-y: hidden;
+  position: relative; z-index: 20;
 }
 .tab-bar::-webkit-scrollbar { height: 0; }
 .tab-items { display: flex; flex: 1; min-width: 0; overflow-x: auto; }
@@ -1140,8 +1199,8 @@ header h1 { font-size: 16px; font-weight: 600; }
   cursor: pointer; flex-shrink: 0;
 }
 .new-tab-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
-#tabContents { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.tab-content { flex: 1; display: none; flex-direction: column; min-height: 0; overflow: hidden; }
+#tabContents { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; position: relative; z-index: 1; }
+.tab-content { flex: 1; display: none; flex-direction: column; min-height: 0; overflow: hidden; position: relative; z-index: 0; }
 .tab-content.active { display: flex; }
 
 .newtab-page {
@@ -1364,6 +1423,7 @@ header h1 { font-size: 16px; font-weight: 600; }
 .fmt-btn:hover { background:var(--bg-tertiary);color:var(--text-primary);border-color:var(--border); }
 @keyframes party-hue { 0%{filter:hue-rotate(0deg);} 100%{filter:hue-rotate(360deg);} }
 .party-mode { animation:party-hue 1.5s linear infinite; }
+@keyframes gecoPulseRing { 0%,100%{box-shadow:0 0 0 2px #ff4081,0 0 8px rgba(255,64,129,.6);} 50%{box-shadow:0 0 0 3px #ff4081,0 0 18px rgba(255,64,129,.95);} }
 .poll-widget { background:var(--bg-tertiary);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:4px;max-width:340px; }
 .poll-option { display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer; }
 .poll-bar { height:6px;background:var(--accent);border-radius:3px;transition:width 0.4s; }
@@ -2734,6 +2794,9 @@ function makeFullMessageDiv(m) {
   row.appendChild(content);
   row.appendChild(buildReactionBar(msgKey, m));
   row.addEventListener('dblclick', function(e) { e.preventDefault(); addReaction(msgKey, '👍'); });
+  // Apply shop cosmetics (nameplate on name, ring on avatar, font on message body)
+  var _eq = getUserEquipped(m.sender);
+  if (_eq) { applyNameplateTo(nameEl, _eq); applyRingTo(avatar, _eq); applyFontTo(body, _eq); }
   return row;
 }
 
@@ -3599,6 +3662,19 @@ var _userSortAZ = false;
 var _userSearchQuery = '';
 
 function renderUsers(list) {
+  // Ensure the current user always appears (owner/staff may be absent from the server list)
+  if (typeof myUsername !== 'undefined' && myUsername) {
+    var _hasSelf = list.some(function(u){ return (typeof u === 'string' ? u : u.name) === myUsername; });
+    if (!_hasSelf) {
+      list = [{
+        name: myUsername,
+        display_name: (typeof myDisplayName !== 'undefined' && myDisplayName) ? myDisplayName : myUsername,
+        pfp: '', bio: '', status: 'online',
+        role: (typeof isOwner !== 'undefined' && isOwner) ? 'owner' : ((typeof isStaffAdmin !== 'undefined' && isStaffAdmin) ? 'admin' : ''),
+        equipped: window.myEquipped || {}
+      }].concat(list);
+    }
+  }
   lastUserList = list;
   onlineUsers = list.map(function(u) { return typeof u === 'string' ? u : u.name; });
   document.getElementById('userCount').textContent = list.length;
@@ -3620,6 +3696,7 @@ function renderUsers(list) {
     var displayName = typeof user === 'string' ? user : (user.display_name || user.name);
     var pfpUrl = typeof user === 'string' ? '' : (user.pfp || '');
     var status = typeof user === 'string' ? 'online' : (user.status || 'online');
+    var eqp = typeof user === 'string' ? {} : (user.equipped || {});
     var div = document.createElement('div');
     div.className = 'user-item';
     div.setAttribute('data-testid', 'user-item-' + name);
@@ -3635,6 +3712,7 @@ function renderUsers(list) {
     } else {
       avatar.textContent = displayName.substring(0,2).toUpperCase();
     }
+    applyRingTo(avatar, eqp);
     var statusDot = document.createElement('div');
     statusDot.style.cssText = 'position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg-secondary);background:' + (statusColors[status] || statusColors.online) + ';';
     avatarWrap.appendChild(avatar);
@@ -3649,6 +3727,7 @@ function renderUsers(list) {
     } else {
       nameEl.textContent = displayName + roleBadge;
     }
+    applyNameplateTo(nameEl, eqp);
     div.appendChild(nameEl);
     if (name !== myUsername) {
       div.style.cursor = 'pointer';
@@ -3998,6 +4077,7 @@ function handleMessage(data) {
         window._GECO.idleMoney = data.idle_money || 0;
         window._GECO.idleUpgDef = data.idle_upgrades_def || [];
         window._GECO.idleUpgrades = data.idle_upgrades || {};
+        window.myEquipped = data.equipped || {};
         window._GECO.initialized = true; window._GECO.recalc();
         var _hbc = document.getElementById('headerBalChip');
         if (_hbc) { _hbc.style.display = 'inline-flex'; _hbc.textContent = '💰 $'+Math.floor(data.balance||0).toLocaleString(); }
@@ -4012,11 +4092,19 @@ function handleMessage(data) {
         if (data.click_val !== undefined) window._GECO.idleClickVal = data.click_val;
         if (data.idle_upgrades !== undefined) { window._GECO.idleUpgrades = data.idle_upgrades; window._GECO.recalc(); }
       } else if (data.type === 'idle_collect_result') {
-        window._GECO.idleMoney = 0;
+        window._GECO.idleMoney = (data.idle_money !== undefined) ? data.idle_money : 0;
         if (data.balance !== undefined) window._GECO.bal = data.balance;
+      }
+      if (data.type === 'equip_result' && data.ok) {
+        window.myEquipped = data.equipped || {};
       }
     }
     document.dispatchEvent(new CustomEvent('_balance_msg', {detail: data}));
+    // Re-render so cosmetic changes (nameplate/ring/font) show immediately
+    if ((data.type === 'equip_result' && data.ok) || data.type === 'balance_data') {
+      if (typeof renderMessages === 'function') renderMessages();
+      if (typeof lastUserList !== 'undefined' && lastUserList && typeof renderUsers === 'function') renderUsers(lastUserList);
+    }
   }
 }
 
@@ -4182,35 +4270,86 @@ window._GECO = {
     this.idleCps=cps; this.idleClickVal=cv;
   }
 };
+// ── Cosmetics (shop) rendering helpers ────────────────────────────────────────
+window.myEquipped = {};
+window.GECO_NP_STYLES = {
+  'np_bronze':'background:rgba(205,127,50,.2);color:#cd7f32;border:1px solid rgba(205,127,50,.4)',
+  'np_silver':'background:rgba(192,192,192,.15);color:#c0c0c0;border:1px solid rgba(192,192,192,.3)',
+  'np_gold':'background:rgba(255,215,0,.18);color:#FFD700;border:1px solid rgba(255,215,0,.4)',
+  'np_diamond':'background:rgba(185,242,255,.15);color:#b9f2ff;border:1px solid rgba(185,242,255,.3)',
+  'np_rainbow':'background:linear-gradient(90deg,#f00,#f90,#ff0,#0f0,#00f,#90f);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;border:none',
+  'np_neon':'color:#0ff;text-shadow:0 0 6px #0ff,0 0 12px #0ff',
+  'np_galaxy':'background:linear-gradient(90deg,#7b2ff7,#f107a3);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;border:none',
+  'np_fire':'background:linear-gradient(90deg,#f97316,#ef4444);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;border:none',
+  'np_ice':'color:#b9f2ff;text-shadow:0 0 6px rgba(185,242,255,.8)',
+  'np_holo':'background:linear-gradient(90deg,#ff6ec4,#7873f5,#4ade80,#ff6ec4);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;border:none',
+  'np_glass':'background:rgba(255,255,255,.1);color:#eaf6ff;border:1px solid rgba(255,255,255,.35);text-shadow:0 1px 2px rgba(0,0,0,.3)',
+  'np_cyber':'background:linear-gradient(90deg,#00f0ff,#ff00e5);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;border:1px solid rgba(0,240,255,.4)',
+  'np_void':'color:#b388ff;background:rgba(20,0,40,.45);border:1px solid rgba(138,43,226,.55);text-shadow:0 0 8px #8a2be2,0 0 14px #6a0dad'
+};
+window.GECO_RING_STYLES = {
+  'ring_gold':'box-shadow:0 0 0 2px #FFD700,0 0 10px rgba(255,215,0,.6)',
+  'ring_rainbow':'box-shadow:0 0 0 2px #f00,0 0 0 4px #ff0,0 0 0 6px #0f0',
+  'ring_fire':'box-shadow:0 0 0 2px #f97316,0 0 12px rgba(249,115,22,.7)',
+  'ring_ice':'box-shadow:0 0 0 2px #b9f2ff,0 0 10px rgba(185,242,255,.7)',
+  'ring_galaxy':'box-shadow:0 0 0 2px #7b2ff7,0 0 12px rgba(123,47,247,.7)',
+  'ring_neon':'box-shadow:0 0 0 2px #0ff,0 0 10px #0ff',
+  'ring_diamond':'box-shadow:0 0 0 2px #b9f2ff,0 0 8px rgba(185,242,255,.6)',
+  'ring_crown':'box-shadow:0 0 0 2px #FFD700',
+  'ring_star':'box-shadow:0 0 0 2px #ffe066,0 0 10px rgba(255,224,102,.7)',
+  'ring_stars':'box-shadow:0 0 0 2px #fff,0 0 12px rgba(255,255,255,.85),0 0 20px rgba(160,200,255,.6)',
+  'ring_pulse':'box-shadow:0 0 0 2px #ff4081,0 0 14px rgba(255,64,129,.85);animation:gecoPulseRing 1.4s ease-in-out infinite'
+};
+window.GECO_FONT_STYLES = {
+  'font_bold':'font-weight:900',
+  'font_italic':'font-style:italic',
+  'font_mono':'font-family:monospace',
+  'font_cursive':'font-family:cursive',
+  'font_pixel':'font-family:"Courier New",monospace;letter-spacing:2px',
+  'font_comic':'font-family:"Comic Sans MS",cursive',
+  'font_wide':'letter-spacing:4px',
+  'font_tiny':'font-variant:small-caps',
+  'font_handwriting':'font-family:cursive;font-style:italic;font-size:15px',
+  'font_typewriter':'font-family:"Courier New","Lucida Console",monospace;letter-spacing:1px'
+};
+function getNameplateStyle(id){ return (id&&window.GECO_NP_STYLES[id])||''; }
+function getRingStyle(id){ return (id&&window.GECO_RING_STYLES[id])||''; }
+function getFontStyle(id){ return (id&&window.GECO_FONT_STYLES[id])||''; }
+function getUserEquipped(name){
+  if(name && typeof myUsername!=='undefined' && name===myUsername && window.myEquipped) return window.myEquipped;
+  if(typeof lastUserList!=='undefined' && lastUserList){
+    for(var i=0;i<lastUserList.length;i++){
+      var u=lastUserList[i];
+      if(typeof u!=='string' && u && u.name===name && u.equipped) return u.equipped;
+    }
+  }
+  return {};
+}
+function applyNameplateTo(el, equipped){
+  if(!el||!equipped) return;
+  var st=getNameplateStyle(equipped.nameplate);
+  if(st) el.style.cssText += ';padding:0 6px;border-radius:6px;'+st;
+}
+function applyRingTo(el, equipped){
+  if(!el||!equipped) return;
+  var st=getRingStyle(equipped.ring);
+  if(st) el.style.cssText += ';'+st;
+}
+function applyFontTo(el, equipped){
+  if(!el||!equipped) return;
+  var st=getFontStyle(equipped.font);
+  if(st) el.style.cssText += ';'+st;
+}
 (function(){
-  // Restore idle money from localStorage if server just restarted
-  var _lsKey='_geco_idle_'+((typeof myUsername!=='undefined'&&myUsername)||'u');
-  var _lsData=null;
-  try{_lsData=JSON.parse(localStorage.getItem(_lsKey)||'null');}catch(e){}
-  var _lsSaveTimer=0;
+  // Display-only tick. The SERVER is the source of truth for balance & idle money
+  // (it accrues idle on every action and on reconnect). We never persist to
+  // localStorage here — that caused stale values to clobber the real balance.
   setInterval(function(){
     if(!window._GECO.initialized) return;
-    // Restore from localStorage on first tick if server gave us 0
-    if(_lsData&&_lsData.bal>0&&window._GECO.bal===0){
-      window._GECO.bal=_lsData.bal;
-    }
-    if(_lsData&&_lsData.idleMoney>window._GECO.idleMoney&&window._GECO.idleMoney<1){
-      window._GECO.idleMoney=_lsData.idleMoney;
-    }
-    _lsData=null;
     if(window._GECO.idleCps>0) window._GECO.idleMoney+=window._GECO.idleCps/10;
     var chip=document.getElementById('headerBalChip');
     if(chip&&chip.style.display!=='none')
       chip.textContent='\U0001F4B0 $'+Math.floor(window._GECO.bal).toLocaleString();
-    // Save to localStorage every 5s
-    _lsSaveTimer++;
-    if(_lsSaveTimer>=50){
-      _lsSaveTimer=0;
-      try{
-        var k='_geco_idle_'+((typeof myUsername!=='undefined'&&myUsername)||'u');
-        localStorage.setItem(k,JSON.stringify({bal:window._GECO.bal,idleMoney:window._GECO.idleMoney,ts:Date.now()}));
-      }catch(e){}
-    }
   },100);
 })();
 document.getElementById('headerBalChip').addEventListener('click', function() {
@@ -5533,6 +5672,15 @@ function renderTabBar() {
 }
 
 function switchTab(id) {
+  if (activeTabId !== id) {
+    // Leaving the current tab: stop any running game so its canvas/overlays
+    // don't bleed over other tabs.
+    if (typeof window._gameCleanup === 'function') {
+      try { window._gameCleanup(); } catch(e) {}
+      window._gameCleanup = null;
+    }
+    window._garlicMessageHandler = null;
+  }
   activeTabId = id;
   var contents = document.getElementById('tabContents').children;
   for (var i = 0; i < contents.length; i++) {
@@ -8397,7 +8545,14 @@ function convertTabToBalance(tabId) {
         if(S.innerTab==='idle') renderIdle();
       }
     } else if(d.type==='idle_collect_result'){
-      if(d.ok){S.bal=d.balance;S.idleMoney=0;updateBalDisplay();showToast('Collected! 💰','success');if(S.innerTab==='idle') renderIdle();}
+      if(d.ok){
+        S.bal=(d.balance!==undefined)?d.balance:S.bal;
+        S.idleMoney=(d.idle_money!==undefined)?d.idle_money:0;
+        if(window._GECO){window._GECO.bal=S.bal;window._GECO.idleMoney=S.idleMoney;}
+        updateBalDisplay();
+        showToast((d.collected>0?('Collected '+fmtBal(d.collected)+'! 💰'):'Nothing to collect yet'),(d.collected>0?'success':'info'));
+        if(S.innerTab==='idle') renderIdle();
+      }
     }
   }
   document.addEventListener('_balance_msg',onMsg);
@@ -8760,7 +8915,8 @@ def user_list():
             "display_name": info.get("display_name", info["username"]),
             "pfp": info.get("pfp_data", ""),
             "bio": info.get("bio", ""),
-            "status": info.get("status", "online")
+            "status": info.get("status", "online"),
+            "equipped": info.get("equipped", {})
         })
     for sinfo in staff_connected.values():
         if sinfo["username"] not in [u["name"] for u in users]:
@@ -8769,7 +8925,8 @@ def user_list():
                 "display_name": sinfo.get("display_name", sinfo["username"]),
                 "pfp": "",
                 "bio": sinfo.get("bio", ""),
-                "status": sinfo.get("status", "online")
+                "status": sinfo.get("status", "online"),
+                "equipped": sinfo.get("equipped", {})
             })
     return users
 
@@ -9566,9 +9723,11 @@ async def handle_client_ws(request):
                     bio = ""
                     show_changelog = False
 
+                    authed = False
                     if session_token:
                         profile = await db_validate_session(session_token)
                         if profile:
+                            authed = True
                             name = profile["username"]
                             display_name = profile["display_name"]
                             pfp_data = profile.get("pfp_data", "")
@@ -9603,16 +9762,24 @@ async def handle_client_ws(request):
                         }))
                         continue
 
+                    # Guests may not borrow a registered account's name, otherwise
+                    # they could load and overwrite that account's saved economy.
+                    if not authed and await db_username_registered(name):
+                        await ws.send_str(json.dumps({
+                            "type": "error",
+                            "text": f"'{name}' belongs to a registered account. Please log in or pick another name."
+                        }))
+                        continue
+
                     username = name
                     connected[ws] = {
                         "username": username, "ws": ws,
                         "display_name": display_name,
                         "pfp_data": pfp_data, "bio": bio,
-                        "is_guest": not bool(session_token)
+                        "is_guest": not authed
                     }
-                    # Load or initialise economy
-                    _is_reg = bool(session_token) and db_pool
-                    if _is_reg:
+                    # Load or initialise economy (persists by username for everyone)
+                    if db_pool:
                         _econ = await db_get_economy(username)
                         connected[ws]["balance"]       = _econ["balance"]
                         connected[ws]["inventory"]     = _econ["inventory"]
@@ -9625,6 +9792,7 @@ async def handle_client_ws(request):
                         connected[ws]["equipped"]      = {}
                         connected[ws]["idle_money"]    = 0.0
                         connected[ws]["idle_upgrades"] = {}
+                    connected[ws]["idle_last_update"] = _time.time()
                     connected[ws]["savings"] = []  # loaded on-demand
                     print(f"[+] {username} ({display_name}) joined  ({len(connected)} online)")
 
@@ -9636,7 +9804,7 @@ async def handle_client_ws(request):
                         "bio": bio
                     }))
                     # Auto-send balance data immediately so client has fresh data on reconnect
-                    _guest = not bool(session_token)
+                    _guest = not authed
                     _savings = await db_get_savings(username) if not _guest and db_pool else []
                     _txns    = await db_get_transactions(username, 15) if not _guest and db_pool else []
                     await ws.send_str(json.dumps({
@@ -9808,6 +9976,7 @@ async def handle_client_ws(request):
                 # ── Economy handlers ─────────────────────────────────────────
                 elif data.get("type") == "get_balance":
                     if ws not in connected: continue
+                    accrue_idle(ws)
                     u = username
                     _guest = connected[ws].get("is_guest", True)
                     savings = await db_get_savings(u) if not _guest and db_pool else connected[ws].get("savings", [])
@@ -9842,8 +10011,7 @@ async def handle_client_ws(request):
                     inv.append(item_id)
                     connected[ws]["balance"]   = new_bal
                     connected[ws]["inventory"] = inv
-                    _guest = connected[ws].get("is_guest", True)
-                    if not _guest and db_pool:
+                    if db_pool:
                         await db_save_economy(username, {"balance":new_bal,"inventory":inv,"equipped":connected[ws].get("equipped",{}),"idle_money":connected[ws].get("idle_money",0),"idle_upgrades":connected[ws].get("idle_upgrades",{})})
                         await db_add_transaction(username, -item["price"], f"Bought: {item['name']}")
                     await ws.send_str(json.dumps({"type":"shop_result","ok":True,"item_id":item_id,"balance":new_bal,"inventory":inv}))
@@ -9860,10 +10028,10 @@ async def handle_client_ws(request):
                     if eqp.get(cat) == item_id: del eqp[cat]
                     else: eqp[cat] = item_id
                     connected[ws]["equipped"] = eqp
-                    _guest = connected[ws].get("is_guest", True)
-                    if not _guest and db_pool:
+                    if db_pool:
                         await db_save_economy(username, {"balance":connected[ws].get("balance",1000),"inventory":inv,"equipped":eqp,"idle_money":connected[ws].get("idle_money",0),"idle_upgrades":connected[ws].get("idle_upgrades",{})})
                     await ws.send_str(json.dumps({"type":"equip_result","ok":True,"equipped":eqp}))
+                    await send_user_list()  # so everyone sees the cosmetic change
 
                 elif data.get("type") == "savings_create":
                     if ws not in connected: continue
@@ -10118,6 +10286,7 @@ async def handle_client_ws(request):
                     upg     = next((u for u in IDLE_UPGRADES if u["id"]==upg_id), None)
                     if not upg:
                         await ws.send_str(json.dumps({"type":"idle_result","ok":False,"error":"Unknown upgrade"})); continue
+                    accrue_idle(ws)
                     idle_money    = float(connected[ws].get("idle_money", 0))
                     idle_upgrades = dict(connected[ws].get("idle_upgrades", {}))
                     cnt   = idle_upgrades.get(upg_id, 0)
@@ -10129,35 +10298,37 @@ async def handle_client_ws(request):
                     connected[ws]["idle_money"]    = idle_money
                     connected[ws]["idle_upgrades"] = idle_upgrades
                     cv, cps = _calc_idle_stats(idle_upgrades)
-                    _guest = connected[ws].get("is_guest", True)
-                    if not _guest and db_pool:
+                    if db_pool:
                         await db_save_economy(username, {"balance":connected[ws].get("balance",1000),"inventory":connected[ws].get("inventory",[]),"equipped":connected[ws].get("equipped",{}),"idle_money":idle_money,"idle_upgrades":idle_upgrades})
                     await ws.send_str(json.dumps({"type":"idle_result","ok":True,"idle_money":idle_money,"idle_upgrades":idle_upgrades,"click_val":cv,"cps":cps}))
 
                 elif data.get("type") == "idle_click":
                     if ws not in connected: continue
+                    accrue_idle(ws)
                     idle_upgrades = connected[ws].get("idle_upgrades", {})
-                    cv, _ = _calc_idle_stats(idle_upgrades)
+                    cv, cps = _calc_idle_stats(idle_upgrades)
                     idle_money = float(connected[ws].get("idle_money", 0)) + cv
                     connected[ws]["idle_money"] = idle_money
-                    _, cps = _calc_idle_stats(idle_upgrades)
                     await ws.send_str(json.dumps({"type":"idle_result","ok":True,"idle_money":idle_money,"click_val":cv,"cps":cps,"idle_upgrades":idle_upgrades}))
 
                 elif data.get("type") == "idle_collect":
                     if ws not in connected: continue
-                    amt = max(0.0, float(data.get("amount", 0)))
-                    if amt > 0:
-                        new_bal = connected[ws].get("balance",0) + int(amt)
+                    accrue_idle(ws)  # server is the source of truth, ignore client amount
+                    collected = int(connected[ws].get("idle_money", 0))
+                    if collected > 0:
+                        new_bal = connected[ws].get("balance",0) + collected
                         connected[ws]["balance"]    = new_bal
-                        connected[ws]["idle_money"] = max(0.0, connected[ws].get("idle_money",0) - amt)
-                        _guest = connected[ws].get("is_guest", True)
-                        if not _guest and db_pool:
+                        connected[ws]["idle_money"] = max(0.0, connected[ws].get("idle_money",0) - collected)
+                        if db_pool:
                             await db_save_economy(username, {"balance":new_bal,"inventory":connected[ws].get("inventory",[]),"equipped":connected[ws].get("equipped",{}),"idle_money":connected[ws]["idle_money"],"idle_upgrades":connected[ws].get("idle_upgrades",{})})
-                            await db_add_transaction(username, int(amt), "Idle game earnings collected")
-                        await ws.send_str(json.dumps({"type":"idle_collect_result","ok":True,"balance":new_bal}))
+                            await db_add_transaction(username, collected, "Idle game earnings collected")
+                        await ws.send_str(json.dumps({"type":"idle_collect_result","ok":True,"balance":new_bal,"collected":collected,"idle_money":connected[ws]["idle_money"]}))
+                    else:
+                        await ws.send_str(json.dumps({"type":"idle_collect_result","ok":True,"balance":connected[ws].get("balance",0),"collected":0,"idle_money":connected[ws].get("idle_money",0)}))
 
             except Exception as e:
                 print(f"[!] Error: {e}")
+                traceback.print_exc()
 
         elif msg.type == aiohttp.WSMsgType.ERROR:
             break
@@ -10167,9 +10338,15 @@ async def handle_client_ws(request):
         left = info["username"]
         left_display = info.get("display_name", left)
         print(f"[-] {left} left  ({len(connected)} online)")
-        # Save economy on disconnect for registered users
-        if not info.get("is_guest", True) and db_pool and "balance" in info:
+        # Save economy on disconnect for everyone (persists by username)
+        if db_pool and "balance" in info:
             try:
+                # final idle accrual before saving (capped at 12h)
+                _now = _time.time()
+                _elapsed = max(0.0, min(_now - info.get("idle_last_update", _now), 43200))
+                _, _cps = _calc_idle_stats(info.get("idle_upgrades", {}))
+                if _cps > 0 and _elapsed > 0:
+                    info["idle_money"] = float(info.get("idle_money", 0) or 0) + _cps * _elapsed
                 await db_save_economy(left, {
                     "balance":       info["balance"],
                     "inventory":     info.get("inventory", []),

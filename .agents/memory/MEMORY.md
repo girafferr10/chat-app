@@ -1,2 +1,2 @@
-- [Python unicode in JS strings](python-unicode-js.md) — never use JS \u{XXXX} escape syntax inside Python strings; use actual emoji chars or \\uXXXX 4-digit form.
-- [Server architecture](server-arch.md) — all HTML/CSS/JS is embedded in server.py via get_client_html(); use createElement+addEventListener not innerHTML with JS to avoid escaping issues.
+- [asyncpg JSONB returns strings](asyncpg-jsonb-strings.md) — JSONB columns come back as raw JSON strings unless a codec is registered; parse before dict()/list().
+- [server.py embedded frontend](serverpy-embedded-frontend.md) — all client HTML/CSS/JS lives in triple-quoted Python strings; validate JS from the served page, not raw source.
