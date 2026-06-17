@@ -107,16 +107,21 @@ OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 db_pool = None
 CURRENT_VERSION = "2.7"
 CHANGELOG_NOTES = (
-    "<b>What's new in v2.7</b><br><br>"
+    "<b>What's new in v2.8</b><br><br>"
     "&#x2022; <b>Balance System</b> — Every player starts with $1,000; registered users keep it forever across sessions<br>"
-    "&#x2022; <b>Shop</b> — 50+ items across 8 categories: Nameplates, Fonts, Avatar Rings, Profile FX, Themes, Titles, Chat Bubbles, Message Effects<br>"
-    "&#x2022; <b>Savings Plans</b> — Create personal savings goals with deposit/withdraw and color-coded progress bars<br>"
-    "&#x2022; <b>Gambling</b> — 5 casino games: Coin Flip, Dice Duel, Slot Machine, Roulette, Hi-Lo<br>"
-    "&#x2022; <b>Idle Game</b> — Earn passive income, buy 11 upgrades from Intern to Space Station<br>"
+    "&#x2022; <b>Shop Popup</b> — Click any shop item for a full detail popup with preview, rarity badge, and affordability info<br>"
+    "&#x2022; <b>Shop Rarity Filter</b> — Filter items by All / Common / Uncommon / Rare / Epic / Legendary / Mythic<br>"
+    "&#x2022; <b>Inventory Tab</b> — New Inventory inner-tab shows all owned items grouped by category with equip/unequip controls<br>"
+    "&#x2022; <b>Font Preview</b> — Font items show a live preview of your messages in that font inside the shop popup<br>"
+    "&#x2022; <b>6 New Shop Items</b> — Wide Spacing, Small Caps, Void Nameplate, Pulse Ring, Legendary title, Midnight theme<br>"
+    "&#x2022; <b>Idle Game Expanded</b> — 19 total upgrades including Clout Machine, Vibe Engine, Meme Factory, Fan Army, Brand Deal, AI Content Farm<br>"
+    "&#x2022; <b>Idle Mini-Events</b> — Every 30 s a random bonus event pops up — click it for extra coins!<br>"
+    "&#x2022; <b>Economy Persistence</b> — Balance and idle upgrades reload instantly from DB on reconnect<br>"
+    "&#x2022; <b>See Yourself</b> — You now appear in the online users list with a (you) label<br>"
     "&#x2022; <b>Browser VPN-off fix</b> — Shows a helpful overlay instead of cryptic iframe errors when VPN is off<br>"
     "&#x2022; <b>Page title auto-detection</b> — Browser tabs update their label to the loaded page title<br>"
     "&#x2022; <b>Browser keyboard shortcuts</b> — Ctrl+T (new tab), Ctrl+W (close), Ctrl+L (address bar), Ctrl+R (reload)<br>"
-    "<br><b>Previously in v2.6</b><br>"
+    "&#x2022; <b>Market Tab</b> \u2014 New Wall Street mini-game! Buy/sell stocks with a separate market wallet<br>""&#x2022; <b>Story Tab</b> \u2014 Unlock a chat-server story as your balance grows through 5 chapters<br>""&#x2022; <b>10+ New Shop Items</b> \u2014 New fonts (Handwriting, Typewriter), nameplates (Glass, Cyber), rings, effects, themes &amp; titles<br>""&#x2022; <b>6 New Idle Upgrades</b> \u2014 Streamer, Content Creator, Podcast, Newsletter, Merch Store, Agency<br>""&#x2022; <b>Font Styles Fixed</b> \u2014 Pixel Art and Comic Sans now render correctly<br>""<br><b>Previously in v2.7</b><br>""<br><b>Previously in v2.6</b><br>"
     "&#x2022; Browser UI overhaul, VPN/proxy indicator, slash command autocomplete, chat input redesign, message layout polish<br>"
     "<br><b>Previously in v2.5</b><br>"
     "&#x2022; Browser bookmarks, nav history, loading bar, home page redesign, Google\u2192DuckDuckGo redirect<br>"
@@ -206,6 +211,33 @@ SHOP_CATALOG = {
     "msg_shadow":   {"name":"Drop Shadow Text",    "desc":"Dramatic drop shadow on your text",            "price":500,   "cat":"message",  "rarity":"uncommon",  "emoji":"\U0001F532"},
     "msg_caps":     {"name":"ALL CAPS Mode",       "desc":"Everything you send is in bold caps",          "price":300,   "cat":"message",  "rarity":"common",    "emoji":"\U0001F50A"},
     "msg_wave":     {"name":"Wave Text",           "desc":"Your text undulates in an animated wave",      "price":1200,  "cat":"message",  "rarity":"epic",      "emoji":"\U0001F30A"},
+    # Extra fonts
+    "font_handwriting":{"name":"Handwriting",       "desc":"Casual flowing handwriting style",             "price":300,   "cat":"font",     "rarity":"uncommon",  "emoji":"\u270F\uFE0F"},
+    "font_typewriter": {"name":"Typewriter",         "desc":"Vintage typewriter click-clack style",         "price":400,   "cat":"font",     "rarity":"uncommon",  "emoji":"\u2328\uFE0F"},
+    # Extra nameplates
+    "np_glass":        {"name":"Glass Nameplate",    "desc":"Crystal-clear frosted glass effect",           "price":750,   "cat":"nameplate","rarity":"rare",      "emoji":"\U0001F976"},
+    "np_cyber":        {"name":"Cyber Nameplate",    "desc":"Cyberpunk neon-grid aesthetic",                "price":1800,  "cat":"nameplate","rarity":"epic",      "emoji":"\U0001F916"},
+    # Extra rings
+    "ring_neon":       {"name":"Neon Ring",          "desc":"Glowing neon outline around avatar",           "price":500,   "cat":"ring",     "rarity":"rare",      "emoji":"\U0001F4A1"},
+    "ring_stars":      {"name":"Star Ring",          "desc":"Twinkling stars orbit your avatar",            "price":700,   "cat":"ring",     "rarity":"rare",      "emoji":"\u2B50"},
+    # Extra effects
+    "fx_rain":         {"name":"Rain",               "desc":"Digital rain falls around your profile",       "price":450,   "cat":"effect",   "rarity":"uncommon",  "emoji":"\U0001F327\uFE0F"},
+    "fx_fireworks":    {"name":"Fireworks",          "desc":"Spectacular fireworks burst around you",       "price":900,   "cat":"effect",   "rarity":"rare",      "emoji":"\U0001F386"},
+    # Extra themes
+    "th_lava":         {"name":"Lava Lamp",          "desc":"Slow morphing lava lamp vibes",                "price":500,   "cat":"theme",    "rarity":"uncommon",  "emoji":"\U0001FAE7"},
+    "th_matrix":       {"name":"Matrix Mode",        "desc":"Everything goes green \u2014 stay in the sim","price":800,  "cat":"theme",    "rarity":"rare",      "emoji":"\U0001F4BB"},
+    # Extra titles
+    "title_goat":      {"name":"GOAT",               "desc":"Greatest of all time status",                  "price":2000,  "cat":"title",    "rarity":"epic",      "emoji":"\U0001F410"},
+    "title_chad":      {"name":"Chad",               "desc":"Ultra-based chad energy",                      "price":1500,  "cat":"title",    "rarity":"rare",      "emoji":"\U0001F5FF"},
+    "title_wizard":    {"name":"Wizard",             "desc":"Ancient arcane knowledge",                     "price":1200,  "cat":"title",    "rarity":"rare",      "emoji":"\U0001F9D9"},
+    "title_phantom":   {"name":"Phantom",            "desc":"You were never here...",                       "price":3000,  "cat":"title",    "rarity":"legendary", "emoji":"\U0001F47B"},
+    # v2.7 additions
+    "font_wide":      {"name":"Wide Spacing",      "desc":"Extra wide letter-spacing on your messages",   "price":200,   "cat":"font",     "rarity":"uncommon",  "emoji":"\u2194\uFE0F"},
+    "font_tiny":      {"name":"Small Caps",        "desc":"Small caps styling on all your text",          "price":175,   "cat":"font",     "rarity":"common",    "emoji":"\U0001F521"},
+    "np_void":        {"name":"Void Nameplate",    "desc":"Black hole neon abyss around your name",       "price":4000,  "cat":"nameplate","rarity":"mythic",    "emoji":"\U0001F573\uFE0F"},
+    "ring_pulse":     {"name":"Pulse Ring",        "desc":"Rhythmically pulsing glow border",             "price":1500,  "cat":"ring",     "rarity":"epic",      "emoji":"\U0001F499"},
+    "title_legendary":{"name":"Legendary",         "desc":"A truly legendary title badge",                "price":2500,  "cat":"title",    "rarity":"legendary", "emoji":"\U0001F31F"},
+    "th_midnight":    {"name":"Midnight",          "desc":"Deep midnight blue elegance",                  "price":600,   "cat":"theme",    "rarity":"rare",      "emoji":"\U0001F319"},
 }
 
 # ─── Economy: Idle game upgrades ─────────────────────────────────────────────
@@ -220,7 +252,21 @@ IDLE_UPGRADES = [
     {"id":"auto5",   "name":"Corporation",      "desc":"+$200 per second",             "emoji":"\U0001F3D9\uFE0F",   "base_price":75000,    "type":"cps",  "value":200},
     {"id":"auto6",   "name":"Investment Fund",  "desc":"+$1,000 per second",           "emoji":"\U0001F4C8",          "base_price":400000,   "type":"cps",  "value":1000},
     {"id":"auto7",   "name":"Crypto Mine",      "desc":"+$5,000 per second",           "emoji":"\u26CF\uFE0F",        "base_price":2000000,  "type":"cps",  "value":5000},
-    {"id":"auto8",   "name":"Space Station",    "desc":"+$25,000 per second",          "emoji":"\U0001F680",          "base_price":10000000, "type":"cps",  "value":25000},
+    {"id":"auto8",   "name":"Space Station",    "desc":"+$25,000 per second",          "emoji":"\U0001F680",          "base_price":10000000,  "type":"cps",  "value":25000},
+    {"id":"click4",  "name":"Streamer",         "desc":"Each click earns +$10",         "emoji":"\U0001F3AE",        "base_price":750,      "type":"click","value":10},
+    {"id":"click5",  "name":"Content Creator",  "desc":"Each click earns +$50",         "emoji":"\U0001F3A5",        "base_price":4000,     "type":"click","value":50},
+    {"id":"auto1b",  "name":"Podcast",          "desc":"+$3 per second",               "emoji":"\U0001F399\uFE0F","base_price":800,      "type":"cps",  "value":3},
+    {"id":"auto2b",  "name":"Newsletter",       "desc":"+$8 per second",               "emoji":"\U0001F4E7",        "base_price":2000,     "type":"cps",  "value":8},
+    {"id":"auto3b",  "name":"Merch Store",      "desc":"+$30 per second",              "emoji":"\U0001F455",        "base_price":10000,    "type":"cps",  "value":30},
+    {"id":"auto4b",  "name":"Agency",           "desc":"+$80 per second",              "emoji":"\U0001F3DB\uFE0F","base_price":40000,    "type":"cps",  "value":80},
+    {"id":"clout1",  "name":"Clout Machine",   "desc":"Each click earns +$100",        "emoji":"\U0001F4F1",           "base_price":5000,      "type":"click","value":100},
+    {"id":"viral1",  "name":"Viral Post",      "desc":"Each click earns +$500",        "emoji":"\U0001F4F0",           "base_price":25000,     "type":"click","value":500},
+    {"id":"vibe1",   "name":"Vibe Engine",     "desc":"+$500 per second",             "emoji":"\U0001F3B6",            "base_price":1000000,   "type":"cps",  "value":500},
+    {"id":"hype1",   "name":"Hype Bot",        "desc":"+$2,500 per second",           "emoji":"\U0001F916",            "base_price":5000000,   "type":"cps",  "value":2500},
+    {"id":"meme1",   "name":"Meme Factory",    "desc":"+$15,000 per second",          "emoji":"\U0001F602",            "base_price":50000000,  "type":"cps",  "value":15000},
+    {"id":"fan1",    "name":"Fan Army",        "desc":"+$100,000 per second",         "emoji":"\U0001F3C6",            "base_price":250000000, "type":"cps",  "value":100000},
+    {"id":"collab1", "name":"Brand Deal",      "desc":"+$50,000 per second",          "emoji":"\U0001F91D",            "base_price":100000000, "type":"cps",  "value":50000},
+    {"id":"ai1",     "name":"AI Content Farm", "desc":"+$1,000,000 per second",       "emoji":"\U0001F9E0",            "base_price":999000000, "type":"cps",  "value":1000000},
 ]
 
 def _calc_idle_stats(upgrades):
@@ -5414,6 +5460,13 @@ function findTabByType(type) {
   return null;
 }
 
+function findTabByTypeAndName(type, name) {
+  for (var i = 0; i < tabs.length; i++) {
+    if (tabs[i].type === type && tabs[i].name === name) return tabs[i];
+  }
+  return null;
+}
+
 function renderTabBar() {
   var bar = document.getElementById('tabItems');
   bar.innerHTML = '';
@@ -5586,7 +5639,7 @@ function openNewTab() {
           if (bTab) { closeTab(id); switchTab(bTab.id); }
           else { convertTabToBalance(id); }
         } else if (item.type === 'coming_soon') {
-          var csTab = findTabByType('coming_soon');
+          var csTab = findTabByTypeAndName('coming_soon', item.name);
           if (csTab) { closeTab(id); switchTab(csTab.id); }
           else { convertTabToComingSoon(id, item.name); }
         } else if (item.type === 'browser') {
@@ -6513,7 +6566,7 @@ function convertTabToEmbedded(tabId) {
 }
 
 function convertTabToComingSoon(tabId, name) {
-  for(var i=0;i<tabs.length;i++){if(tabs[i].id===tabId){tabs[i].type='coming_soon';tabs[i].label=name||'Coming Soon';break;}}
+  for(var i=0;i<tabs.length;i++){if(tabs[i].id===tabId){tabs[i].type='coming_soon';tabs[i].label=name||'Coming Soon';tabs[i].name=name||'Coming Soon';break;}}
   renderTabBar();
   var el=document.getElementById('tabContent-'+tabId);
   if(!el)return;
@@ -6853,9 +6906,9 @@ function convertTabToBalance(tabId) {
   el.innerHTML='';
 
   // ── State ─────────────────────────────────────────────────────────────────
-  var S={bal:0,inv:[],eqp:{},savings:[],txns:[],idleMoney:0,idleUpgrades:{},
+  var S={bal:0,inv:[],eqp:{},savings:[],txns:[],idleMoney:0,idleUpgrades:{},market:null,storyOpen:null,
     idleCps:0,idleClickVal:1,activeGame:null,gambleBet:100,isGuest:false,
-    shopCat:'nameplate',shopCatalog:[],idleUpgDef:[],innerTab:'dashboard',
+    shopCat:'nameplate',shopRarity:'all',shopCatalog:[],idleUpgDef:[],innerTab:'dashboard',
     hiloDrawn:7};
 
   // ── CSS ───────────────────────────────────────────────────────────────────
@@ -7035,7 +7088,109 @@ function convertTabToBalance(tabId) {
       'border-radius:8px;color:#4f9cf9;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;transition:all .2s}'+
     '.idle-upg-buy:hover:not(:disabled){background:rgba(79,156,249,.3)}'+
     '.idle-upg-buy:disabled{opacity:.38;cursor:not-allowed}'+
-    '@keyframes balPop{0%{transform:scale(0.95)}50%{transform:scale(1.04)}100%{transform:scale(1)}}';
+    '.cant-afford{opacity:.38;cursor:not-allowed!important}'+
+    '@keyframes balPop{0%{transform:scale(0.95)}50%{transform:scale(1.04)}100%{transform:scale(1)}}'+
+    // Shop rarity filter
+    '.shop-rarity-bar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}'+
+    '.shop-rarity-btn{padding:3px 10px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:transparent;'+
+      'font-size:10px;font-weight:800;cursor:pointer;transition:all .2s;white-space:nowrap;letter-spacing:.4px}'+
+    '.shop-rarity-btn:hover{background:rgba(255,255,255,.07)}'+
+    '.shop-rarity-btn.active{border-color:currentColor;background:rgba(255,255,255,.1)}'+
+    // Shop card affordability border
+    '.shop-card.can-afford{border-color:rgba(34,197,94,.4)}'+
+    '.shop-card.no-afford{border-color:rgba(239,68,68,.25)}'+
+    // Shop detail popup
+    '.shop-popup-overlay{position:absolute;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px}'+
+    '.shop-popup{background:var(--bg-secondary);border:1px solid rgba(255,255,255,.12);border-radius:20px;'+
+      'padding:22px;max-width:340px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.6);position:relative}'+
+    '.sp-close{position:absolute;top:12px;right:14px;background:rgba(255,255,255,.08);border:none;'+
+      'border-radius:50%;width:28px;height:28px;color:var(--text-muted);font-size:16px;cursor:pointer;'+
+      'display:flex;align-items:center;justify-content:center;transition:all .2s}'+
+    '.sp-close:hover{background:rgba(255,255,255,.16);color:var(--text-primary)}'+
+    '.sp-emoji{font-size:54px;text-align:center;margin-bottom:8px;display:block}'+
+    '.sp-name{font-size:18px;font-weight:900;color:var(--text-primary);text-align:center;margin-bottom:4px}'+
+    '.sp-rarity{font-size:10px;font-weight:900;text-align:center;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}'+
+    '.sp-desc{font-size:12px;color:var(--text-secondary);text-align:center;margin-bottom:10px;line-height:1.5}'+
+    '.sp-font-preview{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;'+
+      'padding:10px 14px;margin-bottom:10px;font-size:13px;color:var(--text-primary);text-align:center}'+
+    '.sp-price-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;'+
+      'background:rgba(255,255,255,.04);border-radius:10px;margin-bottom:12px;font-size:12px}'+
+    '.sp-price-lbl{color:var(--text-muted);font-weight:700}'+
+    '.sp-price-val{font-weight:900;font-family:monospace;font-size:14px}'+
+    '.sp-price-val.can-afford{color:#22c55e}'+
+    '.sp-price-val.no-afford{color:#ef4444}'+
+    '.sp-buy-btn{width:100%;padding:11px;border:none;border-radius:12px;font-size:14px;font-weight:900;cursor:pointer;'+
+      'background:linear-gradient(135deg,var(--accent),#7c3aed);color:#fff;transition:all .2s}'+
+    '.sp-buy-btn:hover:not(:disabled){opacity:.85;transform:translateY(-1px)}'+
+    '.sp-buy-btn.sp-eqp{background:linear-gradient(135deg,#22c55e,#16a34a)}'+
+    '.sp-buy-btn.sp-unequip{background:rgba(255,255,255,.1);color:var(--text-secondary);border:1px solid rgba(255,255,255,.15)}'+
+    '.sp-buy-btn:disabled{background:rgba(255,255,255,.07);color:var(--text-muted);cursor:not-allowed;transform:none}'+
+    // Inventory
+    '.inv-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}'+
+    '.inv-stat{font-size:11px;color:var(--text-muted)}'+
+    '.inv-cat-section{margin-bottom:16px}'+
+    '.inv-cat-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;padding-left:2px}'+
+    '.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}'+
+    '.inv-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;'+
+      'padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;transition:all .2s}'+
+    '.inv-card:hover{background:rgba(255,255,255,.08);transform:translateY(-1px)}'+
+    '.inv-card.inv-equipped{border-color:rgba(79,156,249,.5);box-shadow:0 0 8px rgba(79,156,249,.2);background:rgba(79,156,249,.06)}'+
+    '.inv-card-emoji{font-size:24px}'+
+    '.inv-card-name{font-size:10px;font-weight:800;color:var(--text-primary);text-align:center;line-height:1.3}'+
+    '.inv-card-rarity{font-size:8px;font-weight:900;letter-spacing:.5px;text-transform:uppercase}'+
+    '.inv-eqp-btn{padding:3px 9px;border:none;border-radius:7px;font-size:9px;font-weight:800;cursor:pointer;transition:all .2s;margin-top:2px}'+
+    '.inv-eqp-btn.is-eqp{background:rgba(79,156,249,.18);color:#4f9cf9;border:1px solid rgba(79,156,249,.35)}'+
+    '.inv-eqp-btn.not-eqp{background:rgba(255,255,255,.07);color:var(--text-muted);border:1px solid rgba(255,255,255,.1)}'+
+    '.inv-eqp-btn:hover{opacity:.8}'+
+    // Idle mini-event
+    '.idle-event-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);'+
+      'background:linear-gradient(135deg,#7c3aed,#4f9cf9);border:2px solid rgba(255,255,255,.3);'+
+      'border-radius:16px;padding:16px 22px;text-align:center;cursor:pointer;z-index:50;'+
+      'box-shadow:0 12px 40px rgba(0,0,0,.5);animation:eventPop .35s cubic-bezier(.34,1.56,.64,1) both}'+
+    '.idle-event-title{font-size:16px;font-weight:900;color:#fff;margin-bottom:4px}'+
+    '.idle-event-sub{font-size:11px;color:rgba(255,255,255,.8);margin-bottom:10px}'+
+    '.idle-event-cta{font-size:12px;font-weight:800;color:#fff;background:rgba(255,255,255,.2);'+
+      'border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:5px 14px;display:inline-block}'+
+    '@keyframes eventPop{0%{opacity:0;transform:translate(-50%,-50%) scale(0.7)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}'+
+    // Market
+    '.mkt-wip{background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(239,68,68,.08));border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:10px 14px;font-size:11px;color:#f59e0b;font-weight:700;margin-bottom:12px;text-align:center}'+
+    '.mkt-wallet{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}'+
+    '.mkt-wallet-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted)}'+
+    '.mkt-wallet-val{font-size:18px;font-weight:900;color:#22c55e;font-family:monospace}'+
+    '.mkt-stock{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:11px 13px;display:flex;align-items:center;gap:10px;margin-bottom:7px;transition:all .2s}'+
+    '.mkt-stock:hover{background:rgba(255,255,255,.07)}'+
+    '.mkt-stock-info{flex:1}'+
+    '.mkt-stock-name{font-size:13px;font-weight:800;color:var(--text-primary)}'+
+    '.mkt-stock-ticker{font-size:10px;color:var(--text-muted);font-family:monospace}'+
+    '.mkt-price{font-size:14px;font-weight:900;font-family:monospace;text-align:right;min-width:70px}'+
+    '.mkt-change{font-size:10px;font-weight:800;font-family:monospace;text-align:right}'+
+    '.mkt-change.up{color:#22c55e}.mkt-change.dn{color:#ef4444}'+
+    '.mkt-held{font-size:9px;color:var(--text-muted);margin-top:2px}'+
+    '.mkt-btns{display:flex;flex-direction:column;gap:4px}'+
+    '.mkt-buy-btn,.mkt-sell-btn{padding:4px 10px;border:none;border-radius:7px;font-size:11px;font-weight:800;cursor:pointer;transition:all .2s;white-space:nowrap}'+
+    '.mkt-buy-btn{background:rgba(34,197,94,.18);color:#22c55e;border:1px solid rgba(34,197,94,.3)}'+
+    '.mkt-buy-btn:hover:not(:disabled){background:rgba(34,197,94,.32)}'+
+    '.mkt-sell-btn{background:rgba(239,68,68,.14);color:#ef4444;border:1px solid rgba(239,68,68,.25)}'+
+    '.mkt-sell-btn:hover:not(:disabled){background:rgba(239,68,68,.28)}'+
+    '.mkt-sell-btn:disabled,.mkt-buy-btn:disabled{opacity:.35;cursor:not-allowed}'+
+    '.mkt-pnl{display:flex;justify-content:space-between;font-size:11px;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:8px;margin-bottom:10px}'+
+    // Story
+    '.story-ch{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:13px 16px;margin-bottom:9px;transition:all .2s}'+
+    '.story-ch.locked{opacity:.55;cursor:default}'+
+    '.story-ch.unlocked{cursor:pointer}'+
+    '.story-ch.unlocked:hover{background:rgba(255,255,255,.08);transform:translateY(-1px)}'+
+    '.story-ch.active{border-color:rgba(79,156,249,.5);background:rgba(79,156,249,.05)}'+
+    '.story-ch-hdr{display:flex;align-items:center;gap:10px}'+
+    '.story-ch-num{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)}'+
+    '.story-ch-title{font-size:14px;font-weight:800;color:var(--text-primary);flex:1}'+
+    '.story-lock{font-size:14px}'+
+    '.story-req{font-size:10px;color:var(--text-muted);margin-top:4px;margin-left:2px}'+
+    '.story-body{margin-top:10px;font-size:13px;color:var(--text-secondary);line-height:1.7;border-top:1px solid rgba(255,255,255,.06);padding-top:10px}'+
+    '.story-body p{margin:0 0 10px}'+
+    '.story-choice{display:flex;flex-direction:column;gap:6px;margin-top:10px}'+
+    '.story-choice-btn{padding:7px 13px;background:rgba(79,156,249,.1);border:1px solid rgba(79,156,249,.2);border-radius:8px;color:#4f9cf9;font-size:12px;font-weight:700;cursor:pointer;text-align:left;transition:all .2s}'+
+    '.story-choice-btn:hover{background:rgba(79,156,249,.22)}'+
+    '.story-header-note{text-align:center;color:var(--text-muted);font-size:12px;margin-bottom:14px;line-height:1.6}';
   el.appendChild(_st);
 
   // ── Outer structure ────────────────────────────────────────────────────────
@@ -7054,7 +7209,7 @@ function convertTabToBalance(tabId) {
 
   // Nav
   var nav=document.createElement('div');nav.className='bal-nav';
-  var _navTabs=[['dashboard','📈 Overview'],['shop','🛑 Shop'],['savings','🏦 Savings'],['gamble','🎰 Gamble'],['idle','\u26A1 Idle']];
+  var _navTabs=[['dashboard','📈 Overview'],['shop','🛍️ Shop'],['inventory','🎒 Inventory'],['savings','🏦 Savings'],['gamble','🎰 Gamble'],['idle','\u26A1 Idle'],['market','📊 Market'],['story','📖 Story']];
   var navBtns={};
   _navTabs.forEach(function(t){
     var b=document.createElement('button');b.className='bal-nav-btn'+(t[0]==='dashboard'?' active':'');
@@ -7068,7 +7223,7 @@ function convertTabToBalance(tabId) {
   var content=document.createElement('div');content.className='bal-content';
   wrap.appendChild(content);
   var panels={};
-  ['dashboard','shop','savings','gamble','idle'].forEach(function(t){
+  ['dashboard','shop','inventory','savings','gamble','idle','market','story'].forEach(function(t){
     var p=document.createElement('div');p.className='bal-panel'+(t==='dashboard'?' active':'');p.id='bpan-'+tabId+'-'+t;
     content.appendChild(p);panels[t]=p;
   });
@@ -7102,9 +7257,12 @@ function convertTabToBalance(tabId) {
     Object.keys(navBtns).forEach(function(k){navBtns[k].classList.toggle('active',k===tab);});
     if(tab==='dashboard') renderDashboard();
     else if(tab==='shop') renderShop();
+    else if(tab==='inventory') renderInventory();
     else if(tab==='savings') renderSavings();
     else if(tab==='gamble') renderGamble();
     else if(tab==='idle') renderIdle();
+    else if(tab==='market') renderMarket();
+    else if(tab==='story') renderStory();
   }
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -7148,6 +7306,66 @@ function convertTabToBalance(tabId) {
     {id:'theme',name:'Themes',emoji:'🎨'},{id:'title',name:'Titles',emoji:'🏆'},
     {id:'bubble',name:'Chat Bubbles',emoji:'💬'},{id:'message',name:'Msg Effects',emoji:'⚡'}
   ];
+  var FONT_STYLES={
+    'font_bold':   'font-weight:900',
+    'font_italic': 'font-style:italic',
+    'font_mono':   'font-family:monospace',
+    'font_cursive':'font-family:cursive',
+    'font_pixel':  'font-family:"Courier New",monospace;letter-spacing:2px',
+    'font_comic':  'font-family:"Comic Sans MS",cursive',
+    'font_wide':   'letter-spacing:4px',
+    'font_tiny':   'font-variant:small-caps',
+  };
+  function openShopPopup(item){
+    var existing=document.querySelector('.shop-popup-overlay');if(existing)existing.remove();
+    var owned=S.inv.indexOf(item.id)!==-1;
+    var equipped=S.eqp[item.cat]===item.id;
+    var canAfford=S.bal>=item.price;
+    var rc=rarityColor(item.rarity);
+    var overlay=document.createElement('div');overlay.className='shop-popup-overlay';
+    overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.remove();});
+    var popup=document.createElement('div');popup.className='shop-popup';
+    var closeBtn=document.createElement('button');closeBtn.className='sp-close';closeBtn.textContent='\u00D7';
+    closeBtn.addEventListener('click',function(){overlay.remove();});popup.appendChild(closeBtn);
+    var emojiEl=document.createElement('span');emojiEl.className='sp-emoji';emojiEl.textContent=item.emoji;popup.appendChild(emojiEl);
+    var nameEl=document.createElement('div');nameEl.className='sp-name';nameEl.textContent=item.name;popup.appendChild(nameEl);
+    var rarEl=document.createElement('div');rarEl.className='sp-rarity';rarEl.style.color=rc;rarEl.textContent=item.rarity.toUpperCase();popup.appendChild(rarEl);
+    var descEl=document.createElement('div');descEl.className='sp-desc';descEl.textContent=item.desc;popup.appendChild(descEl);
+    if(item.cat==='font'&&FONT_STYLES[item.id]){
+      var prevEl=document.createElement('div');prevEl.className='sp-font-preview';
+      prevEl.textContent='Hey, this is what your messages look like!';
+      prevEl.style.cssText='background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:var(--text-primary);text-align:center;'+FONT_STYLES[item.id];
+      popup.appendChild(prevEl);
+    }
+    var priceRow=document.createElement('div');priceRow.className='sp-price-row';
+    var pLbl=document.createElement('div');pLbl.className='sp-price-lbl';pLbl.textContent=owned?'You own this':'Price';
+    var pVal=document.createElement('div');pVal.className='sp-price-val '+(owned?'can-afford':(canAfford?'can-afford':'no-afford'));
+    pVal.textContent=owned?'\u2705 Owned':fmtBal(item.price);
+    priceRow.appendChild(pLbl);priceRow.appendChild(pVal);popup.appendChild(priceRow);
+    var btn=document.createElement('button');btn.className='sp-buy-btn';
+    if(owned){
+      btn.className+=(equipped?' sp-unequip':' sp-eqp');
+      btn.textContent=equipped?'\u2713 Equipped \u2014 Click to Unequip':'\u26A1 Equip';
+      btn.addEventListener('click',function(){
+        if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'shop_equip',item_id:item.id,category:item.cat}));
+        overlay.remove();
+      });
+    } else {
+      if(canAfford){
+        btn.textContent='Buy for '+fmtBal(item.price);
+        btn.addEventListener('click',function(){
+          if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'shop_buy',item_id:item.id}));
+          overlay.remove();
+        });
+      } else {
+        btn.textContent='Costs '+fmtBal(item.price)+' (you have '+fmtBal(S.bal)+')';
+        btn.disabled=true;
+      }
+    }
+    popup.appendChild(btn);
+    overlay.appendChild(popup);
+    el.appendChild(overlay);
+  }
   function renderShop(){
     var p=panels['shop'];p.innerHTML='';
     var catBar=document.createElement('div');catBar.className='shop-cats';
@@ -7158,33 +7376,88 @@ function convertTabToBalance(tabId) {
       catBar.appendChild(b);
     });
     p.appendChild(catBar);
-    if(!S.shopCatalog.length){p.innerHTML+='<div class="bal-empty">Loading shop...</div>';return;}
+    var rarBar=document.createElement('div');rarBar.className='shop-rarity-bar';
+    var RARITIES=[['all','All','#9CA3AF'],['common','Common','#9CA3AF'],['uncommon','Uncommon','#22c55e'],
+      ['rare','Rare','#3b82f6'],['epic','Epic','#a855f7'],['legendary','Legendary','#f59e0b'],['mythic','Mythic','#ef4444']];
+    RARITIES.forEach(function(r){
+      var b=document.createElement('button');b.className='shop-rarity-btn'+(S.shopRarity===r[0]?' active':'');
+      b.style.color=r[2];b.textContent=r[1];
+      b.addEventListener('click',function(){S.shopRarity=r[0];renderShop();});
+      rarBar.appendChild(b);
+    });
+    p.appendChild(rarBar);
+    if(!S.shopCatalog.length){var ld=document.createElement('div');ld.className='bal-empty';ld.textContent='Loading shop...';p.appendChild(ld);return;}
     var grid=document.createElement('div');grid.className='shop-grid';
-    var items=S.shopCatalog.filter(function(i){return i.cat===S.shopCat;});
-    if(!items.length){p.appendChild(document.createElement('div')).className='bal-empty';p.lastChild.textContent='No items in this category yet.';}
+    var items=S.shopCatalog.filter(function(i){return i.cat===S.shopCat&&(S.shopRarity==='all'||i.rarity===S.shopRarity);});
+    if(!items.length){var em=document.createElement('div');em.className='bal-empty';em.textContent='No items match this filter.';p.appendChild(em);}
     items.forEach(function(item){
       var owned=S.inv.indexOf(item.id)!==-1;
       var equipped=S.eqp[item.cat]===item.id;
       var canAfford=S.bal>=item.price;
-      var card=document.createElement('div');card.className='shop-card'+(owned?' owned':'')+(equipped?' equipped':'');
+      var cls='shop-card'+(owned?' owned':'')+(equipped?' equipped':'');
+      if(!owned)cls+=(canAfford?' can-afford':' no-afford');
+      var card=document.createElement('div');card.className=cls;card.style.cursor='pointer';
       var rc=rarityColor(item.rarity);
       card.innerHTML='<div class="sc-emoji">'+escapeHtml(item.emoji)+'</div>'+
         '<div class="sc-name">'+escapeHtml(item.name)+'</div>'+
         '<div class="sc-rarity" style="color:'+rc+'">'+item.rarity.toUpperCase()+'</div>'+
-        '<div class="sc-desc">'+escapeHtml(item.desc)+'</div>'+
-        '<div class="sc-price">'+(owned?'✅ Owned':fmtBal(item.price))+'</div>';
-      var btn=document.createElement('button');btn.className='sc-btn';
-      if(owned){btn.classList.add('eqp-btn');btn.textContent=equipped?'✓ Equipped':'Equip';}
-      else{btn.textContent=canAfford?'Buy':'Need '+fmtBal(item.price-S.bal)+' more';if(!canAfford)btn.classList.add('no-afford');}
-      btn.disabled=!owned&&!canAfford;
-      btn.addEventListener('click',(function(iid,icat,isOwned){return function(){
-        if(!ws||ws.readyState!==1){showToast('Not connected','error');return;}
-        if(isOwned) ws.send(JSON.stringify({type:'shop_equip',item_id:iid,category:icat}));
-        else ws.send(JSON.stringify({type:'shop_buy',item_id:iid}));
-      };})(item.id,item.cat,owned));
-      card.appendChild(btn);grid.appendChild(card);
+        '<div class="sc-price">'+(owned?'\u2705 Owned':fmtBal(item.price))+'</div>';
+      card.addEventListener('click',(function(it){return function(){openShopPopup(it);};})(item));
+      grid.appendChild(card);
     });
     p.appendChild(grid);
+  }
+
+  // ── Inventory ────────────────────────────────────────────────────────────
+  function renderInventory(){
+    var p=panels['inventory'];p.innerHTML='';
+    if(S.isGuest){
+      var gm=document.createElement('div');gm.className='bal-empty';
+      gm.innerHTML='<div style="font-size:36px;margin-bottom:8px">\u26A0\uFE0F</div>Guest account \u2014 no inventory saved.';
+      p.appendChild(gm);return;
+    }
+    if(!S.inv.length){
+      var em=document.createElement('div');em.className='bal-empty';
+      em.innerHTML='<span style="font-size:32px">&#127873;</span><br>No items yet.<br><span style="font-size:11px;color:var(--text-muted)">Head to the Shop to buy your first item!</span>';
+      p.appendChild(em);return;
+    }
+    var hdr=document.createElement('div');hdr.className='inv-hdr';
+    var tEl=document.createElement('div');tEl.className='sec-title';tEl.style.margin='0';tEl.textContent='Your Items';
+    var st=document.createElement('div');st.className='inv-stat';st.textContent=S.inv.length+' item'+(S.inv.length!==1?'s':'')+' owned';
+    hdr.appendChild(tEl);hdr.appendChild(st);p.appendChild(hdr);
+    var groups={};
+    var CAT_NAMES={nameplate:'Nameplates',font:'Fonts',ring:'Avatar Rings',effect:'Profile FX',theme:'Themes',title:'Titles',bubble:'Chat Bubbles',message:'Msg Effects'};
+    S.inv.forEach(function(id){
+      var item=S.shopCatalog.find(function(c){return c.id===id;});
+      if(!item)return;
+      if(!groups[item.cat])groups[item.cat]=[];
+      groups[item.cat].push(item);
+    });
+    Object.keys(groups).forEach(function(cat){
+      var section=document.createElement('div');section.className='inv-cat-section';
+      var catTitle=document.createElement('div');catTitle.className='inv-cat-title';
+      catTitle.textContent=(CAT_NAMES[cat]||cat)+' ('+groups[cat].length+')';
+      section.appendChild(catTitle);
+      var grid=document.createElement('div');grid.className='inv-grid';
+      groups[cat].forEach(function(item){
+        var equipped=S.eqp[item.cat]===item.id;
+        var rc=rarityColor(item.rarity);
+        var card=document.createElement('div');card.className='inv-card'+(equipped?' inv-equipped':'');
+        var eEl=document.createElement('div');eEl.className='inv-card-emoji';eEl.textContent=item.emoji;
+        var nEl=document.createElement('div');nEl.className='inv-card-name';nEl.textContent=item.name;
+        var rEl=document.createElement('div');rEl.className='inv-card-rarity';rEl.style.color=rc;rEl.textContent=item.rarity;
+        var eBtn=document.createElement('button');eBtn.className='inv-eqp-btn '+(equipped?'is-eqp':'not-eqp');
+        eBtn.textContent=equipped?'\u2713 Equipped':'Equip';
+        eBtn.addEventListener('click',(function(it){return function(e){
+          e.stopPropagation();
+          if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'shop_equip',item_id:it.id,category:it.cat}));
+        };})(item));
+        card.appendChild(eEl);card.appendChild(nEl);card.appendChild(rEl);card.appendChild(eBtn);
+        card.addEventListener('click',(function(it){return function(){openShopPopup(it);};})(item));
+        grid.appendChild(card);
+      });
+      section.appendChild(grid);p.appendChild(section);
+    });
   }
 
   // ── Savings ───────────────────────────────────────────────────────────────
@@ -7665,6 +7938,7 @@ function convertTabToBalance(tabId) {
 
   // ── Idle Game ─────────────────────────────────────────────────────────────
   var _idleTimer=null;
+  var _idleEventTimer=null;
   var _idleDisplay=null;
   function showIdleUpgPreview(u, cnt) {
     var price=Math.round(u.base_price*Math.pow(1.15,cnt));
@@ -7783,10 +8057,203 @@ function convertTabToBalance(tabId) {
           _idleDisplay.cps.textContent='+'+S.idleCps.toLocaleString()+'/s \u2014 '+fmtIdleMoney(S.idleMoney);
         }
         var cb=p.querySelector('.idle-collect-btn');
-        if(cb){cb.textContent='\\uD83D\\uDCB0 Collect '+fmtIdleMoney(S.idleMoney)+' \u2192 Balance';cb.disabled=S.idleMoney<1;}
+        if(cb){cb.textContent='Collect '+fmtIdleMoney(S.idleMoney)+' \u2192 Balance';cb.disabled=S.idleMoney<1;}
       }
     },100);
+    // ── Mini-event timer ──
+    if(_idleEventTimer)clearInterval(_idleEventTimer);
+    _idleEventTimer=setInterval(function(){
+      if(S.innerTab!=='idle')return;
+      var ev=_IDLE_EVENTS[Math.floor(Math.random()*_IDLE_EVENTS.length)];
+      var bonus=Math.max(ev.min,Math.floor(S.idleCps*ev.mult)+ev.flat);
+      var existing=p.querySelector('.idle-event-banner');if(existing)existing.remove();
+      var banner=document.createElement('div');banner.className='idle-event-banner';
+      banner.innerHTML='<div class="idle-event-title">'+ev.emoji+' '+ev.title+'</div>'+
+        '<div class="idle-event-sub">'+ev.sub+'</div>'+
+        '<div class="idle-event-cta">CLICK for +'+fmtIdleMoney(bonus)+'!</div>';
+      var rm=setTimeout(function(){if(banner.isConnected)banner.remove();},8000);
+      banner.addEventListener('click',function(){
+        clearTimeout(rm);banner.remove();
+        S.idleMoney+=bonus;
+        if(_idleDisplay&&_idleDisplay.money)_idleDisplay.money.textContent=fmtIdleMoney(S.idleMoney);
+        var cb=p.querySelector('.idle-collect-btn');
+        if(cb){cb.textContent='Collect '+fmtIdleMoney(S.idleMoney)+' \u2192 Balance';cb.disabled=S.idleMoney<1;}
+        showToast(ev.emoji+' +'+fmtIdleMoney(bonus)+' bonus!','success');
+      });
+      p.style.position='relative';p.appendChild(banner);
+    },30000);
   }
+  // ── Market (WIP) ─────────────────────────────────────────────────────────
+  function renderMarket(){
+    var p=panels['market'];p.innerHTML='';
+    if(!S.market){
+      S.market={wallet:1000,pnl:0,port:{},
+        stocks:[
+          {id:'VIBE',name:'Vibe Inc.',      ticker:'VIBE',emoji:'\U0001F3B5',price:50, base:50},
+          {id:'MEME',name:'Meme Corp',       ticker:'MEME',emoji:'\U0001F602',price:25, base:25},
+          {id:'MOON',name:'Moon Coin',       ticker:'MOON',emoji:'\U0001F315',price:100,base:100},
+          {id:'GRND',name:'Ground LLC',      ticker:'GRND',emoji:'\U0001F331',price:10, base:10},
+          {id:'HYPE',name:'Hype Train Co.',  ticker:'HYPE',emoji:'\U0001F682',price:75, base:75},
+        ]};
+    }
+    var ms=S.market;
+    // WIP notice
+    var wip=document.createElement('div');wip.className='mkt-wip';
+    wip.innerHTML='🚧 <b>Wall Street \u2014 Work in Progress</b><br>Market coins are separate from your real balance and don\u2019t save yet. Full sync coming soon!';
+    p.appendChild(wip);
+    // Wallet
+    var portVal=ms.stocks.reduce(function(sum,s){return sum+(s.price*(ms.port[s.id]||0));},0);
+    var wlt=document.createElement('div');wlt.className='mkt-wallet';
+    var wltL=document.createElement('div');
+    wltL.innerHTML='<div class="mkt-wallet-lbl">Market Wallet</div><div class="mkt-wallet-val" id="mkt-wallet-val">$'+Math.floor(ms.wallet).toLocaleString()+'</div>';
+    var wltR=document.createElement('div');wltR.style.textAlign='right';
+    wltR.innerHTML='<div class="mkt-wallet-lbl">Portfolio</div><div class="mkt-wallet-val" style="color:'+(portVal>0?'#22c55e':'var(--text-primary)')+'">$'+Math.floor(portVal).toLocaleString()+'</div>';
+    wlt.appendChild(wltL);wlt.appendChild(wltR);p.appendChild(wlt);
+    // P&L row
+    var pnlRow=document.createElement('div');pnlRow.className='mkt-pnl';
+    pnlRow.innerHTML='<span style="color:var(--text-muted);font-weight:700">Total P&amp;L</span>'+
+      '<span id="mkt-pnl-val" style="font-weight:900;font-family:monospace;color:'+(ms.pnl>=0?'#22c55e':'#ef4444')+'">'+
+      (ms.pnl>=0?'+':'')+Math.floor(ms.pnl).toLocaleString()+'</span>';
+    p.appendChild(pnlRow);
+    // Stock rows
+    var stockList=document.createElement('div');
+    ms.stocks.forEach(function(s){
+      var held=ms.port[s.id]||0;
+      var row=document.createElement('div');row.className='mkt-stock';row.id='mkt-row-'+s.id;
+      var emojiEl=document.createElement('span');emojiEl.style.cssText='font-size:24px;flex-shrink:0;';emojiEl.textContent=s.emoji;
+      var info=document.createElement('div');info.className='mkt-stock-info';
+      info.innerHTML='<div class="mkt-stock-name">'+s.name+'</div>'+
+        '<div class="mkt-stock-ticker">'+s.ticker+(held>0?' \u2022 '+held+' held':'')+'</div>';
+      var priceCol=document.createElement('div');priceCol.style.cssText='text-align:right;min-width:70px;';
+      priceCol.innerHTML='<div class="mkt-price" id="mkt-price-'+s.id+'">$'+s.price.toFixed(2)+'</div>'+
+        '<div class="mkt-change" id="mkt-chg-'+s.id+'">0.0%</div>';
+      var btns=document.createElement('div');btns.className='mkt-btns';
+      var buyB=document.createElement('button');buyB.className='mkt-buy-btn';buyB.textContent='Buy';
+      buyB.disabled=(ms.wallet<s.price);
+      buyB.addEventListener('click',(function(st){return function(){
+        if(ms.wallet<st.price){showToast('Not enough market coins!','error');return;}
+        ms.wallet-=st.price;ms.port[st.id]=(ms.port[st.id]||0)+1;
+        updateMktDisplay();
+      };})(s));
+      var sellB=document.createElement('button');sellB.className='mkt-sell-btn';sellB.textContent='Sell';
+      sellB.disabled=(held===0);
+      sellB.addEventListener('click',(function(st){return function(){
+        if(!(ms.port[st.id]>0)){showToast('You don\u2019t own any '+st.ticker,'error');return;}
+        ms.port[st.id]--;ms.wallet+=st.price;ms.pnl+=(st.price-st.base);
+        updateMktDisplay();
+      };})(s));
+      btns.appendChild(buyB);btns.appendChild(sellB);
+      row.appendChild(emojiEl);row.appendChild(info);row.appendChild(priceCol);row.appendChild(btns);
+      stockList.appendChild(row);
+    });
+    p.appendChild(stockList);
+    function updateMktDisplay(){
+      var pv=ms.stocks.reduce(function(a,s){return a+(s.price*(ms.port[s.id]||0));},0);
+      var wv=document.getElementById('mkt-wallet-val');if(wv)wv.textContent='$'+Math.floor(ms.wallet).toLocaleString();
+      var pEl=document.getElementById('mkt-pnl-val');
+      if(pEl){pEl.textContent=(ms.pnl>=0?'+':'')+Math.floor(ms.pnl).toLocaleString();pEl.style.color=ms.pnl>=0?'#22c55e':'#ef4444';}
+      ms.stocks.forEach(function(s){
+        var held2=ms.port[s.id]||0;
+        var row2=document.getElementById('mkt-row-'+s.id);if(!row2)return;
+        row2.querySelector('.mkt-stock-ticker').textContent=s.ticker+(held2>0?' \u2022 '+held2+' held':'');
+        row2.querySelectorAll('button')[0].disabled=(ms.wallet<s.price);
+        row2.querySelectorAll('button')[1].disabled=(held2===0);
+      });
+    }
+    // Price ticker
+    if(ms._timer)clearInterval(ms._timer);
+    ms._timer=setInterval(function(){
+      if(!p.isConnected||S.innerTab!=='market'){clearInterval(ms._timer);ms._timer=null;return;}
+      ms.stocks.forEach(function(s){
+        var pct=(Math.random()*0.22-0.11);
+        var oldPrice=s.price;
+        s.price=Math.max(1,+(s.price*(1+pct)).toFixed(2));
+        var chgPct=((s.price-oldPrice)/oldPrice*100);
+        var priceEl=document.getElementById('mkt-price-'+s.id);if(priceEl)priceEl.textContent='$'+s.price.toFixed(2);
+        var chgEl=document.getElementById('mkt-chg-'+s.id);
+        if(chgEl){chgEl.textContent=(chgPct>=0?'+':'')+chgPct.toFixed(1)+'%';chgEl.className='mkt-change '+(chgPct>=0?'up':'dn');}
+        var buyB2=document.getElementById('mkt-row-'+s.id);
+        if(buyB2)buyB2.querySelectorAll('button')[0].disabled=(ms.wallet<s.price);
+      });
+      updateMktDisplay();
+    },3000);
+  }
+
+  // ── Story ────────────────────────────────────────────────────────────────────
+  var _CHAPTERS=[
+    {num:1,title:'The Message',req:0,
+     body:'<p>You just joined the server. A mysterious message sits pinned at the top of #General: <b>"The one who earns the most will become Legend."</b></p><p>You don\u2019t know who wrote it. But you feel something stir. Maybe it\u2019s a joke. Maybe it\u2019s not.</p><p>You start clicking. One coin. Then another. The numbers tick upward. Small. Meaningless. <i>For now.</i></p><p>You buy your first upgrade \u2014 a Better Mouse. You smile.</p>',
+     choice:'What drives you?',
+     opts:['The money, obviously.','Proving something.','Just curious where this goes.']},
+    {num:2,title:'The Rise',req:5000,
+     body:'<p>$5,000. You pause and look at the number. It felt impossible a week ago.</p><p>Others are watching. You can feel it \u2014 the server\u2019s leaderboard (coming soon) shows your name creeping up.</p><p>Someone DMs you: <b>"How are you doing it?"</b></p><p>You think about your answer. The idle machine hums. The meme factory churns. You\u2019ve built something.</p>',
+     choice:'What do you say?',
+     opts:['Share the strategy.','Keep the secret.','Invite them to compete.']},
+    {num:3,title:'The Network',req:25000,
+     body:'<p>$25,000 and the server feels different. You know who\u2019s online. You know the rhythms of the chat. You\u2019ve bought nameplates, rings, effects \u2014 you\u2019re recognizable now.</p><p>The Admin notices. In a quiet DM: <b>"We\u2019ve been watching you. The owner wants to know if you\u2019re interested in something... bigger."</b></p><p>You stare at the message for a long moment.</p>',
+     choice:'How do you respond?',
+     opts:['Yes, immediately.','Ask what it means first.','Play it cool.']},
+    {num:4,title:'The Summit',req:100000,
+     body:'<p>Six figures. The server has changed around you \u2014 or maybe you have. New people join daily. Some already know your name.</p><p>The pinned message from Chapter 1 is still there. You right-click it. The option to delete appears. You have the power now.</p><p>Do you delete it? Or leave it for the next person who needs the push?</p>',
+     choice:'What do you do?',
+     opts:['Delete it. You\u2019ve earned the silence.','Leave it. Let others be inspired.','Add to it. Write the next line.']},
+    {num:5,title:'The Legend',req:500000,
+     body:'<p>Half a million dollars. The idle machine never sleeps. The meme factory never stops. You are the market.</p><p>The server\u2019s pinned message now reads: <b>"The Legend has been found."</b> Below it, your name.</p><p>You\u2019ve seen the whole story. You\u2019ve made your choices. The coins still tick. The chat still flows.</p><p>What comes next is yours to write.</p>',
+     choice:'',opts:[]},
+  ];
+  function renderStory(){
+    var p=panels['story'];p.innerHTML='';
+    var note=document.createElement('div');note.className='story-header-note';
+    note.innerHTML='\U0001F4D6 <b>The Legend of the Server</b><br>Unlock chapters by growing your balance. Your choices shape the story.';
+    p.appendChild(note);
+    _CHAPTERS.forEach(function(ch){
+      var unlocked=S.bal>=ch.req;
+      var isOpen=S.storyOpen===ch.num;
+      var card=document.createElement('div');card.className='story-ch '+(unlocked?'unlocked':'locked')+(isOpen?' active':'');
+      var hdr=document.createElement('div');hdr.className='story-ch-hdr';
+      var num=document.createElement('div');num.className='story-ch-num';num.textContent='Ch. '+ch.num;
+      var title=document.createElement('div');title.className='story-ch-title';title.textContent=ch.title;
+      var lock=document.createElement('div');lock.className='story-lock';lock.textContent=unlocked?'🔓':'\U0001F512';
+      hdr.appendChild(num);hdr.appendChild(title);hdr.appendChild(lock);card.appendChild(hdr);
+      if(!unlocked){
+        var req=document.createElement('div');req.className='story-req';
+        req.textContent='Requires $'+ch.req.toLocaleString()+' balance';
+        card.appendChild(req);
+      } else if(isOpen){
+        var body=document.createElement('div');body.className='story-body';body.innerHTML=ch.body;
+        card.appendChild(body);
+        if(ch.choice&&ch.opts.length){
+          var choiceHdr=document.createElement('div');choiceHdr.style.cssText='font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-top:4px;margin-bottom:6px;';
+          choiceHdr.textContent=ch.choice;body.appendChild(choiceHdr);
+          var choiceDiv=document.createElement('div');choiceDiv.className='story-choice';
+          ch.opts.forEach(function(opt){
+            var btn=document.createElement('button');btn.className='story-choice-btn';btn.textContent=opt;
+            btn.addEventListener('click',function(e){
+              e.stopPropagation();
+              btn.style.background='rgba(79,156,249,.3)';btn.style.borderColor='#4f9cf9';
+              var sibs=choiceDiv.querySelectorAll('button');
+              sibs.forEach(function(b){if(b!==btn)b.disabled=true;});
+              showToast('\U0001F4AC Choice noted: "'+opt+'"','success');
+            });
+            choiceDiv.appendChild(btn);
+          });
+          body.appendChild(choiceDiv);
+        }
+        card.addEventListener('click',function(){S.storyOpen=null;renderStory();});
+      } else {
+        card.addEventListener('click',function(){S.storyOpen=ch.num;renderStory();});
+      }
+      p.appendChild(card);
+    });
+  }
+
+  var _IDLE_EVENTS=[
+    {emoji:'\\uD83D\\uDCA5',title:'Double Coins!',sub:'Your post is blowing up!',mult:5,flat:50,min:50},
+    {emoji:'\\uD83C\\uDF89',title:'Viral Moment!',sub:'Everyone\u2019s sharing your content!',mult:10,flat:100,min:100},
+    {emoji:'\u26A1',title:'Power Surge!',sub:'Free electricity!',mult:7,flat:75,min:75},
+    {emoji:'\\uD83D\\uDE80',title:'Rocket Launch!',sub:'To the moon!',mult:12,flat:200,min:200},
+    {emoji:'\\uD83C\\uDF1F',title:'Star Power!',sub:'You\u2019re glowing!',mult:8,flat:150,min:150},
+  ];
 
   // ── Message handler ───────────────────────────────────────────────────────
   function onMsg(e){
@@ -7799,14 +8266,15 @@ function convertTabToBalance(tabId) {
       _recalcIdle();updateBalDisplay();
       if(S.innerTab==='dashboard') renderDashboard();
       else if(S.innerTab==='shop') renderShop();
+      else if(S.innerTab==='inventory') renderInventory();
       else if(S.innerTab==='savings') renderSavings();
       else if(S.innerTab==='idle') renderIdle();
       else renderGamble();
     } else if(d.type==='shop_result'){
-      if(d.ok){S.bal=d.balance;S.inv=d.inventory||S.inv;updateBalDisplay();renderShop();showToast('Item purchased! 🛍️','success');}
+      if(d.ok){S.bal=d.balance;S.inv=d.inventory||S.inv;updateBalDisplay();renderShop();if(S.innerTab==='inventory')renderInventory();showToast('Item purchased!','success');}
       else showToast(d.error||'Purchase failed','error');
     } else if(d.type==='equip_result'){
-      if(d.ok){S.eqp=d.equipped;renderShop();showToast('Equipped!','success');}
+      if(d.ok){S.eqp=d.equipped;if(S.innerTab==='shop')renderShop();if(S.innerTab==='inventory')renderInventory();showToast('Equipped!','success');}
     } else if(d.type==='savings_result'){
       if(d.ok){S.savings=d.savings||S.savings;if(d.balance!==undefined){S.bal=d.balance;updateBalDisplay();}renderSavings();}
       else showToast(d.error||'Error','error');
@@ -7837,6 +8305,7 @@ function convertTabToBalance(tabId) {
     if(!document.getElementById('tabContent-'+tabId)){
       document.removeEventListener('_balance_msg',onMsg);
       if(_idleTimer) clearInterval(_idleTimer);
+      if(_idleEventTimer) clearInterval(_idleEventTimer);
       _mo.disconnect();
     }
   });
@@ -9063,6 +9532,23 @@ async def handle_client_ws(request):
                         "display_name": display_name,
                         "pfp_data": pfp_data,
                         "bio": bio
+                    }))
+                    # Auto-send balance data immediately so client has fresh data on reconnect
+                    _guest = not bool(session_token)
+                    _savings = await db_get_savings(username) if not _guest and db_pool else []
+                    _txns    = await db_get_transactions(username, 15) if not _guest and db_pool else []
+                    await ws.send_str(json.dumps({
+                        "type": "balance_data",
+                        "balance":       connected[ws].get("balance", 1000),
+                        "inventory":     connected[ws].get("inventory", []),
+                        "equipped":      connected[ws].get("equipped", {}),
+                        "savings":       _savings,
+                        "idle_money":    connected[ws].get("idle_money", 0.0),
+                        "idle_upgrades": connected[ws].get("idle_upgrades", {}),
+                        "transactions":  _txns,
+                        "is_guest":      _guest,
+                        "idle_upgrades_def": IDLE_UPGRADES,
+                        "shop_catalog":  list({"id": k, **v} for k, v in SHOP_CATALOG.items()),
                     }))
                     await broadcast_all({"type": "system", "text": f"{display_name} joined the chat"})
                     await send_user_list()
