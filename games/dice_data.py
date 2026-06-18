@@ -30,7 +30,7 @@ BEGINNER_PULL_COST   = 128   # -20%
 BEGINNER_MAX_PULLS   = 50
 BEGINNER_RARE_BY     = 10
 BEGINNER_MYTHIC_BY   = 40
-BATTLE_FIRST_CLEAR_REWARD = 50
+BATTLE_FIRST_CLEAR_REWARD = 150  # paid in Gems (v4.0)
 # Campaign stage ids the server will honor for one-time first-clear rewards.
 # Must stay in sync with the CAMPAIGN array in games/dice_rpg.py.
 CAMPAIGN_STAGE_IDS = ["c1", "c2", "c3", "c4", "c5", "c6"]
@@ -46,20 +46,151 @@ MYTHIC_HARD_PITY       = 89
 MAX_CONSTELLATION       = 6
 UNIVERSAL_SHARD_YIELD   = {"COMMON": 5, "RARE": 20, "MYTHIC": 50}
 
-# Universal constellation bonuses (applied in the client combat engine).
+# Universal constellation bonuses (v4.0 redesign — EFFECTS / utility, never raw
+# damage multipliers). Each level grants a battle-start or per-round buff that
+# the client combat engine applies in buildAlly()/startBattle()/startRound().
+#   key  = machine field the client switches on
+#   val  = magnitude for that effect (meaning depends on key)
 CONSTELLATION_BONUS = [
-    {"level": 1, "desc": "+8% ATK"},
-    {"level": 2, "desc": "+12% Max HP"},
-    {"level": 3, "desc": "Skill effects +20%"},
-    {"level": 4, "desc": "+10% DEF, +8% SPD"},
-    {"level": 5, "desc": "Ultimate damage +25%"},
-    {"level": 6, "desc": "+15% all damage dealt"},
+    {"level": 1, "key": "start_energy", "val": 15,
+     "desc": "Start each battle with 15 Energy."},
+    {"level": 2, "key": "max_hp", "val": 0.15,
+     "desc": "+15% Max HP."},
+    {"level": 3, "key": "skill_cd", "val": 1,
+     "desc": "Skill cooldown reduced by 1 turn."},
+    {"level": 4, "key": "def_spd", "val": 0.12,
+     "desc": "+12% DEF and +12% SPD."},
+    {"level": 5, "key": "start_shield", "val": 0.20,
+     "desc": "Begin battle with a shield worth 20% of Max HP."},
+    {"level": 6, "key": "revive", "val": 0.30,
+     "desc": "Once per battle, revive at 30% HP when defeated."},
 ]
 
 HISTORY_MAX = 200
 TEAM_SIZE   = 4
 
 STARTER_DICE = ["green_pip", "chain_pip"]
+
+# ─── v4.0 Two-tier currency ──────────────────────────────────────────────────
+# Balance (the chat-wide economy) -> Crystals : 1 : 1
+# Crystals -> Gems (the in-game summon/upgrade currency) : 1 : 0.9
+# Pulls and upgrades are paid in GEMS.
+CRYSTAL_RATE = 1.0   # crystals received per 1 balance spent
+GEM_RATE     = 0.9   # gems received per 1 crystal spent
+STARTER_GEMS = 1600  # seeded so a new player can immediately 10-pull
+
+# ─── v4.0 Premium bundle shop (small, intentionally not a cash grab) ──────────
+# Bundles are bought with CRYSTALS. "gems" bundles convert at a better rate than
+# the raw 0.9; "select" bundles grant a die of the player's choice.
+BUNDLES = [
+    {"id": "gem_pouch",  "name": "Pouch of Gems", "cost_crystals": 500,
+     "grant": "gems", "gems": 550,
+     "desc": "550 Gems for 500 Crystals — a little better than the table rate."},
+    {"id": "gem_chest",  "name": "Chest of Gems", "cost_crystals": 2000,
+     "grant": "gems", "gems": 2400, "best": True,
+     "desc": "2,400 Gems for 2,000 Crystals — the best Gem value on offer."},
+    {"id": "rare_choice", "name": "Rare of Choice", "cost_crystals": 3000,
+     "grant": "select", "select_rarity": "RARE",
+     "desc": "Pick any Rare die and add it straight to your collection."},
+    {"id": "mythic_choice", "name": "Mythic of Choice", "cost_crystals": 14000,
+     "grant": "select", "select_rarity": "MYTHIC",
+     "desc": "Choose any Mythic die. The grand prize — saved for, never gambled."},
+]
+BUNDLES_BY_ID = {b["id"]: b for b in BUNDLES}
+
+# ─── v4.0 Endless arena milestone rewards (one-time, by best wave reached) ────
+# Claimable once each, in ascending order, only up to the player's best wave.
+ENDLESS_MILESTONES = [
+    {"wave": 10,  "gems": 300,  "crystals": 0,    "shards": 0},
+    {"wave": 25,  "gems": 800,  "crystals": 0,    "shards": 20},
+    {"wave": 50,  "gems": 2000, "crystals": 500,  "shards": 0},
+    {"wave": 100, "gems": 5000, "crystals": 1500, "shards": 100},
+]
+MILESTONE_WAVES = [m["wave"] for m in ENDLESS_MILESTONES]
+MILESTONES_BY_WAVE = {m["wave"]: m for m in ENDLESS_MILESTONES}
+
+# ─── v4.0 Endless scaling (read by the client wave spawner) ───────────────────
+ENDLESS_SCALE = {
+    "hp_per_wave":   0.20,   # +20% enemy HP per wave
+    "atk_per_wave":  0.12,   # +12% enemy ATK per wave
+    "spd_per_wave":  0.010,  # +1% enemy SPD per wave
+    "break_per_wave": 0.06,  # +6% enemy toughness (break resistance) per wave
+    "elite_mult": 1.8, "boss_mult": 3.4,
+}
+
+# ─── v4.0 Dice ascension (Universal Shard sink → flat stat growth) ────────────
+# Ascension is a separate progression from constellations. Levels cost shards
+# and grant flat stat growth (this is a deliberate power sink, distinct from
+# constellations which only grant utility effects).
+ASCENSION_MAX_LEVEL = 6
+# Cumulative cost reference is per-step; index i = cost to go from level i to i+1.
+ASCENSION_STEP_COST = {
+    "COMMON": [30, 50, 80, 120, 180, 260],
+    "RARE":   [60, 100, 160, 240, 360, 520],
+    "MYTHIC": [120, 200, 320, 480, 720, 1040],
+}
+ASCENSION_STAT_PER_LEVEL = 0.06  # +6% hp/atk/def per ascension level
+
+# ─── v4.0 Achievements (server-verifiable from dice state; claim once each) ────
+# "check" is interpreted by the server against the player's dice state.
+ACHIEVEMENTS = [
+    {"id": "first_summon", "name": "First Roll", "check": "pulls>=1",
+     "gems": 100, "crystals": 0, "shards": 0,
+     "desc": "Summon for the very first time."},
+    {"id": "collector_10", "name": "Getting a Set", "check": "owned>=10",
+     "gems": 400, "crystals": 0, "shards": 0,
+     "desc": "Own 10 different dice."},
+    {"id": "collector_all", "name": "Full House", "check": "owned>=all",
+     "gems": 1500, "crystals": 500, "shards": 0,
+     "desc": "Collect every die in the Dex."},
+    {"id": "own_mythic", "name": "Touch of Fate", "check": "mythic>=1",
+     "gems": 300, "crystals": 0, "shards": 0,
+     "desc": "Own at least one Mythic die."},
+    {"id": "clear_campaign", "name": "Beat the House", "check": "cleared_c6",
+     "gems": 800, "crystals": 0, "shards": 0,
+     "desc": "Clear the final campaign stage, The House Edge."},
+    {"id": "wave_25", "name": "Survivor", "check": "best_wave>=25",
+     "gems": 600, "crystals": 0, "shards": 30,
+     "desc": "Reach wave 25 in the Endless Arena."},
+    {"id": "ascend_die", "name": "Reforged", "check": "ascended>=1",
+     "gems": 300, "crystals": 0, "shards": 0,
+     "desc": "Ascend any die at least once."},
+    {"id": "const_six", "name": "Perfect Six", "check": "const6>=1",
+     "gems": 800, "crystals": 0, "shards": 0,
+     "desc": "Bring any die to Constellation 6."},
+]
+ACHIEVEMENTS_BY_ID = {a["id"]: a for a in ACHIEVEMENTS}
+
+# ─── v4.0 Battle pacing / speed options (client UX only) ──────────────────────
+SPEED_OPTIONS = [0.75, 1.0, 1.5]
+
+# ─── v4.0 Team presets ───────────────────────────────────────────────────────
+TEAM_PRESET_SLOTS = 3
+
+# ─── v4.0 Recommended team comps (archetype guides, by die id) ────────────────
+TEAM_COMPS = [
+    {"id": "omen", "name": "Omen Doom", "primary": "Omen",
+     "desc": "Pile Omen onto a foe, then detonate it for huge Arcane bursts.",
+     "core": ["omen_die", "split_fate", "green_pip"], "flex": "house_edge"},
+    {"id": "break", "name": "Break Burst", "primary": "Break",
+     "desc": "Shatter enemy toughness, then crush them while Broken.",
+     "core": ["fracture_die", "pressure_die", "amplifier_die"], "flex": "signal_die"},
+    {"id": "fortune", "name": "Fortune Engine", "primary": "Fortune",
+     "desc": "Bend the dice: floor your rolls high and crit constantly.",
+     "core": ["house_edge", "loaded_clerk", "lucky_tapper"], "flex": "flip_protocol"},
+    {"id": "universal", "name": "Universal Goodstuff", "primary": "Universal",
+     "desc": "Energy, shields and speed — a reliable team for any fight.",
+     "core": ["signal_die", "stability_die", "tempo_die"], "flex": "amplifier_die"},
+]
+
+
+def ascension_step_cost(rarity, level):
+    """Shard cost to go from `level` to `level+1` for a die of `rarity`.
+    Returns None if already at max."""
+    steps = ASCENSION_STEP_COST.get(rarity, ASCENSION_STEP_COST["COMMON"])
+    if level < 0 or level >= ASCENSION_MAX_LEVEL or level >= len(steps):
+        return None
+    return steps[level]
 
 
 def mythic_rate_at(pity):
@@ -357,5 +488,18 @@ def public_catalog():
             "PULL_COST": PULL_COST, "BEGINNER_PULL_COST": BEGINNER_PULL_COST,
             "BEGINNER_MAX_PULLS": BEGINNER_MAX_PULLS,
             "BATTLE_FIRST_CLEAR_REWARD": BATTLE_FIRST_CLEAR_REWARD,
+            # v4.0
+            "CRYSTAL_RATE": CRYSTAL_RATE, "GEM_RATE": GEM_RATE,
+            "STARTER_GEMS": STARTER_GEMS,
+            "BUNDLES": BUNDLES,
+            "ENDLESS_MILESTONES": ENDLESS_MILESTONES,
+            "ENDLESS_SCALE": ENDLESS_SCALE,
+            "ASCENSION_MAX_LEVEL": ASCENSION_MAX_LEVEL,
+            "ASCENSION_STEP_COST": ASCENSION_STEP_COST,
+            "ASCENSION_STAT_PER_LEVEL": ASCENSION_STAT_PER_LEVEL,
+            "ACHIEVEMENTS": ACHIEVEMENTS,
+            "SPEED_OPTIONS": SPEED_OPTIONS,
+            "TEAM_PRESET_SLOTS": TEAM_PRESET_SLOTS,
+            "TEAM_COMPS": TEAM_COMPS,
         },
     }
