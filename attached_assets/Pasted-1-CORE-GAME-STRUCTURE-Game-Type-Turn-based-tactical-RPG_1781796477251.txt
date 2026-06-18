@@ -1,0 +1,309 @@
+1. CORE GAME STRUCTURE
+Game Type
+
+Turn-based tactical RPG (speed-based initiative)
+
+Team Size
+TEAM_SIZE = 4
+2. TURN SYSTEM (EXPLICIT ORDER)
+Turn Flow
+1. Sort all units by SPEED (descending)
+2. Each unit takes 1 action per cycle
+3. Repeat until battle ends
+Start-of-Turn Rule
+def start_turn(unit):
+    roll = roll_die(unit.rarity_die)
+    unit.energy += roll
+    apply_fortune(unit)
+End-of-Turn Rule (IMPORTANT)
+def end_turn():
+    resolve_omen()
+    update_break()
+    tick_house_edge_cooldowns()
+3. ENERGY SYSTEM
+ULT_COST = {
+  "COMMON": 60,
+  "RARE": 80,
+  "MYTHIC": 100
+}
+4. CORE STATS
+
+Every unit has:
+
+{
+  "HP": "float",
+  "ATK": "float",
+  "DEF": "float",
+  "SPEED": "float",
+  "ELEMENT": "enum",
+  "RESISTANCES": "map"
+}
+5. DAMAGE SYSTEM
+Base Scaling
+BASIC = 0.015
+SKILL = 0.045
+ULT = 0.18
+Final Formula
+damage = ATK * multiplier * (1 - enemy.defense_reduction)
+6. OMEN SYSTEM (DoT ENGINE)
+State
+enemy.omen: int
+Trigger (Enemy Turn Start)
+def resolve_omen(enemy):
+
+    dmg = enemy.omen * 1.2
+
+    if enemy.type == "NORMAL":
+        dmg *= 1.20
+    elif enemy.type == "ELITE":
+        dmg *= 1.10
+    elif enemy.type == "BOSS":
+        dmg *= 1.05
+
+    enemy.hp -= dmg
+
+    enemy.omen = ceil(enemy.omen / 2)
+Rules
+Only triggers on HIT
+Has soft cap: 9999
+Does NOT interact with crit directly
+7. BREAK SYSTEM
+State
+enemy.break_value
+enemy.is_broken
+enemy.break_timer
+Activation
+if break_value >= threshold:
+    enemy.is_broken = True
+    enemy.break_timer = 1
+Effects While Broken
+{
+  "damage_taken_multiplier": 1.30,
+  "disable_immunity": true
+}
+Expiry
+if break_timer <= 0:
+    enemy.is_broken = False
+    enemy.break_value = 0
+Break Thresholds
+{
+  "NORMAL": 100,
+  "ELITE": 180,
+  "BOSS": 300
+}
+8. FORTUNE SYSTEM (RNG CONTROL)
+State
+unit.fortune_stacks
+Rules (FULLY LOCKED)
+def apply_fortune(roll):
+    roll += min(2, unit.fortune_stacks)
+
+    roll = clamp(roll, 1, max_die_value)
+
+    return roll
+Allowed Effects
+±2 roll modifier max
+1 reroll per turn
+convert 1 bad roll → average result
+HARD LIMITS
+Cannot exceed max die value
+Cannot stack infinitely
+Cannot affect enemy rolls
+9. HOUSE EDGE (MYTHIC RNG ENGINE)
+Passive
+def house_edge_roll():
+    r1 = d20()
+    r2 = d20()
+    return player_choice(r1, r2)
+20 RULE
+if roll == 20:
+    if not cooldown_active:
+        trigger_reality_break()
+        cooldown = 2
+Cooldown Timing
+Cooldown ticks at END of unit’s turn
+Reality Break Effects
+Immediate extra action OR
+Massive buff window OR
+Omen amplification OR
+Break amplification
+10. ELEMENT SYSTEM
+ELEMENTS = ["Fire", "Ice", "Electric", "Physical", "Arcane"]
+Resistance Formula
+final_damage *= (1 - resistance_value)
+11. CRIT SYSTEM
+Exists but rare baseline (~5–10%)
+Fortune does NOT modify crit directly
+Crit multiplier = 1.5x
+12. FULL DICE ROSTER (COMPLETE)
+🟣 OMEN CORE
+🟣 Omen Die (MYTHIC)
+{
+  "name": "Omen Die",
+  "rarity": "MYTHIC",
+  "role": "OMEN ENGINE",
+
+  "passive": {
+    "allies_trigger_omen_on_hit": true,
+    "does_not_consume_stacks": true
+  },
+
+  "skill": {
+    "apply_omen": 12,
+    "trigger_omen": true
+  },
+
+  "energy_drain": {
+    "apply_omen": 20,
+    "trigger_omen": true
+  },
+
+  "ultimate": {
+    "aoe_damage": true,
+    "omen_triggers": 3,
+    "bonus_omen": 5
+  }
+}
+🔵 Split Fate (RARE)
+{
+  "name": "Split Fate",
+  "role": "MULTI-HIT DPS",
+
+  "skill": {
+    "hits": 3,
+    "applies_omen": true,
+    "triggers_omen_if_present": true
+  },
+
+  "passive": {
+    "mode":
+      "no_omen_die = DPS",
+      "with_omen_die = Omen scaler"
+  }
+}
+🟢 Green Pip (COMMON)
+{
+  "name": "Green Pip",
+  "role": "ENERGY + SETUP",
+
+  "basic": {
+    "energy": 3,
+    "omen": 1
+  },
+
+  "skill": {
+    "omen": 4,
+    "team_energy": 5
+  },
+
+  "ultimate": {
+    "omen": 6,
+    "team_energy": 10
+  }
+}
+🟡 HOUSE EDGE CORE
+🟡 House Edge (MYTHIC)
+{
+  "name": "House Edge",
+  "role": "RNG CONTROL",
+
+  "passive": {
+    "roll_twice_d20": true,
+    "player_choice": true
+  },
+
+  "ultimate": {
+    "reality_break": true,
+    "cooldown_turns": 2
+  }
+}
+🔵 Loaded Clerk (RARE)
+minimum roll guarantee (no roll below 30% of max)
+stabilizes RNG variance
+🔵 Flip Protocol (RARE)
+grants extra action
+rerolls ally action
+turn inversion mechanic
+🔵 Variance Weaver (RARE)
+stores RNG events
+converts into buffs/debuffs
+⚔️ BREAK CORE
+🟠 Fracture Die (RARE DPS)
+Break scaling damage
+bonus damage on Broken enemies
+🔵 Signal Die
+energy generation
+cooldown reduction
+🔵 Relay Die
+copies ally actions (reduced power)
+🌐 UNIVERSAL SUPPORTS
+Stability Die
+cleanse + CC resistance
+Amplifier Die
+damage boost + Break damage increase
+Refraction Die
+repeats ally effects (low chance)
+Tempo Die
+speed boost + enemy delay
+🟢 COMMON SUPPORTS
+Chain Pip
+multi-hit chance system
+Lucky Tapper
+crit + roll boost
+Pressure Die
+defense down debuff
+Shield Fragment
+flat shield only
+Echo Die
+repeats ally effects
+Baseline Die
+energy generation
+13. LOADING SCREEN (FINAL SPEC)
+def loading_screen():
+
+    dice_wall = spawn_dice_wall()
+
+    while loading:
+        for die in dice_wall:
+            die.value = random_face()
+
+    transition():
+        for die in dice_wall:
+            die.value = 6
+            fade_out(die)
+
+    enter_game()
+Visual Rules
+Floating wall of dice
+Constant rolling numbers
+All dice converge to “6”
+Dice dissolve → game starts
+14. CATALOG SYSTEM (NO DUPLICATES)
+Ownership Rule
+if die.id in player_collection:
+    convert_to_shards(die)
+else:
+    player_collection.append(die.id)
+Catalog UI
+
+Each dice shows:
+
+3D model
+rarity glow
+element
+system tags:
+Omen / Break / Fortune / Universal
+15. FINAL SYSTEM SUMMARY
+OMEN = stacking DoT engine
+BREAK = burst vulnerability engine
+FORTUNE = RNG stability engine
+HOUSE EDGE = turn manipulation engine
+16. DONE — DEV READY STATE
+
+✔ No missing units
+✔ No undefined mechanics
+✔ No vague scaling
+✔ No unresolved cooldown timing
+✔ Fully implementable JSON structure
+✔ Loading screen included
+✔ Catalog system included
