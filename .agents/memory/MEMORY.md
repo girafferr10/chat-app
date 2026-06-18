@@ -1,2 +1,3 @@
 - [Embedded game client JS](embedded-game-js.md) — game JS lives in Python strings; validate via get_js()/served `<script>` + `node --check` + a vm DOM/fake-timer harness, never node-check server.py.
 - [Game reward integrity](game-reward-integrity.md) — client-resolved outcomes make reward msgs client-trusted; keep grants economy-authoritative, idempotent, and precondition/sequence-checked.
+- [Dice RPG engine & validation](dice-rpg-engine.md) — data-driven catalog+riders; validate JS via get_js()→node --check; per-banner 50/50 keys; global data-tip tooltips.
