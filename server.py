@@ -7708,7 +7708,7 @@ function convertTabToBalance(tabId) {
 
   // Nav
   var nav=document.createElement('div');nav.className='bal-nav';
-  var _navTabs=[['dashboard','📈 Overview'],['shop','🛍️ Shop'],['inventory','🎒 Inventory'],['savings','🏦 Savings'],['gamble','🎰 Gamble'],['idle','\u26A1 Idle'],['market','📊 Market'],['story','📖 Story',true],['game','🎮 Game',true]];
+  var _navTabs=[['dashboard','📈 Overview'],['shop','🛍️ Shop'],['inventory','🎒 Inventory'],['savings','🏦 Savings'],['gamble','🎰 Gamble'],['idle','\u26A1 Idle'],['market','📊 Market'],['story','📖 Story',true]];
   var navBtns={};
   _navTabs.forEach(function(t){
     var b=document.createElement('button');b.className='bal-nav-btn'+(t[0]==='dashboard'?' active':'');
@@ -7730,7 +7730,7 @@ function convertTabToBalance(tabId) {
   var content=document.createElement('div');content.className='bal-content';
   wrap.appendChild(content);
   var panels={};
-  ['dashboard','shop','inventory','savings','gamble','idle','market','story','game'].forEach(function(t){
+  ['dashboard','shop','inventory','savings','gamble','idle','market','story'].forEach(function(t){
     var p=document.createElement('div');p.className='bal-panel'+(t==='dashboard'?' active':'');p.id='bpan-'+tabId+'-'+t;
     content.appendChild(p);panels[t]=p;
   });
@@ -7770,7 +7770,6 @@ function convertTabToBalance(tabId) {
     else if(tab==='idle') renderIdle();
     else if(tab==='market') renderMarket();
     else if(tab==='story') renderStory();
-    else if(tab==='game') renderGame();
   }
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -8804,20 +8803,6 @@ function convertTabToBalance(tabId) {
       }
       p.appendChild(card);
     });
-  }
-
-  function renderGame(){
-    var p=panels['game'];p.innerHTML='';
-    var box=document.createElement('div');
-    box.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:200px;gap:14px;padding:32px;text-align:center;';
-    var ico=document.createElement('div');ico.style.cssText='font-size:56px;';ico.textContent='\U0001F3AE';
-    var h=document.createElement('div');h.style.cssText='font-size:20px;font-weight:900;color:var(--text-primary);';h.textContent='Game Center';
-    var sub=document.createElement('div');sub.style.cssText='font-size:13px;color:var(--text-muted);max-width:260px;line-height:1.5;';
-    sub.textContent='New multiplayer & single-player experiences coming soon. Stay tuned!';
-    var lock=document.createElement('div');lock.style.cssText='font-size:13px;font-weight:700;color:var(--accent);background:rgba(var(--accent-rgb,79,156,249),.12);padding:7px 18px;border-radius:20px;border:1px solid rgba(var(--accent-rgb,79,156,249),.2);';
-    lock.textContent='\U0001F512 Coming Soon';
-    box.appendChild(ico);box.appendChild(h);box.appendChild(sub);box.appendChild(lock);
-    p.appendChild(box);
   }
 
   var _IDLE_EVENTS=[
