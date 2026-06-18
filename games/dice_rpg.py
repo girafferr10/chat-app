@@ -21,7 +21,55 @@ def get_css():
 
 /* rarity + element tokens */
 .dg-root{--c-common:#5b8fd6;--c-rare:#a77bff;--c-mythic:#ffce5a;
-  --e-Fire:#ff6b4a;--e-Ice:#5ad6ff;--e-Electric:#ffe14a;--e-Physical:#c9ccd6;--e-Arcane:#c47bff;}
+  --e-Fire:#ff6b4a;--e-Ice:#5ad6ff;--e-Electric:#ffe14a;--e-Physical:#c9ccd6;--e-Arcane:#c47bff;
+  --e-Light:#ffe9a8;--e-Dark:#8b7bd6;--e-Blood:#ff4d6d;--e-Poison:#bff04a;--e-Nature:#5fd17a;
+  --e-Wind:#86e8d0;--e-Time:#7fb8ff;--e-Void:#b15be0;--e-Earth:#c8975a;}
+
+/* ---- status feedback ---- */
+.dg-unit.omenGlow{box-shadow:0 0 0 1px rgba(199,123,255,.6),0 0 22px rgba(199,123,255,.4)!important;}
+.dg-unit.fracGlow{box-shadow:0 0 0 1px rgba(255,120,90,.6),0 0 20px rgba(255,90,60,.35)!important;}
+.dg-unit.frozenGlow{box-shadow:0 0 0 1px rgba(120,210,255,.7),0 0 22px rgba(95,208,255,.45)!important;}
+.dg-unit .dg-cracks{position:absolute;inset:0;pointer-events:none;background-image:
+  linear-gradient(115deg,transparent 48%,rgba(255,120,90,.5) 49%,transparent 51%),
+  linear-gradient(60deg,transparent 47%,rgba(255,90,60,.4) 48%,transparent 50%);
+  opacity:0;transition:opacity .3s;}
+.dg-unit.shattered .dg-cracks{opacity:.55;}
+.dg-thresh{position:absolute;top:6px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:900;
+  letter-spacing:1px;padding:2px 7px;border-radius:6px;text-transform:uppercase;z-index:3;white-space:nowrap;}
+.dg-thresh.exposed{background:rgba(255,160,90,.25);color:#ffb46b;border:1px solid rgba(255,160,90,.5);}
+.dg-thresh.shattered{background:rgba(255,90,60,.3);color:#ff8a6b;border:1px solid rgba(255,90,60,.6);}
+.dg-thresh.frozen{background:rgba(95,208,255,.25);color:#7fdcff;border:1px solid rgba(95,208,255,.55);}
+.dg-thresh.weighed{background:rgba(150,150,180,.28);color:#c0c0e0;border:1px solid rgba(150,150,180,.55);}
+.dg-thresh.collapse{background:rgba(177,91,224,.28);color:#d49bff;border:1px solid rgba(177,91,224,.6);}
+.dg-combo-meter{display:flex;align-items:center;gap:8px;padding:7px 14px;margin:0 0 10px;border-radius:11px;
+  background:linear-gradient(90deg,rgba(255,120,90,.14),rgba(255,206,90,.1));border:1px solid rgba(255,140,90,.3);}
+.dg-combo-meter .cm-lbl{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#ffb46b;}
+.dg-combo-meter .cm-pips{display:flex;gap:3px;flex-wrap:wrap;}
+.dg-combo-meter .cm-pip{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.12);}
+.dg-combo-meter .cm-pip.on{background:linear-gradient(160deg,#ffce5a,#ff8a4a);box-shadow:0 0 7px rgba(255,160,80,.7);}
+.dg-combo-meter .cm-n{font-size:14px;font-weight:900;color:#ffce5a;margin-left:auto;}
+.dg-synergy{display:flex;flex-direction:column;gap:8px;margin:4px 0 18px;}
+.dg-syn-card{display:flex;gap:11px;align-items:flex-start;padding:12px 14px;border-radius:13px;
+  background:linear-gradient(135deg,rgba(167,123,255,.14),rgba(123,97,255,.06));border:1px solid rgba(167,123,255,.32);}
+.dg-syn-card.off{opacity:.5;filter:grayscale(.6);border-style:dashed;}
+.dg-syn-ic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-size:18px;background:rgba(167,123,255,.2);flex-shrink:0;}
+.dg-syn-tx .nm{font-size:13px;font-weight:800;}
+.dg-syn-tx .ct{font-size:11px;color:var(--text-tertiary);margin:1px 0 3px;}
+.dg-syn-tx .ds{font-size:12px;color:var(--text-secondary);line-height:1.45;}
+.dg-anomaly-banner{padding:8px 14px;margin:0 0 10px;border-radius:11px;text-align:center;font-size:12px;font-weight:800;
+  background:linear-gradient(90deg,rgba(177,91,224,.2),rgba(127,184,255,.16));border:1px solid rgba(177,91,224,.4);color:#d9b6ff;}
+
+/* ---- hover tooltip ---- */
+.dg-tip{position:fixed;z-index:90;max-width:280px;padding:10px 13px;border-radius:11px;pointer-events:none;
+  background:linear-gradient(180deg,#1c1c33,#12121f);border:1px solid rgba(167,123,255,.4);
+  box-shadow:0 14px 40px rgba(0,0,0,.6);font-size:12px;line-height:1.5;color:var(--text-secondary);
+  opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s;}
+.dg-tip.show{opacity:1;transform:none;}
+.dg-tip .tt-h{font-size:12.5px;font-weight:800;color:#fff;margin-bottom:3px;}
+.dg-tip .tt-tag{display:inline-block;font-size:9px;font-weight:900;letter-spacing:1px;text-transform:uppercase;
+  padding:1px 6px;border-radius:5px;margin-bottom:5px;background:rgba(167,123,255,.25);color:#c9b3ff;}
+[data-tip]{cursor:help;}
 
 /* ---- loading screen ---- */
 .dg-loader{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;
@@ -336,6 +384,32 @@ def get_css():
 .dg-chip-s.buff{background:rgba(123,224,140,.18);color:#8fe6a0;}
 .dg-chip-s.deb{background:rgba(255,120,80,.2);color:#ffb199;}
 .dg-chip-s.fort{background:rgba(255,206,90,.2);color:#ffd96b;}
+.dg-chip-s.frac{background:rgba(255,138,74,.22);color:#ffb27a;}
+.dg-chip-s.chill{background:rgba(120,200,255,.2);color:#a9e0ff;}
+.dg-chip-s.grav{background:rgba(150,150,180,.22);color:#c7c7e0;}
+.dg-chip-s.coll{background:rgba(177,91,224,.22);color:#d49bff;}
+.dg-chip-s.bleed{background:rgba(224,60,80,.22);color:#ff9aa8;}
+.dg-chip-s.plague{background:rgba(140,200,80,.2);color:#c4e88a;}
+.dg-chip-s.time{background:rgba(120,160,255,.2);color:#b3c6ff;}
+.dg-unit.dg-glow-omen{box-shadow:0 0 0 1px rgba(196,123,255,calc(.4 + .5*var(--omen-i,.3))),0 0 calc(14px + 22px*var(--omen-i,.3)) rgba(160,90,230,calc(.3 + .45*var(--omen-i,.3)))!important;}
+.dg-unit.dg-frozen{box-shadow:0 0 0 1px rgba(120,200,255,.6),0 0 20px rgba(90,170,255,.4)!important;}
+.dg-unit.dg-frozen::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(135deg,rgba(150,210,255,.16),rgba(120,180,255,.05));}
+.dg-unit.dg-collapse{box-shadow:0 0 0 1px rgba(177,91,224,.7),0 0 24px rgba(150,60,210,.45)!important;animation:dgCollapsePulse 1.6s ease-in-out infinite;}
+@keyframes dgCollapsePulse{0%,100%{filter:none;}50%{filter:brightness(.82) saturate(1.3);}}
+.dg-unit.dg-transform{box-shadow:0 0 0 1px rgba(255,206,90,.7),0 0 24px rgba(255,180,60,.5)!important;}
+.dg-synrow{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 10px;}
+.dg-synpill{font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(255,206,90,.16);
+  color:#ffd96b;border:1px solid rgba(255,206,90,.4);cursor:help;}
+.dg-syn-row{display:flex;align-items:center;gap:10px;padding:9px 13px;border-radius:11px;cursor:help;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);opacity:.65;}
+.dg-syn-row.on{opacity:1;background:rgba(255,206,90,.1);border-color:rgba(255,206,90,.4);}
+.dg-syn-row .syn-tag{font-size:10px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;padding:3px 8px;
+  border-radius:6px;background:rgba(255,255,255,.08);color:var(--text-secondary);}
+.dg-syn-row.on .syn-tag{background:rgba(255,206,90,.22);color:#ffd96b;}
+.dg-syn-row .syn-nm{font-size:13px;font-weight:800;color:var(--text-primary);}
+.dg-syn-row .syn-cnt{font-size:12px;font-weight:800;color:var(--text-muted);margin-left:auto;}
+.dg-syn-row .syn-state{font-size:11px;font-weight:900;letter-spacing:.5px;color:var(--text-muted);}
+.dg-syn-row.on .syn-state{color:#ffd96b;}
 .dg-actpanel{padding:14px 16px;border-radius:15px;background:rgba(8,8,16,.6);border:1px solid rgba(255,255,255,.1);
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:64px;}
 .dg-actpanel .ap-who{font-size:13px;font-weight:800;}
@@ -500,6 +574,26 @@ function initDiceRpg(container){
   container.innerHTML='';
   var root=document.createElement('div'); root.className='dg-root'; container.appendChild(root);
 
+  // global hover tooltip
+  var tipEl=document.createElement('div'); tipEl.className='dg-tip'; document.body.appendChild(tipEl);
+  function placeTip(x,y){ var w=tipEl.offsetWidth, h=tipEl.offsetHeight, pad=14;
+    var lx=x+16, ty=y+16; if(lx+w+pad>window.innerWidth) lx=x-w-16; if(lx<pad) lx=pad;
+    if(ty+h+pad>window.innerHeight) ty=y-h-16; if(ty<pad) ty=pad;
+    tipEl.style.left=lx+'px'; tipEl.style.top=ty+'px'; }
+  function onTipMove(ev){ placeTip(ev.clientX,ev.clientY); }
+  root.addEventListener('mouseover',function(ev){
+    var t=ev.target.closest('[data-tip]'); if(!t||!root.contains(t)) return;
+    var txt=t.getAttribute('data-tip'); if(!txt) return;
+    var head=t.getAttribute('data-tip-h'), tag=t.getAttribute('data-tip-tag');
+    tipEl.innerHTML=(head?'<div class="tt-h">'+head+'</div>':'')+(tag?'<span class="tt-tag">'+tag+'</span>':'')+'<div class="tt-b">'+txt+'</div>';
+    placeTip(ev.clientX,ev.clientY); tipEl.classList.add('show'); document.addEventListener('mousemove',onTipMove);
+  });
+  root.addEventListener('mouseout',function(ev){
+    var t=ev.target.closest('[data-tip]'); if(!t) return;
+    if(ev.relatedTarget && t.contains(ev.relatedTarget)) return;
+    tipEl.classList.remove('show'); document.removeEventListener('mousemove',onTipMove);
+  });
+
   var G={ catalog:null, dice:[], byId:{}, banners:{}, K:{}, state:null, bal:0,
           view:'home', dexFilter:'ALL', timers:[], ready:false, minDone:false,
           banner:'limited', teamDraft:null, pulling:false, pullOverlay:null, rollTimer:null,
@@ -512,6 +606,17 @@ function initDiceRpg(container){
   function elemColor(e){return getComputedStyle(root).getPropertyValue('--e-'+e)||'#fff';}
   function fmt(n){return Math.floor(n||0).toLocaleString();}
   function rarColor(r){return r==='MYTHIC'?'#ffce5a':r==='RARE'?'#a77bff':'#5b8fd6';}
+  var STATUS_ALIAS={broken:'Break',omen:'Omen',shattered:'Shattered',exposed:'Exposed',fracture:'Fracture',
+    frozen:'Frozen',chill:'Chill',weighed:'WeighedDown',gravity:'Gravity',collapse:'Collapse',bleed:'Bleed',
+    plague:'Plague',time_mark:'TimeMark',stun:'Stun',break_vuln:'Break',mirage:'Mirage',dodge:'Dodge',
+    retribution:'Retribution',jackpot:'Jackpot',eclipse:'Eclipse',combo:'Combo',anomaly:'Anomaly',
+    evolution:'Evolution',summon:'Summon',mutation:'Mutation',echo:'Echo',shield:'Shield',energy:'Energy'};
+  var STATUS_FALLBACK={guard:'Guarding ally \u2014 intercepts enemy single-target attacks aimed at the team.',
+    immune:'Immune \u2014 takes no damage for a number of turns.'};
+  function statusTip(k){ var si=(G.K&&G.K.STATUS_INFO)||{}; var key=STATUS_ALIAS[k];
+    if(key && si[key]) return String(si[key]).replace(/"/g,'&quot;');
+    if(STATUS_FALLBACK[k]) return STATUS_FALLBACK[k].replace(/"/g,'&quot;');
+    return String(k).replace(/"/g,'&quot;'); }
   function dieGlyph(id){ // stable glyph from id hash
     var h=0; for(var i=0;i<id.length;i++) h=(h*31+id.charCodeAt(i))%6; return DIE_FACES[h]; }
 
@@ -757,11 +862,14 @@ function initDiceRpg(container){
       return '<div class="dg-sb"><div class="row"><span>'+label+'</span><span>'+v+'</span></div>'+
         '<div class="bar"><i style="width:'+pct+'%"></i></div></div>'; }
     function ability(k,a,color){ if(!a) return '';
-      return '<div class="dg-ability"><div class="ab-h"><span class="ab-k" style="background:'+color+'22;color:'+color+'">'+k+'</span>'+a.name+'</div>'+
+      var tip=String(a.desc||'').replace(/"/g,'&quot;');
+      return '<div class="dg-ability" data-tip="'+tip+'" data-tip-h="'+String(a.name||'').replace(/"/g,'&quot;')+'" data-tip-tag="'+k+'">'+
+        '<div class="ab-h"><span class="ab-k" style="background:'+color+'22;color:'+color+'">'+k+'</span>'+a.name+'</div>'+
         '<div class="ab-d">'+a.desc+'</div></div>'; }
     var consHtml='';
-    (G.K.CONSTELLATION_BONUS||[]).forEach(function(c){
-      consHtml+='<div class="dg-cons-item'+(cons>=c.level?' on':'')+'"><span class="cc-lv">C'+c.level+'</span><span>'+c.desc+'</span></div>'; });
+    var consSrc = (die.cons && die.cons.length) ? die.cons : (G.K.CONSTELLATION_BONUS||[]);
+    consSrc.forEach(function(c){
+      consHtml+='<div class="dg-cons-item'+(cons>=c.level?' on':'')+'"><span class="cc-lv">C'+c.level+'</span><span>'+(c.desc||'')+'</span></div>'; });
     var owned=!!coll[die.id], lvl=(coll[die.id]&&coll[die.id].level)||0, maxLvl=G.K.ASCENSION_MAX_LEVEL||6;
     var shards=wallet().universal_shards||0, steps=(G.K.ASCENSION_STEP_COST||{})[die.rarity]||[];
     var nextCost = lvl<maxLvl ? steps[lvl] : null;
@@ -802,7 +910,9 @@ function initDiceRpg(container){
   }
 
   /* ---------- summon ---------- */
-  function bannerKicker(bid){ return bid==='limited'?'Limited Banner':bid==='beginner'?'Beginner Banner':'Standard Banner'; }
+  function bannerKicker(bid){ if(bid==='limited') return 'Limited Banner'; if(bid==='beginner') return 'Beginner Banner';
+    if(bid==='standard') return 'Standard Banner';
+    var b=G.banners[bid]; return (b&&b.featured_mythic)?'Featured Banner':'Event Banner'; }
   function featChip(die,big){
     if(!die) return '';
     return '<div class="feat-chip'+(big?' big':'')+'" style="border-color:'+rarColor(die.rarity)+'66">'+
@@ -820,18 +930,22 @@ function initDiceRpg(container){
     } else {
       var pm=g.pity_mythic||0, pr=g.pity_rare||0, hard=89;
       var rareIn=10-(pr%10); if(rareIn>10) rareIn=10;
-      var fifty = bid==='limited' ? (g.limited_guarantee?'Next Mythic: Featured GUARANTEED':'Next Mythic: 50/50') : '';
+      var bdef=G.banners[bid]||{};
+      var gkey = bid==='limited' ? 'limited_guarantee' : ('guarantee_'+bid);
+      var guaranteed = !!g[gkey];
+      var fifty = (bdef.featured_mythic) ? (guaranteed?'Next Mythic: Featured GUARANTEED':'Next Mythic: 50/50') : '';
       box.innerHTML='<div class="pity-row"><span>Mythic Soft Pity</span><span>'+pm+' / '+hard+'</span></div>'+
         '<div class="dg-pbar"><i style="width:'+Math.min(100,pm/hard*100)+'%"></i></div>'+
         '<div class="pity-row" style="margin-top:9px"><span>Guaranteed Rare in</span><span>'+rareIn+' pull'+(rareIn===1?'':'s')+'</span></div>'+
-        (fifty?'<div class="pity-tags"><span class="pity-tag'+(g.limited_guarantee?' done':'')+'">'+fifty+'</span></div>':'');
+        (fifty?'<div class="pity-tags"><span class="pity-tag'+(guaranteed?' done':'')+'">'+fifty+'</span></div>':'');
     }
     return box;
   }
   function renderSummon(){
     var g=G.state.gacha||{};
-    var avail=['limited','standard'];
-    if(!g.beginner_done) avail.unshift('beginner');
+    var order=['limited','cosmic','endless_winter','house_of_fortune','standard'];
+    var avail=order.filter(function(bid){ return G.banners[bid]; });
+    if(!g.beginner_done && G.banners['beginner']) avail.unshift('beginner');
     if(avail.indexOf(G.banner)<0) G.banner=avail[0];
     var tabs=document.createElement('div'); tabs.className='dg-banner-tabs';
     avail.forEach(function(bid){
@@ -845,7 +959,7 @@ function initDiceRpg(container){
     var bid=G.banner, b=G.banners[bid];
     var card=document.createElement('div'); card.className='dg-banner b-'+bid;
     var featHtml='';
-    if(bid==='limited'){
+    if(b.featured_mythic){
       featHtml='<div class="dg-feat">'+featChip(G.byId[b.featured_mythic],true)+
         (b.featured_rares||[]).map(function(id){ return featChip(G.byId[id],false); }).join('')+'</div>';
     }
@@ -974,6 +1088,7 @@ function initDiceRpg(container){
     save.onclick=saveTeam; bar.appendChild(save);
     bodyEl.appendChild(bar);
 
+    renderTeamSynergy(draft);
     renderPresets();
     renderComps(coll);
 
@@ -1000,6 +1115,29 @@ function initDiceRpg(container){
       card.onclick=function(){ toggleTeam(die.id); };
       grid.appendChild(card);
     });
+  }
+  function renderTeamSynergy(draft){
+    var SY=G.K.ENGINE_SYNERGY||{}; if(!Object.keys(SY).length) return;
+    var counts={};
+    (draft||[]).forEach(function(id){ var d=G.byId[id]; if(!d) return;
+      (d.engine||[]).forEach(function(tag){ counts[tag]=(counts[tag]||0)+1; }); });
+    var box=document.createElement('div'); box.className='dg-synergy';
+    var head=document.createElement('div'); head.className='dg-section-title';
+    head.style.margin='4px 0 2px'; head.textContent='Engine Synergies'; bodyEl.appendChild(head);
+    var any=false;
+    Object.keys(SY).forEach(function(tag){
+      var s=SY[tag], n=counts[tag]||0, min=s.min||3, on=n>=min;
+      if(n<=0 && !on) return; any=true;
+      var row=document.createElement('div'); row.className='dg-syn-row'+(on?' on':'');
+      row.setAttribute('data-tip',String(s.desc||'').replace(/"/g,'&quot;'));
+      row.setAttribute('data-tip-h',s.name||tag);
+      row.innerHTML='<span class="syn-tag">'+tag+'</span>'+
+        '<span class="syn-nm">'+(s.name||tag)+'</span>'+
+        '<span class="syn-cnt">'+n+'/'+min+'</span>'+
+        '<span class="syn-state">'+(on?'\u2726 ACTIVE':'need '+(min-n))+'</span>';
+      box.appendChild(row);
+    });
+    if(any) bodyEl.appendChild(box); else head.remove();
   }
   function renderTeam_refresh(){ bodyEl.innerHTML=''; renderTeam(); }
   function toggleTeam(id){
@@ -1100,7 +1238,10 @@ function initDiceRpg(container){
 
   /* ================= COMBAT ENGINE ================= */
   var SCALE=8;
-  var ELEM_ADV={Fire:'Ice',Ice:'Electric',Electric:'Physical',Physical:'Arcane',Arcane:'Fire'};
+  /* Two independent advantage cycles: original 5 + expansion 9. Cross-cycle = neutral. */
+  var ELEM_ADV={Fire:'Ice',Ice:'Electric',Electric:'Physical',Physical:'Arcane',Arcane:'Fire',
+    Light:'Dark',Dark:'Blood',Blood:'Poison',Poison:'Nature',Nature:'Wind',
+    Wind:'Time',Time:'Void',Void:'Earth',Earth:'Light'};
   var CAMPAIGN=[
     {id:'c1',name:'The Felt Tables',tier:'NORMAL',
      lore:'Below the casino floor, the cheapest tables run themselves. The dice that lost here never left.',
@@ -1380,15 +1521,26 @@ function initDiceRpg(container){
     var cb=consBuffs(cons);
     if(cb.max_hp) hp*=(1+cb.max_hp);
     if(cb.def_spd){ def*=(1+cb.def_spd); spd*=(1+cb.def_spd); }
+    // per-die constellation stat bonuses (machine-readable "stat" dicts up to owned level)
+    var dc=dieConsStats(die,cons);
+    if(dc.hp_pct) hp*=(1+dc.hp_pct);
+    if(dc.atk_pct) atk*=(1+dc.atk_pct);
+    if(dc.def_pct) def*=(1+dc.def_pct);
+    if(dc.spd_pct) spd*=(1+dc.spd_pct);
+    if(dc.spd_flat) spd+=dc.spd_flat;
     var u={ side:'ally', id:id, name:die.name, element:die.element, role:die.role, rarity:die.rarity,
-      tags:die.tags||[], params:die.params||{}, cons:cons, asc:lvl,
+      tags:die.tags||[], engine:die.engine||[], params:die.params||{}, cons:cons, asc:lvl,
       max:Math.round(hp), hp:Math.round(hp), atk:atk, def:def, spd:spd,
       energy:(cb.start_energy||0), ultCost:(G.K.ULT_COST||{})[die.rarity]||80, skillCd:0,
       consSkillCdRed:(cb.skill_cd||0), canRevive:!!cb.revive, reviveVal:(cb.revive||0), revived:false,
+      healRecv:(dc.heal_recv_pct||0),
       dmgUp:0,dmgUpT:0, critUp:0,critUpT:0, spdUp:0,spdUpT:0, defDown:0,
       shield:0, omen:0, alive:true,
+      mirages:0, dodge:0, retri:0, retriHits:0, guardTurns:0, immuneTurns:0,
+      eclipse:'day', jackpot:0, transformTurns:0, mutAtk:0, mutDef:0, mutSpd:0, mutHeal:0,
       skillName:(die.skill||{}).name||'Skill', ultName:(die.ult||{}).name||'Ultimate',
-      basicName:(die.basic||{}).name||'Attack' };
+      basicName:(die.basic||{}).name||'Attack',
+      basicDesc:(die.basic||{}).desc||'', skillDesc:(die.skill||{}).desc||'', ultDesc:(die.ult||{}).desc||'' };
     if((die.params||{}).shield_pct && (die.tags||[]).indexOf('Universal')>=0 && /Shield/.test(die.role)) u.shield=Math.round(die.params.shield_pct*u.max*0.5);
     if(cb.start_shield) u.shield += Math.round(cb.start_shield*u.max);
     return u;
@@ -1396,12 +1548,20 @@ function initDiceRpg(container){
   function consBuffs(cons){
     var o={}; (G.K.CONSTELLATION_BONUS||[]).forEach(function(c){ if(cons>=c.level) o[c.key]=c.val; }); return o;
   }
+  function dieConsStats(die,cons){
+    var o={}; if(!die||!die.cons) return o;
+    die.cons.forEach(function(c){ if(c && c.stat && cons>=c.level){ for(var k in c.stat){ o[k]=(o[k]||0)+c.stat[k]; } } });
+    return o;
+  }
   function buildEnemy(t,tier){
     var tough=(G.K.BREAK_THRESHOLD||{})[tier]||100;
     return { side:'enemy', name:t.name, element:t.element, rarity:'RARE',
       max:t.hp, hp:t.hp, atk:t.atk, def:t.def, spd:t.spd, pow:t.pow||1.0, ai:t.ai||'basic',
       energy:0, dmgUp:0,dmgUpT:0, critUp:0,critUpT:0, spdUp:0,spdUpT:0, defDown:0,defDownT:0,
       omen:0, omenMult:(G.K.OMEN_TYPE_MULT||{})[tier]||1.1,
+      fracture:0, chill:0, frozen:0, gravity:0, plague:0, plagueDmg:0,
+      collapse:0, bleed:0, bleedDmg:0, bleedAmp:0, timeMark:0, stun:0, seal:0, suppress:0,
+      brkVuln:0, brkVulnT:0, fracBuff:0, fracBuffT:0,
       toughness:tough, maxToughness:tough, broken:false, brokenTurns:0, alive:true };
   }
   function scaleEnemy(t,mult){ var e={}; for(var k in t) e[k]=t[k];
@@ -1413,16 +1573,47 @@ function initDiceRpg(container){
     var B={ live:true, over:false, win:false, mode:mode, round:0,
       allies:teamIds.map(buildAlly), enemies:[], log:[], target:0, active:null, awaiting:false,
       auto:false, fortune:0, floorTurns:0, order:null, qi:0, wave:0,
+      combo:0, comboSafe:false, syn:{}, synList:[], anomaly:null, echo:null,
       stageId:stage?stage.id:null, stageName:stage?stage.name:'Endless Arena',
       tier:stage?stage.tier:'NORMAL', stage:stage };
     G.battle=B;
+    computeSynergy(B);
     if(mode==='campaign'){ B.enemies=stage.enemies.map(function(t){ return buildEnemy(t,stage.tier); }); }
     else { spawnWave(B,1); }
     logMsg('\u2684 Battle begins \u2014 <b>'+B.stageName+'</b>!','sys');
+    // synergy: Power Grid start energy / Loaded Dice fortune / Perfect Sequence combo
+    if(B.syn.start_energy) B.allies.forEach(function(a){ addEnergy(a,B.syn.start_energy); });
+    if(B.syn.fortune) B.fortune+=B.syn.fortune;
+    if(B.syn.start_combo){ B.combo=B.syn.start_combo; }
+    if(B.syn.combo_safe) B.comboSafe=true;
+    if(B.syn.start_fracture) aliveEnemies().forEach(function(e){ applyFracture(e,B.syn.start_fracture); });
+    B.synList.forEach(function(s){ logMsg('\u2726 Synergy active \u2014 <b>'+s.name+'</b>: '+s.desc,'syn'); });
     // start-of-battle passives: green_pip bonus energy, splinter shields already set
     B.allies.forEach(function(a){ if((a.params||{}).basic_energy) a.energy=Math.min(a.ultCost, a.energy+15); });
+    applyConsStart(B);
     G.view='battle'; render();
     scheduleStep(700);
+  }
+  function computeSynergy(B){
+    var syn=B.syn={}, list=B.synList=[]; var SY=G.K.ENGINE_SYNERGY||{};
+    var count={};
+    B.allies.forEach(function(a){ (a.engine||[]).forEach(function(e){ count[e]=(count[e]||0)+1; }); });
+    for(var e in SY){ var s=SY[e]; if((count[e]||0)>=(s.min||3)){
+      list.push({key:e,name:s.name,desc:s.desc,count:count[e]});
+      for(var k in (s.effect||{})){ syn[k]=(syn[k]||0)+s.effect[k]; }
+    } }
+  }
+  function applyConsStart(B){
+    // honor C1 battle-start constellation effects for owned dice (Omen/Chill/Token/Jackpot seeds)
+    B.allies.forEach(function(a){
+      var die=G.byId[a.id]; if(!die||!die.cons||!a.cons) return;
+      if(a.cons>=1){
+        if(a.id==='omen_catalyst') aliveEnemies().forEach(function(e){ applyOmen(e,3); });
+        if(a.id==='absolute_zero') aliveEnemies().forEach(function(e){ applyChill(e,3); });
+        if(a.id==='jackpot_die') a.jackpot=Math.max(a.jackpot,20);
+        if((a.id==='dominion_die'||a.id==='dominion_prime')) spawnSummon(a,1);
+      }
+    });
   }
   function spawnWave(B,wave){
     B.wave=wave;
@@ -1480,37 +1671,85 @@ function initDiceRpg(container){
     }
     if(tgt.side==='ally' && tgt.alive) addEnergy(tgt,6);
   }
-  function addEnergy(u,a){ u.energy=Math.min(u.ultCost,(u.energy||0)+a); }
+  function addEnergy(u,a){ u.energy=Math.min(u.ultCost,(u.energy||0)+a*(1+synB('energy_gain'))); }
   function teamEnergy(a){ aliveAllies().forEach(function(u){ addEnergy(u,a); }); }
-  function applyOmen(tgt,n){ if(!tgt||!tgt.alive) return; tgt.omen=Math.min((G.K.OMEN_SOFT_CAP||9999),(tgt.omen||0)+n); }
+  function applyOmen(tgt,n){ if(!tgt||!tgt.alive) return;
+    n=n*(1+synB('omen_apply')); tgt.omen=Math.min((G.K.OMEN_SOFT_CAP||9999),(tgt.omen||0)+n); }
   function detonateOmen(tgt){
     if(!tgt||!tgt.alive||tgt.omen<=0) return 0;
-    var dmg=Math.round(tgt.omen*22*(tgt.omenMult||1.1));
+    var dmg=Math.round(tgt.omen*22*(tgt.omenMult||1.1)*(1+synB('omen_dmg')));
+    dmg=Math.round(dmg*statusDmgMult(tgt));
     applyDamage(tgt,dmg);
-    logMsg('Omen detonates on <b>'+tgt.name+'</b> for '+fmt(dmg)+' ('+tgt.omen+' stacks).','omen');
+    logMsg('Omen detonates on <b>'+tgt.name+'</b> for '+fmt(dmg)+' ('+Math.round(tgt.omen)+' stacks).','omen');
     tgt.omen=0; return dmg;
   }
   function addBreak(tgt,amt){
     if(!tgt||!tgt.alive||tgt.broken) return;
+    amt=amt*(1+synB('break_gain'));
+    if((tgt.fracture||0)>=10) amt*=2; // Shattered doubles Break buildup
     tgt.toughness-=amt;
     if(tgt.toughness<=0){ tgt.toughness=0; tgt.broken=true; tgt.brokenTurns=1;
       logMsg('<b>'+tgt.name+'</b> is BROKEN!','brk'); }
   }
+  /* ---- synergy reader + status helpers ---- */
+  function synB(k){ var B=G.battle; return (B&&B.syn&&B.syn[k])||0; }
+  function statusDmgMult(t){
+    if(!t) return 1; var m=1, f=t.fracture||0;
+    if(f>=10) m*=1.30; else if(f>=5) m*=1.15;
+    if(t.frozen>0) m*=1.25;
+    if((t.gravity||0)>=5) m*=1.15;
+    if((t.collapse||0)>=5) m*=1.20;
+    if((t.bleed||0)>0) m*=(1+0.10+(t.bleedAmp||0));
+    if(t.brkVuln>0) m*=(1+t.brkVuln);
+    return m;
+  }
+  function applyFracture(tgt,n){
+    if(!tgt||!tgt.alive) return;
+    n=Math.round(n*(1+synB('fracture_gain')+(tgt.fracBuffT>0?tgt.fracBuff:0)));
+    var before=tgt.fracture||0; tgt.fracture=before+n;
+    if(before<5 && tgt.fracture>=5) logMsg('<b>'+tgt.name+'</b> is <b>Exposed</b> (+15% damage taken).','frac');
+    if(before<10 && tgt.fracture>=10){ logMsg('<b>'+tgt.name+'</b> is <b>Shattered</b>!','frac'); addBreak(tgt,18); }
+    if(tgt.fracture>=15){ var burst=Math.round(tgt.fracture*30*statusDmgMult(tgt)); tgt.fracture-=15;
+      applyDamage(tgt,burst); logMsg('\u26A1 <b>Collapse</b> on '+tgt.name+' for '+fmt(burst)+'!','frac'); }
+  }
+  function triggerFracture(tgt,pct){ if(!tgt||!tgt.alive||(tgt.fracture||0)<=0) return;
+    var dmg=Math.round(tgt.fracture*pct*40*statusDmgMult(tgt)); applyDamage(tgt,dmg);
+    logMsg('Fracture detonates on <b>'+tgt.name+'</b> for '+fmt(dmg)+'.','frac'); }
+  function applyChill(tgt,n){ if(!tgt||!tgt.alive) return; tgt.chill=(tgt.chill||0)+n;
+    var at=(tgt._freezeAt||10);
+    if(tgt.chill>=at && tgt.frozen<=0){ tgt.frozen=ccTurns(2); tgt.chill=0; logMsg('\u2744 <b>'+tgt.name+'</b> is <b>Frozen</b>!','chill'); } }
+  function applyGravity(tgt,n){ if(!tgt||!tgt.alive) return; tgt.gravity=Math.min(8,(tgt.gravity||0)+n);
+    if(tgt.gravity>=5 && !tgt._weighed){ tgt._weighed=true; logMsg('<b>'+tgt.name+'</b> is <b>Weighed Down</b>.','grav'); } }
+  function applyPlague(tgt,n,dmg){ if(!tgt||!tgt.alive) return; tgt.plague=(tgt.plague||0)+n;
+    tgt.plagueDmg=Math.max(tgt.plagueDmg||0, dmg||Math.round((G.battle.active&&G.battle.active.atk||100)*0.4)); }
+  function applyCollapse(tgt,n){ if(!tgt||!tgt.alive) return; tgt.collapse=(tgt.collapse||0)+n;
+    if(tgt.collapse>=5 && !tgt._collapsed){ tgt._collapsed=true; logMsg('<b>'+tgt.name+'</b> suffers <b>Collapse</b> \u2014 buffs sealed.','coll'); } }
+  function applyBleed(tgt,n,dmg){ if(!tgt||!tgt.alive) return; tgt.bleed=(tgt.bleed||0)+n;
+    tgt.bleedDmg=Math.max(tgt.bleedDmg||0, dmg||Math.round((G.battle.active&&G.battle.active.atk||100)*0.5)); }
+  function addCombo(n){ var B=G.battle; B.combo=Math.min(99,(B.combo||0)+(n||1)); }
+  function spendCombo(){ var B=G.battle; var c=B.combo||0; B.combo=0; return c; }
+  function healUnit(u,amt){ if(!u||!u.alive) return 0; amt=Math.round(amt*(1+synB('heal')+(u.healRecv||0)));
+    u.hp=Math.min(u.max,u.hp+amt); u._flash=true; return amt; }
+  function addShield(u,amt){ if(!u||!u.alive) return; u.shield=(u.shield||0)+Math.round(amt*(1+synB('shield'))); }
+  function ccTurns(n){ return n+(synB('cc_turns')||0); }
   function computeHit(src,tgt,mult,opts){
     opts=opts||{};
     if(!tgt||!tgt.alive) return null;
     var roll = src.side==='ally'? allyRoll(src) : rollDie('RARE');
     var base = src.atk*mult*roll*SCALE;
     base *= elemMult(src.element,tgt.element);
-    base *= (1+(src.dmgUp||0));
+    base *= (1+(src.dmgUp||0)+(src.mutAtk||0));
     if(opts.mult) base*=opts.mult;
     var cc=(G.K.CRIT_BASE||0.08)+(src.critUp||0), crit=opts.crit||Math.random()<cc;
     if(crit) base*=(G.K.CRIT_MULT||1.5);
     var tdef=tgt.def*(1-(tgt.defDown||0)); if(tdef<0) tdef=0;
     base*=220/(220+tdef);
-    if(tgt.broken) base*=(G.K.BROKEN_DMG_MULT||1.3);
+    if(tgt.broken) base*=(G.K.BROKEN_DMG_MULT||1.3)+synB('broken_dmg');
+    base*=statusDmgMult(tgt);
+    if(G.battle&&G.battle.anomaly&&G.battle.anomaly.dmg) base*=(1+G.battle.anomaly.dmg);
     var dmg=Math.max(1,Math.round(base));
     applyDamage(tgt,dmg);
+    if(crit && src.side==='ally') addCombo(1);
     return {dmg:dmg,crit:crit,roll:roll};
   }
   function primaryTag(u){ var t=u.tags||[];
@@ -1519,81 +1758,193 @@ function initDiceRpg(container){
     if(t.indexOf('Fortune')>=0) return 'Fortune';
     return 'Universal'; }
 
+  /* ---------- summons / echo / time / mirage / evolution / anomaly ---------- */
+  function spawnSummon(owner,n){ var B=G.battle; if(!B) return;
+    var p=owner.params||{}, cap=(p.summon_max||3), pct=(p.summon_pct||0.30)+synB('summon_pct');
+    var cur=B.allies.filter(function(a){ return a.summon && a.ownerId===owner.id && a.alive; }).length;
+    for(var i=0;i<n && cur<cap;i++,cur++){
+      var s={ side:'ally', summon:true, ownerId:owner.id, id:'~sum~', name:owner.name+' Token',
+        element:owner.element, role:'Summon', rarity:'COMMON', tags:[], engine:[], params:{},
+        max:Math.round(owner.max*pct), hp:Math.round(owner.max*pct),
+        atk:owner.atk*pct*2, def:owner.def*pct, spd:Math.round(owner.spd*0.9),
+        energy:0, ultCost:9999, skillCd:0, alive:true, shield:0, omen:0,
+        dmgUp:0,dmgUpT:0,critUp:0,critUpT:0,spdUp:0,spdUpT:0,defDown:0,
+        mirages:0,dodge:0,retri:0,guardTurns:0,immuneTurns:0,transformTurns:0,
+        mutAtk:0,mutDef:0,mutSpd:0,healRecv:0, basicName:'Strike' };
+      B.allies.push(s); B.order=null;
+      logMsg('\u2795 <b>'+owner.name+'</b> summons a Token Die.','sys');
+    }
+  }
+  function countSummons(owner){ return G.battle.allies.filter(function(a){ return a.summon && a.ownerId===owner.id && a.alive; }).length; }
+  function doAdvance(u){ var B=G.battle; if(!B) return; B.extra=B.extra||[]; if(u&&u.alive) B.extra.push(u);
+    logMsg('\u23E9 <b>'+u.name+'</b> gains an extra action.','sys'); }
+  function doAdvanceAll(){ aliveAllies().forEach(function(a){ doAdvance(a); }); }
+  function doDelay(tgt,pct){ if(!tgt||!tgt.alive) return; tgt.delay=(tgt.delay||0)+(pct||0.3);
+    logMsg('\u23F3 <b>'+tgt.name+'</b> is delayed.','time'); }
+  function storeEcho(u,kind){ G.battle.echo={by:u.id,name:u.name,kind:kind}; }
+  function mutate(u){ u.mutAtk=(u.mutAtk||0)+0.05; u.mutDef=(u.mutDef||0)+0.05; u.mutSpd=(u.mutSpd||0)+2;
+    logMsg('\u{1F9EC} <b>'+u.name+'</b> evolves (+stats).','sys'); }
+  function setAnomaly(rule){ var B=G.battle; B.anomaly=rule; if(rule&&rule.label) logMsg('\u269B <b>Anomaly</b>: '+rule.label,'anom'); }
+  function transform(u,turns){ u.transformTurns=Math.max(u.transformTurns||0,turns||2);
+    u.mutAtk=(u.mutAtk||0)+0.6; logMsg('\u{1F3B0} <b>'+u.name+'</b> JACKPOT \u2014 transforms!','sys'); sfx('ult'); }
+  function cleanseUnit(u){ u.defDown=0; u.defDownT=0; }
+
   /* ---------- ally abilities (interpreter) ---------- */
   var DM={BASIC:0.015,SKILL:0.045,ULT:0.18};
   function K_DM(){ return G.K.DMG_MULT||DM; }
+  function preAct(u){ var p=u.params||{};
+    if(p.ramp_per_turn){ u.dmgUp=(u.dmgUp||0)+p.ramp_per_turn; u.dmgUpT=99; }
+    if(p.passive_energy) addEnergy(u,p.passive_energy);
+  }
+  function checkJackpot(u){ var p=u.params||{}, cost=p.transform_cost||50;
+    if((u.jackpot||0)>=cost && u.transformTurns<=0){ u.jackpot-=cost; transform(u,p.transform_turns||2); } }
+  function teamDR(val,turns){ aliveAllies().forEach(function(a){ a.dr=Math.max(a.dr||0,val); a.drT=Math.max(a.drT||0,turns); }); }
+  function eachEnemy(fn){ aliveEnemies().forEach(fn); }
   function useBasic(u){
+    preAct(u);
     var t=curTarget(); if(!t) return;
     var p=u.params||{}, dm=K_DM();
-    var r=computeHit(u,t,dm.BASIC);
+    var mult=dm.BASIC*(u.transformTurns>0?1.4:1);
+    if(p.reroll_chance && Math.random()<p.reroll_chance){ logMsg('\u21BB <b>'+u.name+'</b> rerolls for a better hit.','sys'); }
+    var r=computeHit(u,t,mult);
     sfx(r&&r.crit?'crit':'hit');
     logMsg('<b>'+u.name+'</b> uses '+u.basicName+(r&&r.crit?' \u2014 <span style="color:#ffce5a">CRIT!</span>':'')+' for '+fmt(r?r.dmg:0)+'.','dmg');
-    if(p.double_chance && Math.random()<p.double_chance){ var r2=computeHit(u,t,dm.BASIC*0.6);
+    if(p.double_chance && Math.random()<p.double_chance){ var r2=computeHit(u,t,mult*0.6);
       if(r2) logMsg('\u21B3 strikes again for '+fmt(r2.dmg)+'.','dmg'); }
     addEnergy(u,22);
-    if(p.basic_energy) teamEnergy(p.basic_energy);
     if(p.basic_omen) applyOmen(t,p.basic_omen);
+    if(p.basic_fracture) applyFracture(t,p.basic_fracture);
+    if(p.basic_chill) applyChill(t,p.basic_chill);
+    if(p.basic_bleed) applyBleed(t,p.basic_bleed);
+    if(p.basic_collapse) applyCollapse(t,p.basic_collapse);
+    if(p.basic_gravity) applyGravity(t,p.basic_gravity);
+    if(p.basic_plague) applyPlague(t,p.basic_plague);
+    if(p.basic_combo) addCombo(p.basic_combo);
+    if(p.basic_jackpot){ u.jackpot=(u.jackpot||0)+p.basic_jackpot; checkJackpot(u); }
+    if(p.basic_mirage){ u.mirages=Math.min((p.max_threads||3),(u.mirages||0)+p.basic_mirage); logMsg('\u21B3 '+u.name+' weaves '+p.basic_mirage+' mirage(s).','sys'); }
+    if(p.basic_energy) addEnergy(u,p.basic_energy);
+    if(p.basic_team_energy) teamEnergy(p.basic_team_energy);
+    if(p.basic_shield) addShield(u,p.basic_shield*u.max);
+    if(p.basic_hp_cost){ u.hp=Math.max(1,u.hp-Math.round(u.max*p.basic_hp_cost)); }
+    if(p.evo_basic) mutate(u);
+    if(p.anomaly_basic && !G.battle.anomaly) setAnomaly({label:'Loaded reality \u2014 +10% team damage',dmg:0.10});
+    if(p.summon_basic) spawnSummon(u,1);
     if((u.tags||[]).indexOf('Break')>=0) addBreak(t,8);
-    if(primaryTag(u)==='Omen' && p.basic_omen) {}
+    storeEcho(u,'basic');
   }
   function useSkill(u){
+    preAct(u);
     var t=curTarget(); if(!t) return;
-    var p=u.params||{}, dm=K_DM(), c3=false, mag=1, tag=primaryTag(u), turns=(p.skill_turns||2);
+    var p=u.params||{}, dm=K_DM(), tag=primaryTag(u), turns=(p.skill_turns||2);
     sfx('hit');
     addEnergy(u,12); u.skillCd=Math.max(0, 2-(u.consSkillCdRed||0));
-    // riders
-    if(p.skill_omen) applyOmen(t,Math.round(p.skill_omen*mag));
-    if(p.skill_energy) teamEnergy(Math.round(p.skill_energy*mag));
+    // self / team utility riders
+    if(p.skill_omen) applyOmen(t,p.skill_omen);
+    if(p.skill_omen_all) eachEnemy(function(e){ applyOmen(e,p.skill_omen_all); });
+    if(p.skill_fracture) applyFracture(t,p.skill_fracture);
+    if(p.skill_fracture_all) eachEnemy(function(e){ applyFracture(e,p.skill_fracture_all); });
+    if(p.skill_chill_all) eachEnemy(function(e){ applyChill(e,p.skill_chill_all); });
+    if(p.skill_collapse_all) eachEnemy(function(e){ applyCollapse(e,p.skill_collapse_all); });
+    if(p.skill_gravity_all) eachEnemy(function(e){ applyGravity(e,p.skill_gravity_all); });
+    if(p.skill_combo) addCombo(p.skill_combo);
+    if(p.skill_jackpot){ u.jackpot=(u.jackpot||0)+p.skill_jackpot; checkJackpot(u); }
+    if(p.skill_energy) teamEnergy(p.skill_energy);
+    if(p.skill_give){ var al=aliveAllies(); var tg=al[(Math.random()*al.length)|0]; addEnergy(tg,p.skill_give); logMsg('\u21B3 gives '+tg.name+' energy.','sys'); }
+    if(p.skill_give2){ aliveAllies().slice(0,2).forEach(function(a){ addEnergy(a,p.skill_give2); }); }
+    if(p.give_energy){ var lows=aliveAllies().sort(function(a,b){return (a.energy/a.ultCost)-(b.energy/b.ultCost);}); if(lows[0]) addEnergy(lows[0],p.give_energy); }
+    if(p.distribute){ teamEnergy(p.distribute); }
+    if(p.steal_energy){ var st=Math.round((t.energy||0)*0.5)+p.steal_energy; t.energy=Math.max(0,(t.energy||0)-st); addEnergy(u,st); logMsg('\u21B3 steals '+st+' energy.','sys'); }
+    if(p.expose_energy && (t.fracture>=5||t.defDown>0)) addEnergy(u,p.expose_energy);
+    if(p.skill_hp_cost){ u.hp=Math.max(1,u.hp-Math.round(u.max*p.skill_hp_cost)); }
     if(p.floor_pct){ G.battle.floorTurns=Math.max(G.battle.floorTurns,turns); }
     if(p.team_fortune) G.battle.fortune+=p.team_fortune;
-    if(p.crit_up) buffTeam('critUp',p.crit_up*mag,turns);
-    if(p.dmg_up) buffTeam('dmgUp',p.dmg_up*mag,turns);
-    if(p.spd_up) buffTeam('spdUp',p.spd_up*mag,turns);
-    if(p.def_down){ t.defDown=Math.max(t.defDown||0,p.def_down*mag); t.defDownT=turns; }
-    if(p.shield_pct){ var sh=Math.round(p.shield_pct*u.max*mag); aliveAllies().forEach(function(a){ a.shield=(a.shield||0)+sh; }); }
+    if(p.crit_up) buffTeam('critUp',p.crit_up,turns);
+    if(p.dmg_up) buffTeam('dmgUp',p.dmg_up,turns);
+    if(p.spd_up) buffTeam('spdUp',p.spd_up,turns);
+    if(p.spd_buff) buffTeam('spdUp',p.spd_buff,p.spd_buff_turns||turns);
+    if(p.team_dmg) buffTeam('dmgUp',p.team_dmg,p.team_dmg_turns||turns);
+    if(p.energy_gain_buff) buffTeam('critUp',0,p.energy_buff_turns||turns);
+    if(p.def_down){ t.defDown=Math.max(t.defDown||0,p.def_down); t.defDownT=turns; }
+    if(p.dr_pct) teamDR(p.dr_pct,p.dr_turns||turns);
+    if(p.guard_turns) u.guardTurns=p.guard_turns;
+    if(p.immunity_turns) u.immuneTurns=p.immunity_turns;
+    if(p.cleanse) cleanseUnit(u);
+    if(p.cleanse_all) aliveAllies().forEach(cleanseUnit);
+    if(p.strip_buff){ t.dmgUp=0;t.critUp=0;t.spdUp=0; logMsg('\u21B3 strips '+t.name+' of buffs.','sys'); }
+    if(p.shield_pct){ var sh=p.shield_pct*u.max; aliveAllies().forEach(function(a){ addShield(a,sh); }); }
+    if(p.skill_shield){ var sh2=p.skill_shield*u.max; addShield(u,sh2); }
+    if(p.counter_pct){ u.retri=(p.counter_max||3); u.retriPct=p.counter_pct; u.retriHits=0; logMsg('\u21B3 '+u.name+' enters a counter stance.','sys'); }
+    if(p.time_mark) t.timeMark=(t.timeMark||0)+p.time_mark;
+    if(p.delay_pct) doDelay(t,p.delay_pct);
+    if(p.advance) doAdvance(u);
+    if(p.summon_pct||p.summon_max) spawnSummon(u,1);
+    if(p.seal_turns){ t.seal=p.seal_turns; logMsg('\u21B3 seals '+t.name+'.','sys'); }
+    if(p.suppress_dmg){ t.suppress=turns; }
+    if(p.fracture_gain){ t.fracBuff=p.fracture_gain; t.fracBuffT=p.fracture_buff_turns||turns; }
+    if(p.break_vuln){ t.brkVuln=p.break_vuln; t.brkVulnT=p.break_vuln_turns||turns; }
+    if(p.anomaly_rules && !G.battle.anomaly) setAnomaly({label:'Rules rewritten \u2014 +12% damage',dmg:0.12});
+    if(p.echo_store) storeEcho(u,'skill');
     // damage
     var msg='<b>'+u.name+'</b> uses '+u.skillName;
-    if(tag==='Break'){ addBreak(t,Math.round(26*mag));
-      var rb=computeHit(u,t,dm.SKILL,{skillC3:c3, mult:t.broken?(1+(p.broken_bonus||0)):1});
+    if(p.skill_break||tag==='Break'){ addBreak(t,Math.round(26+(p.skill_break||0)));
+      var rb=computeHit(u,t,dm.SKILL,{mult:t.broken?(1+(p.broken_bonus||0)):1});
       msg+=' for '+fmt(rb?rb.dmg:0)+'.'; }
-    else if(p.skill_hits){ var tot=0; for(var i=0;i<p.skill_hits;i++){ var rh=computeHit(u,t,dm.SKILL*0.55,{skillC3:c3}); if(rh) tot+=rh.dmg; }
+    else if(p.skill_hits){ var tot=0; for(var i=0;i<p.skill_hits;i++){ var rh=computeHit(u,t,dm.SKILL*0.55); if(rh) tot+=rh.dmg; }
       msg+=' \u2014 '+p.skill_hits+' hits for '+fmt(tot)+'.'; }
-    else { var rs=computeHit(u,t,dm.SKILL,{skillC3:c3}); msg+=' for '+fmt(rs?rs.dmg:0)+'.'; }
+    else { var rs=computeHit(u,t,dm.SKILL); msg+=' for '+fmt(rs?rs.dmg:0)+'.'; }
     logMsg(msg,'dmg');
     if(tag==='Omen') detonateOmen(t);
-    if(p.skill_energy||p.shield_pct||p.crit_up||p.dmg_up||p.spd_up||p.team_fortune||p.floor_pct)
-      logMsg('\u21B3 '+u.name+' empowers the team.','sys');
+    if(p.echo_repeat_pct && Math.random()<p.echo_repeat_pct){ var re=computeHit(u,curTarget(),dm.SKILL*(p.echo_power||0.5)); if(re) logMsg('\u21B3 echo repeats for '+fmt(re.dmg)+'.','dmg'); }
   }
   function useUlt(u){
-    var t=curTarget(); var p=u.params||{}, dm=K_DM(), c5=false, mag=1.15, tag=primaryTag(u);
-    u.energy=0;
-    sfx('ult');
+    preAct(u);
+    var t=curTarget(); var p=u.params||{}, dm=K_DM(), tag=primaryTag(u);
+    u.energy=0; sfx('ult');
     logMsg('\u2728 <b>'+u.name+'</b> unleashes '+u.ultName+'!','sys');
     if(p.ult_energy) teamEnergy(p.ult_energy);
+    if(p.ult_team_energy) teamEnergy(p.ult_team_energy);
+    if(p.ult_full_energy) aliveAllies().forEach(function(a){ a.energy=a.ultCost; });
+    if(p.ult_team_dmg) buffTeam('dmgUp',p.ult_team_dmg,p.ult_turns||3);
+    if(p.ult_shield){ var ush=p.ult_shield*u.max; aliveAllies().forEach(function(a){ addShield(a,ush); }); logMsg('\u21B3 Team shielded.','heal'); }
+    if(p.ult_mirages){ u.mirages=Math.min((p.max_threads||5),(u.mirages||0)+p.ult_mirages); }
+    if(p.ult_summons) spawnSummon(u,p.ult_summons);
+    if(p.ult_advance) doAdvance(u);
+    if(p.ult_advance_all) doAdvanceAll();
+    if(p.ult_expose) eachEnemy(function(e){ applyFracture(e,5); });
+    if(p.ult_chill_all) eachEnemy(function(e){ applyChill(e,p.ult_chill_all); });
+    if(p.dmg_up) buffTeam('dmgUp',p.dmg_up*1.3,2);
+    if(p.crit_up) buffTeam('critUp',0.5,1);
+    if(p.spd_up) buffTeam('spdUp',p.spd_up*1.3,2);
+    if(p.shield_pct){ var s2=p.shield_pct*u.max*1.5; aliveAllies().forEach(function(a){ addShield(a,s2); }); }
+    if(p.team_fortune) G.battle.fortune+=p.team_fortune+1;
     if(tag==='Omen'){
-      var trig=p.ult_omen_triggers||1, total=0;
-      aliveEnemies().forEach(function(e){
+      var trig=p.ult_omen_triggers||p.ult_omen_trig||1, total=0;
+      eachEnemy(function(e){
         if(p.ult_bonus_omen||p.ult_omen) applyOmen(e,(p.ult_bonus_omen||p.ult_omen||0));
-        var r=computeHit(u,e,dm.ULT,{ultC5:c5}); if(r) total+=r.dmg;
+        var r=computeHit(u,e,dm.ULT); if(r) total+=r.dmg;
         for(var k=0;k<trig;k++) detonateOmen(e);
       });
       logMsg('\u21B3 AoE Omen burst hits all foes for '+fmt(total)+'+.','omen');
-    } else if(tag==='Break' && t){
+    } else if((p.ult_break||tag==='Break') && t){
       var miss=t.maxToughness?(t.maxToughness-t.toughness)/t.maxToughness:0;
-      var r=computeHit(u,t,dm.ULT,{ultC5:c5, mult:1+miss*0.8});
-      logMsg('\u21B3 Collapsing strike for '+fmt(r?r.dmg:0)+'.','dmg');
+      addBreak(t,p.ult_break||30);
+      var rB=computeHit(u,t,dm.ULT,{mult:1+miss*0.8});
+      logMsg('\u21B3 Collapsing strike for '+fmt(rB?rB.dmg:0)+'.','dmg');
     } else {
-      // support / DPS: buffs + damage
-      if(p.dmg_up) buffTeam('dmgUp',p.dmg_up*1.3,2);
-      if(p.crit_up){ buffTeam('critUp',0.5,1); }
-      if(p.spd_up) buffTeam('spdUp',p.spd_up*1.3,2);
-      if(p.shield_pct){ var sh=Math.round(p.shield_pct*u.max*1.5); aliveAllies().forEach(function(a){ a.shield=(a.shield||0)+sh; }); logMsg('\u21B3 Team shielded for '+fmt(sh)+'.','heal'); }
-      if(p.team_fortune) G.battle.fortune+=p.team_fortune+1;
-      var multi=(u.role||'').indexOf('Multi')>=0 || (u.tags||[]).indexOf('Break')>=0;
-      if(multi){ var total2=0; aliveEnemies().forEach(function(e){ var r=computeHit(u,e,dm.ULT*0.62,{ultC5:c5}); if(r) total2+=r.dmg; });
-        logMsg('\u21B3 sweeps all foes for '+fmt(total2)+'.','dmg'); }
-      else if(t){ var r3=computeHit(u,t,dm.ULT,{ultC5:c5}); logMsg('\u21B3 hits '+t.name+' for '+fmt(r3?r3.dmg:0)+'.','dmg'); }
+      var multi=(u.role||'').indexOf('Multi')>=0 || p.ult_spread || p.ult_plague_pct || p.ult_bleed_pct;
+      if(multi){ var t2=0; eachEnemy(function(e){ var r=computeHit(u,e,dm.ULT*0.62); if(r) t2+=r.dmg;
+          if(p.ult_plague_pct) applyPlague(e,3,Math.round(u.atk*p.ult_plague_pct));
+          if(p.ult_bleed_pct) applyBleed(e,3,Math.round(u.atk*p.ult_bleed_pct)); });
+        logMsg('\u21B3 sweeps all foes for '+fmt(t2)+'.','dmg'); }
+      else if(t){ var r3=computeHit(u,t,dm.ULT); logMsg('\u21B3 hits '+t.name+' for '+fmt(r3?r3.dmg:0)+'.','dmg'); }
     }
+    // post-ult status ticks (Time/Fracture/Gravity/Collapse detonations)
+    if(p.ult_fracture_tick||p.ult_fracture_trigger) eachEnemy(function(e){ triggerFracture(e,p.ult_fracture_trigger||p.ult_fracture_tick); });
+    if(p.ult_gravity_tick) eachEnemy(function(e){ applyGravity(e,p.ult_gravity_tick); });
+    if(p.ult_collapse_tick) eachEnemy(function(e){ applyCollapse(e,p.ult_collapse_tick); });
+    if(p.combo_burst){ var c=spendCombo(); if(c>0){ var cb=Math.round(u.atk*SCALE*0.02*c*(p.combo_burst||1)); var tg=curTarget(); if(tg){ applyDamage(tg,cb); logMsg('\u21B3 Combo burst ('+c+') for '+fmt(cb)+'!','dmg'); } } }
+    if(p.ult_repeat_pct && Math.random()<p.ult_repeat_pct){ var rr=computeHit(u,curTarget(),dm.ULT*0.6); if(rr) logMsg('\u21B3 ult echoes for '+fmt(rr.dmg)+'.','dmg'); }
+    storeEcho(u,'ult');
   }
   function buffTeam(field,val,turns){ aliveAllies().forEach(function(a){ a[field]=Math.max(a[field]||0,val); a[field+'T']=Math.max(a[field+'T']||0,turns); }); }
 
@@ -1614,19 +1965,34 @@ function initDiceRpg(container){
         var foc=lowest(allies,'hp'); if(foc&&foc.alive){ foc.dmgUp=Math.min(foc.dmgUp||0,0); }
         logMsg('<b>'+e.name+'</b> tilts the table \u2014 AoE for '+fmt(tot2)+'.','dmg'); return; }
     }
-    var tgt = Math.random()<0.5? lowest(allies,'hp') : allies[(Math.random()*allies.length)|0];
-    var dmg=enemyHit(e,tgt,e.pow||1);
-    logMsg('<b>'+e.name+'</b> attacks <b>'+tgt.name+'</b> for '+fmt(dmg)+'.','dmg');
+    var guard=allies.filter(function(a){ return a.guardTurns>0; });
+    var tgt = guard.length? guard[0] : (Math.random()<0.5? lowest(allies,'hp') : allies[(Math.random()*allies.length)|0]);
+    var dmg=enemyHit(e,tgt,(e.pow||1)*(e.suppress>0?0.6:1));
+    if(dmg>=0) logMsg('<b>'+e.name+'</b> attacks <b>'+tgt.name+'</b> for '+fmt(dmg)+'.','dmg');
   }
   function enemyHit(e,tgt,pow){
+    if(!tgt||!tgt.alive) return 0;
+    // immunity fully negates
+    if(tgt.immuneTurns>0){ logMsg('\u{1F6E1} <b>'+tgt.name+'</b> is immune \u2014 no damage.','sys'); return 0; }
+    // mirage intercept = full dodge
+    if(tgt.mirages>0){ tgt.mirages--; logMsg('\u2728 A mirage of <b>'+tgt.name+'</b> shatters \u2014 attack dodged!','sys');
+      counterStrike(tgt,e); return 0; }
     var base=e.atk*pow*(0.9+Math.random()*0.3)*1.0;
     base*=elemMult(e.element,tgt.element);
     var tdef=tgt.def*(1-(tgt.defDown||0)); if(tdef<0) tdef=0;
     base*=220/(220+tdef);
     if(Math.random()<0.08) base*=1.4;
+    if(tgt.dr>0) base*=(1-Math.min(0.8,tgt.dr));
     var dmg=Math.max(1,Math.round(base*1.7));
     applyDamage(tgt,dmg);
+    counterStrike(tgt,e);
     return dmg;
+  }
+  function counterStrike(tgt,e){
+    if(!tgt||!tgt.alive||!(tgt.retri>0)||!e||!e.alive) return;
+    tgt.retri--; tgt.retriHits=(tgt.retriHits||0)+1;
+    var dm=K_DM(); var r=computeHit(tgt,e,dm.SKILL*(tgt.retriPct||0.5));
+    if(r) logMsg('\u2694 <b>'+tgt.name+'</b> counters for '+fmt(r.dmg)+'!','dmg');
   }
   function lowest(arr,f){ var b=arr[0]; arr.forEach(function(x){ if(x[f]<b[f]) b=x; }); return b; }
   function lowestEnemy(){ var a=aliveEnemies(); if(!a.length) return null; var b=a[0];
@@ -1635,17 +2001,57 @@ function initDiceRpg(container){
   /* ---------- turn loop ---------- */
   function tickBuffs(u){
     ['dmgUp','critUp','spdUp'].forEach(function(f){ if(u[f+'T']>0){ u[f+'T']--; if(u[f+'T']<=0) u[f]=0; } });
-    if(u.side==='enemy' && u.defDownT>0){ u.defDownT--; if(u.defDownT<=0) u.defDown=0; }
+    if(u.drT>0){ u.drT--; if(u.drT<=0) u.dr=0; }
+    if(u.guardTurns>0) u.guardTurns--;
+    if(u.immuneTurns>0) u.immuneTurns--;
+    if(u.transformTurns>0){ u.transformTurns--; if(u.transformTurns<=0){ u.mutAtk=Math.max(0,(u.mutAtk||0)-0.6); logMsg('<b>'+u.name+'</b> reverts from Jackpot form.','sys'); } }
+    if(u.side==='enemy'){
+      if(u.defDownT>0){ u.defDownT--; if(u.defDownT<=0) u.defDown=0; }
+      if(u.brkVulnT>0){ u.brkVulnT--; if(u.brkVulnT<=0) u.brkVuln=0; }
+      if(u.fracBuffT>0){ u.fracBuffT--; if(u.fracBuffT<=0) u.fracBuff=0; }
+      if(u.gravity>0) u.gravity=Math.max(0,u.gravity-1);
+      if(u.seal>0) u.seal--;
+      if(u.suppress>0) u.suppress--;
+    }
   }
-  function effSpd(u){ return u.spd*(1+(u.spdUp||0)); }
+  function tickDots(e){ if(!e||!e.alive) return;
+    if(e.bleed>0){ var bd=Math.round((e.bleedDmg||0)*statusDmgMult(e)); applyDamage(e,bd); e.bleed--;
+      logMsg('\u{1FA78} Bleed ticks on <b>'+e.name+'</b> for '+fmt(bd)+'.','bleed'); }
+    if(e.plague>0){ var pd=e.plagueDmg||0; applyDamage(e,pd); e.plague--;
+      logMsg('\u2620 Plague ticks on <b>'+e.name+'</b> for '+fmt(pd)+'.','plague');
+      // spread to a neighbour
+      var others=aliveEnemies().filter(function(x){ return x!==e && (x.plague||0)<=0; });
+      if(others.length && Math.random()<0.5){ applyPlague(others[0],2,Math.round(pd*0.7)); logMsg('\u21B3 Plague spreads to '+others[0].name+'.','plague'); }
+    }
+    if(e.frozen>0){ e.frozen--; if(e.frozen<=0) logMsg('<b>'+e.name+'</b> thaws.','chill'); }
+    if(e.timeMark>0) e.timeMark--;
+    if(e.stun>0) e.stun--;
+  }
+  function effSpd(u){ var s=u.spd*(1+(u.spdUp||0));
+    if(u.side==='ally') s+=(u.mutSpd||0);
+    if(u.side==='enemy'){ if(u.chill>0) s*=0.85; if((u.gravity||0)>=5) s*=0.7; s*=(1+synB('enemy_spd')); }
+    if(u.delay>0){ s*=(1-Math.min(0.6,u.delay)); }
+    return Math.max(1,s); }
   function startRound(){ var B=G.battle; B.round++;
     if(B.floorTurns>0) B.floorTurns--;
+    // per-round passives + eclipse cycle + DoTs
+    B.allies.forEach(function(a){ var p=a.params||{};
+      if(p.round_energy) addEnergy(a,p.round_energy);
+      if(p.drift_heal) healUnit(a,Math.round(a.max*p.drift_heal));
+      if(p.auto_cycle){ a.eclipse=(a.eclipse==='day')?'night':'day';
+        if(a.eclipse==='night'){ a.mutAtk=(a.mutAtk||0)+0.15; } else { a.mutAtk=Math.max(0,(a.mutAtk||0)-0.15); } }
+    });
+    B.enemies.forEach(function(e){ e.delay=0; tickDots(e); });
     B.order=B.allies.concat(B.enemies).filter(function(u){return u.alive;}).sort(function(a,b){return effSpd(b)-effSpd(a);});
     B.qi=0; }
   function sd(ms){ return Math.max(50, (ms||0)/(G.speed||1)); }
   function scheduleStep(ms){ G.timers.push(setTimeout(step, sd(ms||520))); }
   function step(){
     var B=G.battle; if(!B||B.over) return;
+    // extra (advance) actions queued by Time dice
+    if(B.extra && B.extra.length){ var ex=B.extra.shift(); if(ex && ex.alive && ex.side==='ally'){
+      B.active=ex; if(B.auto || ex.summon){ summonOrAuto(ex); return; }
+      B.awaiting=true; B.phase='Extra action'; if(G.view==='battle') renderBattle(); return; } }
     if(!B.order || B.qi>=B.order.length) startRound();
     var u=B.order[B.qi++];
     if(!u || !u.alive){ return scheduleStep(120); }
@@ -1654,8 +2060,14 @@ function initDiceRpg(container){
       if(u.brokenTurns<=0){ u.broken=false; u.toughness=u.maxToughness; logMsg('<b>'+u.name+'</b> recovers from Break.','brk'); }
       else logMsg('<b>'+u.name+'</b> is Broken and loses its turn.','brk');
       B.active=u; B.phase='Broken'; if(G.view==='battle') renderBattle(); return scheduleStep(700); }
+    // frozen / stunned / sealed enemies skip
+    if(u.side==='enemy' && (u.frozen>0 || u.stun>0)){
+      B.active=u; B.phase=(u.frozen>0?'Frozen':'Stunned'); if(G.view==='battle') renderBattle();
+      logMsg('<b>'+u.name+'</b> is '+(u.frozen>0?'Frozen':'Stunned')+' and cannot act.','chill');
+      return scheduleStep(620); }
     B.active=u;
     if(u.side==='ally'){
+      if(u.summon){ return summonOrAuto(u); }
       if(u.skillCd>0) u.skillCd--;
       B.awaiting=true; B.phase='Your move'; if(G.view==='battle') renderBattle();
       if(B.auto) G.timers.push(setTimeout(function(){ autoAct(u); },sd(620)));
@@ -1664,6 +2076,12 @@ function initDiceRpg(container){
       G.timers.push(setTimeout(function(){ if(G.battle!==B||B.over) return; enemyTurn(u); afterAction(); },sd(680)));
     }
   }
+  function summonOrAuto(u){ var B=G.battle; B.active=u; B.awaiting=false;
+    B.phase=u.summon?'Summon acts':'Extra action'; if(G.view==='battle') renderBattle();
+    G.timers.push(setTimeout(function(){ if(G.battle!==B||B.over) return;
+      if(u.summon){ var t=curTarget(); if(t){ var r=computeHit(u,t,0.05); logMsg('\u2795 <b>'+u.name+'</b> strikes for '+fmt(r?r.dmg:0)+'.','dmg'); } }
+      else { autoAct(u); return; }
+      afterAction(); },sd(560))); }
   function afterAction(){ var B=G.battle; if(!B) return;
     if(checkEnd()) return;
     B.phase='Resolving'; if(G.view==='battle') renderBattle();
@@ -1774,6 +2192,16 @@ function initDiceRpg(container){
     flee.onclick=fleeBattle; acts.appendChild(spd); acts.appendChild(autoBtn); acts.appendChild(flee); top.appendChild(acts);
     main.appendChild(top);
     main.appendChild(turnTimeline());
+    if(B.anomaly){ var an=document.createElement('div'); an.className='dg-anomaly-banner';
+      an.innerHTML='\u269B <b>Anomaly</b> \u2014 '+(B.anomaly.label||'reality altered'); main.appendChild(an); }
+    if(B.synList && B.synList.length){ var sy=document.createElement('div'); sy.className='dg-synrow';
+      B.synList.forEach(function(s){ sy.innerHTML+='<span class="dg-synpill" data-tip="'+s.desc+'">\u2726 '+s.name+'</span>'; });
+      main.appendChild(sy); }
+    // combo meter
+    var cm=document.createElement('div'); cm.className='dg-combo-meter';
+    var pips=''; for(var ci=0;ci<10;ci++) pips+='<span class="cm-pip'+((B.combo||0)>ci?' on':'')+'"></span>';
+    cm.innerHTML='<span class="cm-lbl">Combo</span><span class="cm-pips">'+pips+'</span><span class="cm-n">'+(B.combo||0)+'</span>';
+    cm.setAttribute('data-tip',statusTip('combo')); main.appendChild(cm);
     // enemies
     var eg=document.createElement('div'); eg.className='dg-side-group';
     var el=document.createElement('div'); el.className='dg-side-label'; el.textContent='Enemies'; eg.appendChild(el);
@@ -1802,8 +2230,16 @@ function initDiceRpg(container){
   function unitCard(u,side,i){
     var B=G.battle;
     var c=document.createElement('div');
+    var fx='';
+    if(side==='enemy'){
+      if(u.omen>0) fx+=' dg-glow-omen';
+      if((u.fracture||0)>=5) fx+=' dg-cracks';
+      if(u.frozen>0) fx+=' dg-frozen';
+      if((u.collapse||0)>=5) fx+=' dg-collapse';
+    } else { if(u.transformTurns>0) fx+=' dg-transform'; }
     c.className='dg-unit '+side+(u.alive?'':' dead')+(B.active===u?' active':'')+
-      (side==='enemy'&&B.target===i&&u.alive?' target':'')+(u._flash?' hit':'');
+      (side==='enemy'&&B.target===i&&u.alive?' target':'')+(u._flash?' hit':'')+fx;
+    if(side==='enemy' && u.omen>0) c.style.setProperty('--omen-i', Math.min(1,u.omen/12).toFixed(2));
     u._flash=false;
     var glyph = side==='ally'? dieGlyph(u.id) : tierGlyph(B.tier);
     var sub = side==='ally'? (capit(u.rarity)+(u.cons>0?' \u2022 C'+u.cons:'')) : u.role||'Foe';
@@ -1820,14 +2256,38 @@ function initDiceRpg(container){
       tb.innerHTML='<i style="width:'+(u.maxToughness?u.toughness/u.maxToughness*100:0)+'%"></i>'; c.appendChild(tb);
     }
     // chips
+    function chip(cls,txt,tip){ return '<span class="dg-chip-s '+cls+'" data-tip="'+(tip||'')+'">'+txt+'</span>'; }
     var chips=[];
-    if(side==='enemy'){ if(u.broken) chips.push('<span class="dg-chip-s brk">BROKEN</span>');
-      if(u.omen>0) chips.push('<span class="dg-chip-s omen">Omen '+u.omen+'</span>');
-      if(u.defDown>0) chips.push('<span class="dg-chip-s deb">DEF\u2193</span>'); }
-    else { if(u.dmgUp>0) chips.push('<span class="dg-chip-s buff">DMG\u2191</span>');
-      if(u.critUp>0) chips.push('<span class="dg-chip-s buff">CRIT\u2191</span>');
-      if(u.spdUp>0) chips.push('<span class="dg-chip-s buff">SPD\u2191</span>');
-      if(u.energy>=u.ultCost) chips.push('<span class="dg-chip-s fort">ULT READY</span>'); }
+    if(side==='enemy'){ if(u.broken) chips.push(chip('brk','BROKEN',statusTip('broken')));
+      if(u.omen>0) chips.push(chip('omen','Omen '+Math.round(u.omen),statusTip('omen')));
+      var f=u.fracture||0;
+      if(f>=10) chips.push(chip('frac','SHATTERED '+f,statusTip('shattered')));
+      else if(f>=5) chips.push(chip('frac','EXPOSED '+f,statusTip('exposed')));
+      else if(f>0) chips.push(chip('frac','Fracture '+f,statusTip('fracture')));
+      if(u.frozen>0) chips.push(chip('chill','FROZEN',statusTip('frozen')));
+      else if(u.chill>0) chips.push(chip('chill','Chill '+u.chill,statusTip('chill')));
+      if((u.gravity||0)>=5) chips.push(chip('grav','WEIGHED',statusTip('weighed')));
+      else if(u.gravity>0) chips.push(chip('grav','Gravity '+u.gravity,statusTip('gravity')));
+      if((u.collapse||0)>=5) chips.push(chip('coll','COLLAPSE',statusTip('collapse')));
+      else if(u.collapse>0) chips.push(chip('coll','Collapse '+u.collapse,statusTip('collapse')));
+      if(u.bleed>0) chips.push(chip('bleed','Bleed '+u.bleed,statusTip('bleed')));
+      if(u.plague>0) chips.push(chip('plague','Plague '+u.plague,statusTip('plague')));
+      if(u.timeMark>0) chips.push(chip('time','Mark '+u.timeMark,statusTip('time_mark')));
+      if(u.stun>0) chips.push(chip('chill','STUN',statusTip('stun')));
+      if(u.brkVuln>0) chips.push(chip('deb','VULN',statusTip('break_vuln')));
+      if(u.defDown>0) chips.push(chip('deb','DEF\u2193','Defense reduced.')); }
+    else { if(u.dmgUp>0) chips.push(chip('buff','DMG\u2191','Damage boosted.'));
+      if(u.critUp>0) chips.push(chip('buff','CRIT\u2191','Crit rate boosted.'));
+      if(u.spdUp>0||u.mutSpd>0) chips.push(chip('buff','SPD\u2191','Speed boosted.'));
+      if(u.dr>0) chips.push(chip('buff','DR','Damage reduction active.'));
+      if(u.guardTurns>0) chips.push(chip('buff','GUARD',statusTip('guard')));
+      if(u.immuneTurns>0) chips.push(chip('fort','IMMUNE',statusTip('immune')));
+      if(u.mirages>0) chips.push(chip('fort','Mirage '+u.mirages,statusTip('mirage')));
+      if(u.retri>0) chips.push(chip('fort','Counter '+u.retri,statusTip('retribution')));
+      if(u.transformTurns>0) chips.push(chip('fort','JACKPOT',statusTip('jackpot')));
+      if(u.jackpot>0) chips.push(chip('omen','\u{1F3B0} '+Math.round(u.jackpot),statusTip('jackpot')));
+      if((u.params||{}).auto_cycle) chips.push(chip('time',u.eclipse==='night'?'\u{1F319} Night':'\u2600 Day',statusTip('eclipse')));
+      if(u.energy>=u.ultCost) chips.push(chip('fort','ULT READY','Ultimate is ready.')); }
     if(chips.length){ var ch=document.createElement('div'); ch.className='dg-chips'; ch.innerHTML=chips.join(''); c.appendChild(ch); }
     if(side==='enemy') c.onclick=function(){ if(u.alive){ B.target=i; renderBattle(); } };
     return c;
@@ -1844,11 +2304,14 @@ function initDiceRpg(container){
     who.innerHTML=u.name+'<small>'+capit(u.rarity)+' \u2022 Energy '+Math.floor(u.energy)+'/'+u.ultCost+'</small>';
     p.appendChild(who);
     var bw=document.createElement('div'); bw.className='dg-act-btns';
-    var bBasic=document.createElement('button'); bBasic.className='dg-act'; bBasic.innerHTML=u.basicName+'<small>Basic</small>';
+    var bBasic=document.createElement('button'); bBasic.className='dg-act';
+    bBasic.innerHTML=u.basicName+'<small>Basic</small>'; bBasic.setAttribute('data-tip',String(u.basicDesc||'').replace(/"/g,'&quot;')); bBasic.setAttribute('data-tip-h',u.basicName); bBasic.setAttribute('data-tip-tag','Basic');
     bBasic.onclick=function(){ playerAct('basic'); };
     var bSkill=document.createElement('button'); bSkill.className='dg-act skill'; bSkill.innerHTML=u.skillName+'<small>'+(u.skillCd>0?'Cooldown':'Skill')+'</small>';
+    bSkill.setAttribute('data-tip',String(u.skillDesc||'').replace(/"/g,'&quot;')); bSkill.setAttribute('data-tip-h',u.skillName); bSkill.setAttribute('data-tip-tag','Skill');
     bSkill.disabled=u.skillCd>0; bSkill.onclick=function(){ playerAct('skill'); };
     var bUlt=document.createElement('button'); bUlt.className='dg-act ult'; bUlt.innerHTML=u.ultName+'<small>'+(u.energy>=u.ultCost?'Ultimate':'Charging '+Math.floor(u.energy)+'/'+u.ultCost)+'</small>';
+    bUlt.setAttribute('data-tip',String(u.ultDesc||'').replace(/"/g,'&quot;')); bUlt.setAttribute('data-tip-h',u.ultName); bUlt.setAttribute('data-tip-tag','Ultimate');
     bUlt.disabled=u.energy<u.ultCost; bUlt.onclick=function(){ playerAct('ult'); };
     bw.appendChild(bBasic); bw.appendChild(bSkill); bw.appendChild(bUlt); p.appendChild(bw);
     return p;

@@ -684,22 +684,28 @@ def _dice_roll_rarity_flat(gacha):
 
 
 def _dice_pick_id(rarity, banner_id, gacha):
-    """Choose a concrete die id for a rarity, applying Limited 50/50 + featured."""
+    """Choose a concrete die id for a rarity, applying 50/50 + featured for any
+    banner that defines a featured pool (Limited and the rotating featured
+    banners). The 50/50 guarantee is tracked per-banner so each featured banner
+    keeps its own pity. Plain banners (standard/cosmic) fall back to full pool."""
+    bdef = dice_data.BANNERS.get(banner_id, {})
+    featured_mythic = bdef.get("featured_mythic")
+    featured_rares = bdef.get("featured_rares") or []
     if rarity == "MYTHIC":
-        if banner_id == "limited":
-            featured = dice_data.BANNERS["limited"]["featured_mythic"]
-            others = [i for i in dice_data.IDS_BY_RARITY["MYTHIC"] if i != featured]
-            if gacha.get("limited_guarantee"):
-                gacha["limited_guarantee"] = False
-                return featured
+        if featured_mythic:
+            others = [i for i in dice_data.IDS_BY_RARITY["MYTHIC"] if i != featured_mythic]
+            gkey = "limited_guarantee" if banner_id == "limited" else "guarantee_" + banner_id
+            if gacha.get(gkey):
+                gacha[gkey] = False
+                return featured_mythic
             if random.random() < 0.5:
-                return featured
-            gacha["limited_guarantee"] = True
-            return random.choice(others) if others else featured
+                return featured_mythic
+            gacha[gkey] = True
+            return random.choice(others) if others else featured_mythic
         return random.choice(dice_data.IDS_BY_RARITY["MYTHIC"])
     if rarity == "RARE":
-        if banner_id == "limited" and random.random() < 0.5:
-            return random.choice(dice_data.BANNERS["limited"]["featured_rares"])
+        if featured_rares and random.random() < 0.5:
+            return random.choice(featured_rares)
         return random.choice(dice_data.IDS_BY_RARITY["RARE"])
     return random.choice(dice_data.IDS_BY_RARITY["COMMON"])
 
@@ -10517,7 +10523,7 @@ async def handle_client_ws(request):
                     if ws not in connected: continue
                     banner = data.get("banner", "standard")
                     count = data.get("count", 1)
-                    if banner not in ("standard", "limited", "beginner"):
+                    if banner not in dice_data.BANNERS:
                         await ws.send_str(json.dumps({"type": "dg_pull_result", "ok": False, "error": "Unknown banner."})); continue
                     if count not in (1, 10):
                         await ws.send_str(json.dumps({"type": "dg_pull_result", "ok": False, "error": "Invalid pull count."})); continue
