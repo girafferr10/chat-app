@@ -594,12 +594,16 @@ _DICEGAME_MEM = {}
 
 def _default_dicegame():
     return {
-        "collection": {d: {"constellation": 0} for d in dice_data.STARTER_DICE},
+        "collection": {d: {"constellation": 0, "level": 0} for d in dice_data.STARTER_DICE},
+        # v4.0: gems/crystals live inside gacha (no schema migration needed).
         "gacha": {"pity_mythic": 0, "pity_rare": 0, "total_pulls": 0,
                   "beginner_pulls": 0, "beginner_done": False,
-                  "limited_guarantee": False, "universal_shards": 0},
+                  "limited_guarantee": False, "universal_shards": 0,
+                  "gems": dice_data.STARTER_GEMS, "crystals": 0},
         "history": [],
-        "campaign": {"cleared": [], "first_clear": [], "best_wave": 0},
+        # v4.0: achievements/milestones/presets live inside campaign.
+        "campaign": {"cleared": [], "first_clear": [], "best_wave": 0,
+                     "achievements": [], "milestones": [], "presets": []},
         "team": list(dice_data.STARTER_DICE),
     }
 
@@ -739,7 +743,7 @@ def _dice_do_pulls(banner_id, count, dg):
         is_new = die_id not in coll
         shards = 0
         if is_new:
-            coll[die_id] = {"constellation": 0}
+            coll[die_id] = {"constellation": 0, "level": 0}
         else:
             c = coll[die_id].get("constellation", 0)
             if c < dice_data.MAX_CONSTELLATION:
@@ -759,22 +763,49 @@ def _dice_do_pulls(banner_id, count, dg):
     return results
 
 
-async def dice_pull_txn(username, ws, banner, count, total_cost):
-    """Atomically: lock balance + dice rows, validate, run pulls, persist.
-    Returns a result dict suitable for the dg_pull_result message."""
-    if not db_pool:
-        bal = connected[ws].get("balance", 0)
-        dg = await db_get_dicegame(username)
-        if banner == "beginner" and dg["gacha"].get("beginner_done"):
-            return {"ok": False, "error": "The Beginner banner is closed."}
-        if bal < total_cost:
-            return {"ok": False, "error": "Not enough balance."}
-        results = _dice_do_pulls(banner, count, dg)
-        new_bal = bal - total_cost
-        connected[ws]["balance"] = new_bal
-        _DICEGAME_MEM[username] = dg
-        return {"ok": True, "results": results, "state": dg, "balance": new_bal}
+async def _load_dg_locked(conn, username):
+    """Load (and row-lock) a player's dice state inside an open transaction,
+    creating the default row if it does not exist."""
+    drow = await conn.fetchrow("SELECT * FROM dice_game WHERE username=$1 FOR UPDATE", username)
+    if drow is None:
+        dg = _default_dicegame()
+        await conn.execute(
+            "INSERT INTO dice_game (username,collection,gacha,history,campaign,team) "
+            "VALUES ($1,$2::jsonb,$3::jsonb,$4::jsonb,$5::jsonb,$6::jsonb) ON CONFLICT DO NOTHING",
+            username, json.dumps(dg["collection"]), json.dumps(dg["gacha"]),
+            json.dumps(dg["history"]), json.dumps(dg["campaign"]), json.dumps(dg["team"]))
+        return dg
+    return _merge_dicegame({
+        "collection": dict(_json_field(drow["collection"], {})),
+        "gacha": dict(_json_field(drow["gacha"], {})),
+        "history": list(_json_field(drow["history"], [])),
+        "campaign": dict(_json_field(drow["campaign"], {})),
+        "team": list(_json_field(drow["team"], [])),
+    })
 
+
+async def _dg_mutate(username, ws, fn):
+    """Server-authoritative dice mutation.
+
+    Loads the player's balance (user_economy) + dice state under a row lock,
+    runs `fn(balance, dg) -> (new_balance_or_None, result_dict)`, then persists
+    the full dice state (all 5 JSONB columns, so wallet/achievements/etc. that
+    live nested inside `gacha`/`campaign` are saved too). Balance is only
+    written when `fn` returns a non-None new balance. If `result` carries a
+    `_txn` tuple (amount, reason) the balance change is logged. The fresh
+    `state` and `balance` are attached to the returned result for the client."""
+    if not db_pool:
+        bal = connected.get(ws, {}).get("balance", 0)
+        dg = await db_get_dicegame(username)
+        new_bal, result = fn(bal, dg)
+        result.pop("_txn", None)
+        final_bal = bal if new_bal is None else new_bal
+        if ws in connected:
+            connected[ws]["balance"] = final_bal
+        _DICEGAME_MEM[username] = dg
+        result.setdefault("state", dg)
+        result.setdefault("balance", final_bal)
+        return result
     async with db_pool.acquire() as conn:
         async with conn.transaction():
             erow = await conn.fetchrow("SELECT balance FROM user_economy WHERE username=$1 FOR UPDATE", username)
@@ -783,115 +814,244 @@ async def dice_pull_txn(username, ws, banner, count, total_cost):
                 bal = 1000
             else:
                 bal = erow["balance"]
-            drow = await conn.fetchrow("SELECT * FROM dice_game WHERE username=$1 FOR UPDATE", username)
-            if drow is None:
-                dg = _default_dicegame()
-                await conn.execute(
-                    "INSERT INTO dice_game (username,collection,gacha,history,campaign,team) "
-                    "VALUES ($1,$2::jsonb,$3::jsonb,$4::jsonb,$5::jsonb,$6::jsonb) ON CONFLICT DO NOTHING",
-                    username, json.dumps(dg["collection"]), json.dumps(dg["gacha"]),
-                    json.dumps(dg["history"]), json.dumps(dg["campaign"]), json.dumps(dg["team"]))
-            else:
-                dg = _merge_dicegame({
-                    "collection": dict(_json_field(drow["collection"], {})),
-                    "gacha": dict(_json_field(drow["gacha"], {})),
-                    "history": list(_json_field(drow["history"], [])),
-                    "campaign": dict(_json_field(drow["campaign"], {})),
-                    "team": list(_json_field(drow["team"], [])),
-                })
-            if banner == "beginner" and dg["gacha"].get("beginner_done"):
-                return {"ok": False, "error": "The Beginner banner is closed."}
-            if bal < total_cost:
-                return {"ok": False, "error": "Not enough balance."}
-            results = _dice_do_pulls(banner, count, dg)
-            new_bal = bal - total_cost
-            await conn.execute("UPDATE user_economy SET balance=$2 WHERE username=$1", username, new_bal)
+            dg = await _load_dg_locked(conn, username)
+            new_bal, result = fn(bal, dg)
+            final_bal = bal if new_bal is None else new_bal
+            if new_bal is not None and new_bal != bal:
+                await conn.execute("UPDATE user_economy SET balance=$2 WHERE username=$1", username, final_bal)
             await conn.execute(
-                "UPDATE dice_game SET collection=$2::jsonb, gacha=$3::jsonb, history=$4::jsonb WHERE username=$1",
-                username, json.dumps(dg["collection"]), json.dumps(dg["gacha"]), json.dumps(dg["history"]))
-            await conn.execute("INSERT INTO transactions (username,amount,reason) VALUES ($1,$2,$3)",
-                               username, -int(total_cost), f"Dice RPG summon x{count} ({banner})"[:200])
-    connected[ws]["balance"] = new_bal
-    return {"ok": True, "results": results, "state": dg, "balance": new_bal}
+                "UPDATE dice_game SET collection=$2::jsonb, gacha=$3::jsonb, history=$4::jsonb, "
+                "campaign=$5::jsonb, team=$6::jsonb WHERE username=$1",
+                username, json.dumps(dg["collection"]), json.dumps(dg["gacha"]),
+                json.dumps(dg["history"]), json.dumps(dg["campaign"]), json.dumps(dg["team"]))
+            txn = result.pop("_txn", None)
+            if txn:
+                await conn.execute("INSERT INTO transactions (username,amount,reason) VALUES ($1,$2,$3)",
+                                   username, int(txn[0]), str(txn[1])[:200])
+    if ws in connected:
+        connected[ws]["balance"] = final_bal
+    result.setdefault("state", dg)
+    result.setdefault("balance", final_bal)
+    return result
+
+
+def _dice_achievement_done(check, dg):
+    """Server-side verification of an achievement's unlock condition."""
+    coll  = dg.get("collection", {}) or {}
+    gacha = dg.get("gacha", {}) or {}
+    camp  = dg.get("campaign", {}) or {}
+    owned = len(coll)
+    total = len(dice_data.DICE_CATALOG)
+    mythic_ids = set(dice_data.IDS_BY_RARITY.get("MYTHIC", []))
+    if check == "pulls>=1":     return int(gacha.get("total_pulls", 0)) >= 1
+    if check == "owned>=10":    return owned >= 10
+    if check == "owned>=all":   return owned >= total
+    if check == "mythic>=1":    return any(c in mythic_ids for c in coll)
+    if check == "cleared_c6":   return "c6" in (camp.get("cleared") or [])
+    if check == "best_wave>=25": return int(camp.get("best_wave", 0)) >= 25
+    if check == "ascended>=1":  return any(int((coll[c] or {}).get("level", 0)) > 0 for c in coll)
+    if check == "const6>=1":    return any(int((coll[c] or {}).get("constellation", 0)) >= 6 for c in coll)
+    return False
+
+
+async def dice_pull_txn(username, ws, banner, count, total_cost):
+    """Atomically validate Gems, run pulls, persist. Pulls cost GEMS (v4.0)."""
+    def _do(bal, dg):
+        gacha = dg["gacha"]
+        if banner == "beginner" and gacha.get("beginner_done"):
+            return None, {"ok": False, "error": "The Beginner banner is closed."}
+        gems = int(gacha.get("gems", 0))
+        if gems < total_cost:
+            return None, {"ok": False, "error": "Not enough Gems."}
+        results = _dice_do_pulls(banner, count, dg)
+        gacha["gems"] = gems - int(total_cost)
+        return None, {"ok": True, "results": results}
+    return await _dg_mutate(username, ws, _do)
 
 
 async def dice_claim_first_clear_txn(username, ws, stage):
-    """Grant the one-time first-clear reward for a campaign stage.
-
-    Server is the authority: validates the stage id, enforces sequential
-    progression (the previous campaign stage must already be cleared),
-    refuses to pay twice (idempotent on `campaign.first_clear`), credits the
-    main balance and logs the transaction. Returns the new balance and full
-    dice state."""
+    """One-time first-clear reward for a campaign stage, now paid in GEMS.
+    Idempotent on campaign.first_clear and sequential (previous stage cleared)."""
     reward = int(dice_data.BATTLE_FIRST_CLEAR_REWARD)
     stage_ids = list(dice_data.CAMPAIGN_STAGE_IDS)
     if stage not in stage_ids:
         return {"ok": False, "error": "Unknown stage.",
                 "balance": connected.get(ws, {}).get("balance", 0)}
     stage_idx = stage_ids.index(stage)
-    if not db_pool:
-        dg = await db_get_dicegame(username)
-        camp = dg.setdefault("campaign", {"cleared": [], "first_clear": [], "best_wave": 0})
+    def _do(bal, dg):
+        camp = dg["campaign"]
         first = camp.setdefault("first_clear", [])
         cleared = camp.setdefault("cleared", [])
         if stage in first:
-            return {"ok": True, "reward": 0, "already": True,
-                    "balance": connected[ws].get("balance", 0), "state": dg}
+            return None, {"ok": True, "reward": 0, "already": True}
         if stage_idx > 0 and stage_ids[stage_idx - 1] not in cleared:
-            return {"ok": False, "error": "Stage locked.",
-                    "balance": connected[ws].get("balance", 0), "state": dg}
+            return None, {"ok": False, "error": "Stage locked."}
         first.append(stage)
         if stage not in cleared:
             cleared.append(stage)
-        new_bal = connected[ws].get("balance", 0) + reward
-        connected[ws]["balance"] = new_bal
-        await db_save_dicegame(username, dg)
-        return {"ok": True, "reward": reward, "balance": new_bal, "state": dg}
-    async with db_pool.acquire() as conn:
-        async with conn.transaction():
-            erow = await conn.fetchrow("SELECT balance FROM user_economy WHERE username=$1 FOR UPDATE", username)
-            if not erow:
-                await conn.execute("INSERT INTO user_economy (username) VALUES ($1) ON CONFLICT DO NOTHING", username)
-                bal = 1000
+        dg["gacha"]["gems"] = int(dg["gacha"].get("gems", 0)) + reward
+        return None, {"ok": True, "reward": reward, "currency": "gems"}
+    return await _dg_mutate(username, ws, _do)
+
+
+async def dice_convert_txn(username, ws, direction, amount):
+    """Currency conversion. direction='to_crystals' spends Balance 1:1 into
+    Crystals; direction='to_gems' spends Crystals into Gems at GEM_RATE."""
+    try:
+        amount = int(amount)
+    except (TypeError, ValueError):
+        amount = 0
+    if amount <= 0:
+        return {"ok": False, "error": "Enter an amount above zero.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    def _do(bal, dg):
+        gacha = dg["gacha"]
+        if direction == "to_crystals":
+            if bal < amount:
+                return None, {"ok": False, "error": "Not enough Balance."}
+            gained = int(amount * dice_data.CRYSTAL_RATE)
+            gacha["crystals"] = int(gacha.get("crystals", 0)) + gained
+            return bal - amount, {"ok": True, "direction": direction, "gained": gained,
+                                  "_txn": (-amount, f"Dice RPG: {amount} balance to {gained} crystals")}
+        if direction == "to_gems":
+            crystals = int(gacha.get("crystals", 0))
+            if crystals < amount:
+                return None, {"ok": False, "error": "Not enough Crystals."}
+            gained = int(amount * dice_data.GEM_RATE)
+            gacha["crystals"] = crystals - amount
+            gacha["gems"] = int(gacha.get("gems", 0)) + gained
+            return None, {"ok": True, "direction": direction, "gained": gained}
+        return None, {"ok": False, "error": "Unknown conversion."}
+    return await _dg_mutate(username, ws, _do)
+
+
+async def dice_buy_bundle_txn(username, ws, bundle_id, select_id=None):
+    """Buy a premium bundle with Crystals. 'gems' bundles credit Gems; 'select'
+    bundles grant a die of the chosen rarity (dupes -> constellation/shards)."""
+    bundle = dice_data.BUNDLES_BY_ID.get(bundle_id)
+    if not bundle:
+        return {"ok": False, "error": "Unknown bundle.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    def _do(bal, dg):
+        gacha = dg["gacha"]; coll = dg["collection"]
+        cost = int(bundle["cost_crystals"])
+        if int(gacha.get("crystals", 0)) < cost:
+            return None, {"ok": False, "error": "Not enough Crystals."}
+        if bundle["grant"] == "select":
+            rarity = bundle["select_rarity"]
+            if select_id not in dice_data.IDS_BY_RARITY.get(rarity, []):
+                return None, {"ok": False, "error": "Pick a valid die."}
+            gacha["crystals"] = int(gacha.get("crystals", 0)) - cost
+            if select_id not in coll:
+                coll[select_id] = {"constellation": 0, "level": 0}
+                kind = "new"
             else:
-                bal = erow["balance"]
-            drow = await conn.fetchrow("SELECT * FROM dice_game WHERE username=$1 FOR UPDATE", username)
-            if not drow:
-                dg = _default_dicegame()
-                await conn.execute(
-                    "INSERT INTO dice_game (username,collection,gacha,history,campaign,team) "
-                    "VALUES ($1,$2::jsonb,$3::jsonb,$4::jsonb,$5::jsonb,$6::jsonb) ON CONFLICT DO NOTHING",
-                    username, json.dumps(dg["collection"]), json.dumps(dg["gacha"]),
-                    json.dumps(dg["history"]), json.dumps(dg["campaign"]), json.dumps(dg["team"]))
-            else:
-                dg = _merge_dicegame({
-                    "collection": dict(_json_field(drow["collection"], {})),
-                    "gacha": dict(_json_field(drow["gacha"], {})),
-                    "history": list(_json_field(drow["history"], [])),
-                    "campaign": dict(_json_field(drow["campaign"], {})),
-                    "team": list(_json_field(drow["team"], [])),
-                })
-            camp = dg.setdefault("campaign", {"cleared": [], "first_clear": [], "best_wave": 0})
-            first = camp.setdefault("first_clear", [])
-            cleared = camp.setdefault("cleared", [])
-            if stage in first:
-                connected[ws]["balance"] = bal
-                return {"ok": True, "reward": 0, "already": True, "balance": bal, "state": dg}
-            if stage_idx > 0 and stage_ids[stage_idx - 1] not in cleared:
-                connected[ws]["balance"] = bal
-                return {"ok": False, "error": "Stage locked.", "balance": bal, "state": dg}
-            first.append(stage)
-            if stage not in cleared:
-                cleared.append(stage)
-            new_bal = bal + reward
-            await conn.execute("UPDATE user_economy SET balance=$2 WHERE username=$1", username, new_bal)
-            await conn.execute(
-                "UPDATE dice_game SET campaign=$2::jsonb WHERE username=$1",
-                username, json.dumps(dg["campaign"]))
-            await conn.execute("INSERT INTO transactions (username,amount,reason) VALUES ($1,$2,$3)",
-                               username, reward, f"Dice RPG first clear ({stage})"[:200])
-    connected[ws]["balance"] = new_bal
-    return {"ok": True, "reward": reward, "balance": new_bal, "state": dg}
+                con = int(coll[select_id].get("constellation", 0))
+                if con < dice_data.MAX_CONSTELLATION:
+                    coll[select_id]["constellation"] = con + 1
+                    kind = "constellation"
+                else:
+                    sh = dice_data.UNIVERSAL_SHARD_YIELD.get(rarity, 0)
+                    gacha["universal_shards"] = int(gacha.get("universal_shards", 0)) + sh
+                    kind = "shards"
+            return None, {"ok": True, "bundle": bundle_id, "granted_id": select_id, "grant_kind": kind}
+        # gems bundle
+        gacha["crystals"] = int(gacha.get("crystals", 0)) - cost
+        gacha["gems"] = int(gacha.get("gems", 0)) + int(bundle.get("gems", 0))
+        return None, {"ok": True, "bundle": bundle_id, "gems_added": int(bundle.get("gems", 0))}
+    return await _dg_mutate(username, ws, _do)
+
+
+async def dice_claim_milestone_txn(username, ws, wave):
+    """One-time Endless milestone reward. Idempotent (per wave) and monotonic
+    (player's best_wave must already reach the milestone wave)."""
+    try:
+        wave = int(wave)
+    except (TypeError, ValueError):
+        wave = -1
+    m = dice_data.MILESTONES_BY_WAVE.get(wave)
+    if not m:
+        return {"ok": False, "error": "Unknown milestone.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    def _do(bal, dg):
+        camp = dg["campaign"]; claimed = camp.setdefault("milestones", [])
+        if wave in claimed:
+            return None, {"ok": True, "already": True, "wave": wave}
+        if int(camp.get("best_wave", 0)) < wave:
+            return None, {"ok": False, "error": "Reach this wave first."}
+        claimed.append(wave)
+        gacha = dg["gacha"]
+        gacha["gems"] = int(gacha.get("gems", 0)) + int(m.get("gems", 0))
+        gacha["crystals"] = int(gacha.get("crystals", 0)) + int(m.get("crystals", 0))
+        gacha["universal_shards"] = int(gacha.get("universal_shards", 0)) + int(m.get("shards", 0))
+        return None, {"ok": True, "wave": wave,
+                      "reward": {"gems": m.get("gems", 0), "crystals": m.get("crystals", 0),
+                                 "shards": m.get("shards", 0)}}
+    return await _dg_mutate(username, ws, _do)
+
+
+async def dice_ascend_txn(username, ws, die_id):
+    """Ascend one die by a single level, spending Universal Shards."""
+    die = dice_data.DICE_BY_ID.get(die_id)
+    if not die:
+        return {"ok": False, "error": "Unknown die.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    def _do(bal, dg):
+        coll = dg["collection"]
+        if die_id not in coll:
+            return None, {"ok": False, "error": "You don't own this die."}
+        level = int(coll[die_id].get("level", 0))
+        cost = dice_data.ascension_step_cost(die["rarity"], level)
+        if cost is None:
+            return None, {"ok": False, "error": "Already at max ascension."}
+        gacha = dg["gacha"]; shards = int(gacha.get("universal_shards", 0))
+        if shards < cost:
+            return None, {"ok": False, "error": "Not enough Universal Shards."}
+        gacha["universal_shards"] = shards - cost
+        coll[die_id]["level"] = level + 1
+        return None, {"ok": True, "die_id": die_id, "level": level + 1, "cost": cost}
+    return await _dg_mutate(username, ws, _do)
+
+
+async def dice_claim_achievement_txn(username, ws, ach_id):
+    """Grant an achievement reward once, after server-side verification."""
+    ach = dice_data.ACHIEVEMENTS_BY_ID.get(ach_id)
+    if not ach:
+        return {"ok": False, "error": "Unknown achievement.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    def _do(bal, dg):
+        camp = dg["campaign"]; claimed = camp.setdefault("achievements", [])
+        if ach_id in claimed:
+            return None, {"ok": True, "already": True, "ach_id": ach_id}
+        if not _dice_achievement_done(ach["check"], dg):
+            return None, {"ok": False, "error": "Not unlocked yet."}
+        claimed.append(ach_id)
+        gacha = dg["gacha"]
+        gacha["gems"] = int(gacha.get("gems", 0)) + int(ach.get("gems", 0))
+        gacha["crystals"] = int(gacha.get("crystals", 0)) + int(ach.get("crystals", 0))
+        gacha["universal_shards"] = int(gacha.get("universal_shards", 0)) + int(ach.get("shards", 0))
+        return None, {"ok": True, "ach_id": ach_id,
+                      "reward": {"gems": ach.get("gems", 0), "crystals": ach.get("crystals", 0),
+                                 "shards": ach.get("shards", 0)}}
+    return await _dg_mutate(username, ws, _do)
+
+
+async def dice_save_presets_txn(username, ws, presets):
+    """Persist up to TEAM_PRESET_SLOTS team presets (cosmetic, untrusted).
+    Each preset is a flat list of valid die ids, matching the client shape."""
+    clean = []
+    if isinstance(presets, list):
+        for p in presets[:dice_data.TEAM_PRESET_SLOTS]:
+            if isinstance(p, dict):  # tolerate legacy {name, team} shape
+                p = p.get("team") or []
+            if not isinstance(p, list):
+                clean.append([]); continue
+            team = [str(t) for t in p if t in dice_data.DICE_BY_ID][:dice_data.TEAM_SIZE]
+            clean.append(team)
+    def _do(bal, dg):
+        dg["campaign"]["presets"] = clean
+        return None, {"ok": True, "presets": clean}
+    return await _dg_mutate(username, ws, _do)
 
 
 async def db_get_transactions(username, limit=15):
@@ -10414,6 +10574,63 @@ async def handle_client_ws(request):
                         camp["best_wave"] = wave
                         await db_save_dicegame(username, dg)
                     await ws.send_str(json.dumps({"type": "dg_best_wave_result", "ok": True, "best_wave": camp.get("best_wave", 0)}))
+
+                elif data.get("type") == "dg_convert":
+                    if ws not in connected: continue
+                    direction = data.get("direction", "")
+                    if direction not in ("to_crystals", "to_gems"):
+                        await ws.send_str(json.dumps({"type": "dg_convert_result", "ok": False, "error": "Bad conversion."})); continue
+                    try:
+                        result = await dice_convert_txn(username, ws, direction, data.get("amount", 0))
+                    except Exception as _e:
+                        print(f"[dice_convert] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_convert_result", "ok": False, "error": "Conversion failed."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_convert_result", **result}))
+
+                elif data.get("type") == "dg_buy_bundle":
+                    if ws not in connected: continue
+                    try:
+                        result = await dice_buy_bundle_txn(username, ws, data.get("bundle_id", ""), data.get("select_id"))
+                    except Exception as _e:
+                        print(f"[dice_bundle] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_bundle_result", "ok": False, "error": "Purchase failed."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_bundle_result", **result}))
+
+                elif data.get("type") == "dg_claim_milestone":
+                    if ws not in connected: continue
+                    try:
+                        result = await dice_claim_milestone_txn(username, ws, data.get("wave", 0))
+                    except Exception as _e:
+                        print(f"[dice_milestone] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_milestone_result", "ok": False, "error": "Claim failed."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_milestone_result", **result}))
+
+                elif data.get("type") == "dg_ascend":
+                    if ws not in connected: continue
+                    try:
+                        result = await dice_ascend_txn(username, ws, data.get("die_id", ""))
+                    except Exception as _e:
+                        print(f"[dice_ascend] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_ascend_result", "ok": False, "error": "Ascension failed."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_ascend_result", **result}))
+
+                elif data.get("type") == "dg_claim_achievement":
+                    if ws not in connected: continue
+                    try:
+                        result = await dice_claim_achievement_txn(username, ws, data.get("ach_id", ""))
+                    except Exception as _e:
+                        print(f"[dice_achievement] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_achievement_result", "ok": False, "error": "Claim failed."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_achievement_result", **result}))
+
+                elif data.get("type") == "dg_save_presets":
+                    if ws not in connected: continue
+                    try:
+                        result = await dice_save_presets_txn(username, ws, data.get("presets", []))
+                    except Exception as _e:
+                        print(f"[dice_presets] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_presets_result", "ok": False, "error": "Save failed."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_presets_result", **result}))
 
                 elif data.get("type") == "shop_buy":
                     if ws not in connected: continue
