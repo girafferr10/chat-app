@@ -1,0 +1,415 @@
+# Absolute Zero Die
+
+MYTHIC
+
+Ice
+
+Freeze Engine
+
+C6
+
+"The world does not move. It waits."
+
+When Absolute Zero arrives, time itself forgets how to flow.
+
+HP
+1320
+
+ATK
+148
+
+DEF
+92
+
+SPD
+98
+
+Basic
+
+Cold Truth
+
+Deal Ice damage.
+
+Apply 1 Chill Stack.
+
+Skill
+
+Deep Freeze
+
+Apply 5 Chill to all enemies.
+
+Enemies at 10 Chill become Frozen:
+• Skip next action
+• Take 25% increased damage
+
+Ultimate
+
+Heat Death
+
+All enemies instantly gain 8 Chill.
+
+For 2 turns:
+
+• Chill cannot decay
+
+• Frozen enemies take double Break damage
+
+Passive
+
+Frozen State
+
+Enemies lose 1 SPD per Chill Stack.
+
+Minimum SPD cannot go below 20.
+
+Constellations
+
+C1
+Start battle with 3 Chill on all enemies.
+
+C2
++15% DEF.
+
+C3
+Deep Freeze applies 7 Chill instead.
+
+C4
++10 SPD.
+
+C5
+Frozen enemies take +10% extra damage from all sources.
+
+C6
+Frozen enemies have a 20% chance to skip an additional turn after thawing.
+
+---
+
+# Plague Die
+
+MYTHIC
+
+Poison
+
+Spread Engine
+
+C6
+
+"One infection is an accident. Two is a strategy."
+
+Everything touches becomes everything else.
+
+HP
+1280
+
+ATK
+150
+
+DEF
+78
+
+SPD
+103
+
+Basic
+
+Infect
+
+Deal Poison damage.
+
+Apply 2 Plague Stacks.
+
+Skill
+
+Contagion
+
+Spread all Plague stacks from target to all enemies.
+
+Increase total stacks by 30%.
+
+Ultimate
+
+Pandemic Bloom
+
+All enemies immediately take damage equal to 40% of their Plague stacks.
+
+Then spread Plague again.
+
+Passive
+
+Unstoppable Spread
+
+Whenever an enemy dies with Plague, it spreads to a random alive enemy.
+
+Constellations
+
+C1
+Start battle with 5 Plague on random enemy.
+
+C2
++15% ATK.
+
+C3
+Spread bonus increased to 50%.
+
+C4
++12% HP.
+
+C5
+Pandemic Bloom deals +20% damage.
+
+C6
+Plague can now spread twice per turn.
+
+---
+
+# Singularity Die
+
+MYTHIC
+
+Void
+
+Collapse Engine
+
+C6
+
+"Everything returns to nothing."
+
+Even victory has weight.
+
+HP
+1350
+
+ATK
+158
+
+DEF
+85
+
+SPD
+100
+
+Basic
+
+Pull
+
+Deal Void damage.
+
+Apply 1 Collapse Stack.
+
+Skill
+
+Event Horizon
+
+Pull all enemies toward Singularity Die.
+
+Enemies with 5 Collapse:
+• Cannot gain buffs
+• Take +20% damage
+
+Ultimate
+
+End of Everything
+
+Create a Singularity for 2 turns.
+
+At end of each turn:
+• Deal Void damage to all enemies
+• Increase Collapse by 2
+• Reduce enemy action speed by 30%
+
+Passive
+
+Gravitational End
+
+Enemies lose resistance each time they gain Collapse.
+
+Constellations
+
+C1
+Start battle with 2 Collapse on all enemies.
+
+C2
++15% DEF.
+
+C3
+Event Horizon applies 3 extra Collapse.
+
+C4
++10 SPD.
+
+C5
+Singularity lasts 1 additional turn.
+
+C6
+Enemies reaching max Collapse are instantly removed from action order for 1 turn.
+
+---
+
+# Dominion Prime Die
+
+MYTHIC
+
+Arcane
+
+Summon Engine
+
+C6
+
+"The die does not fight alone. It commands existence."
+
+HP
+1380
+
+ATK
+146
+
+DEF
+88
+
+SPD
+99
+
+Basic
+
+Summon Shard
+
+Summon a Prime Fragment.
+
+Fragments inherit 35% of Dominion Prime stats.
+
+Skill
+
+Command Chain
+
+All summoned units act immediately after Dominion Prime.
+
+They gain bonus damage for this turn only.
+
+Ultimate
+
+Full Dominion
+
+Summon 4 Prime Fragments.
+
+For 3 turns:
+
+• Summons act twice per turn
+
+• All on-hit effects are duplicated
+
+• Summons cannot be one-shot
+
+Passive
+
+Army of One
+
+Each summon increases Dominion Prime damage by 6%.
+
+Max 6 summons.
+
+Constellations
+
+C1
+Start battle with 1 Fragment.
+
+C2
++15% HP.
+
+C3
+Fragments inherit 45% stats.
+
+C4
++12% ATK.
+
+C5
+Summons gain partial Break effect.
+
+C6
+Whenever a summon is defeated, replace it once per turn automatically.
+
+---
+
+# Fate Anomaly Die
+
+MYTHIC
+
+Arcane
+
+Rule Break Engine
+
+C6
+
+"Reality is not stable. It is negotiable."
+
+This die does not follow systems — it edits them.
+
+HP
+1310
+
+ATK
+152
+
+DEF
+86
+
+SPD
+107
+
+Basic
+
+Distort
+
+Deal Arcane damage.
+
+Apply 1 Anomaly Stack.
+
+Skill
+
+Rewrite Variable
+
+Randomly alter one combat rule for 2 turns:
+
+• Damage +20% globally
+• Energy gain doubled
+• Break threshold reduced by 30%
+• Omen decay disabled
+
+Only one anomaly may exist at once.
+
+Ultimate
+
+System Collapse
+
+For 2 turns:
+
+All combat rules become unstable:
+
+• Buffs may double or halve randomly
+• Turn order becomes volatile
+• Status effects behave unpredictably
+
+Passive
+
+Unstable Reality
+
+Every anomaly activation grants team Energy.
+
+Constellations
+
+C1
+Start battle with one anomaly active.
+
+C2
++15% SPD.
+
+C3
+Skill affects 2 rules instead of 1.
+
+C4
++12% DEF.
+
+C5
+Ultimate duration +1 turn.
+
+C6
+Anomalies can stack twice simultaneously.

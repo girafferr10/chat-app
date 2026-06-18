@@ -1,0 +1,357 @@
+# Pulse Scout Die
+
+COMMON
+
+Electric
+
+Turn Order Support
+
+C6
+
+"First to move decides the flow."
+
+HP
+520
+
+ATK
+88
+
+DEF
+58
+
+SPD
+108
+
+Basic
+
+Quick Zap
+
+Deal Electric damage.
+
+Slightly advance ally turn meter.
+
+Skill
+
+Initiate Flow
+
+Grant small Speed boost to one ally for 1 turn.
+
+Ultimate
+
+Fast Signal
+
+Advance all allies slightly in turn order.
+
+Passive
+
+Early Advantage
+
+First ally action each battle gains bonus Energy.
+
+Constellations
+
+C1
+Start battle with +3 Energy on fastest ally.
+
+C2
++8 SPD.
+
+C3
+Skill gives stronger Speed buff.
+
+C4
++5% DEF.
+
+C5
+Ultimate also grants small Energy.
+
+C6
+Allies acted after this unit gain slight damage boost.
+
+---
+
+# Ember Flicker Die
+
+COMMON
+
+Fire
+
+Omen Builder
+
+C6
+
+"A spark is just a delayed disaster."
+
+HP
+510
+
+ATK
+92
+
+DEF
+55
+
+SPD
+103
+
+Basic
+
+Heat Tap
+
+Deal Fire damage.
+
+Apply 1 Omen.
+
+Skill
+
+Searing Pressure
+
+Apply Omen to target and slightly increase existing stacks.
+
+Ultimate
+
+Ignite Signal
+
+Trigger a small portion of Omen on all enemies.
+
+Passive
+
+Slow Burn
+
+Enemies with Omen take slightly increased damage over time.
+
+Constellations
+
+C1
+Start battle with 1 Omen on all enemies.
+
+C2
++10% ATK.
+
+C3
+Skill applies +1 Omen.
+
+C4
++5 SPD.
+
+C5
+Omen trigger damage slightly increased.
+
+C6
+First Omen applied each battle is doubled.
+
+---
+
+# Alloy Breaker Die
+
+COMMON
+
+Earth
+
+Break Starter
+
+C6
+
+"Every structure has its first crack."
+
+HP
+600
+
+ATK
+84
+
+DEF
+72
+
+SPD
+96
+
+Basic
+
+Hammer Tap
+
+Deal Earth damage.
+
+Increase Break gauge.
+
+Skill
+
+Stress Point
+
+Increase Break buildup significantly on one enemy.
+
+Ultimate
+
+Structural Weakness
+
+Increase Break vulnerability for a short duration.
+
+Passive
+
+Pressure Insight
+
+Broken enemies take slightly increased damage from this unit.
+
+Constellations
+
+C1
+Start battle with slight Break applied.
+
+C2
++10% DEF.
+
+C3
+Skill increases Break buildup further.
+
+C4
++5 SPD.
+
+C5
+Ultimate increases Break duration slightly.
+
+C6
+First Break applied each battle is stronger.
+
+---
+
+# Arc Carrier Die
+
+COMMON
+
+Arcane
+
+Energy Distributor
+
+C6
+
+"Power means nothing if it’s stuck."
+
+HP
+530
+
+ATK
+86
+
+DEF
+60
+
+SPD
+105
+
+Basic
+
+Arc Tap
+
+Deal Arcane damage.
+
+Grant small Energy to ally.
+
+Skill
+
+Charge Pass
+
+Give Energy to two allies.
+
+Ultimate
+
+Energy Burst
+
+Distribute Energy evenly across all allies.
+
+Passive
+
+Flow Transfer
+
+Whenever this unit acts, lowest Energy ally gains bonus Energy.
+
+Constellations
+
+C1
+Start battle with +2 Energy on all allies.
+
+C2
++8 SPD.
+
+C3
+Skill gives extra Energy.
+
+C4
++5% DEF.
+
+C5
+Ultimate distributes more evenly.
+
+C6
+Overflow Energy slightly increases ally damage.
+
+---
+
+# Stone Warden Die
+
+COMMON
+
+Earth
+
+Shield Support
+
+C6
+
+"Stand long enough, and nothing passes."
+
+HP
+750
+
+ATK
+72
+
+DEF
+98
+
+SPD
+86
+
+Basic
+
+Guard Tap
+
+Deal Earth damage.
+
+Grant small shield to ally.
+
+Skill
+
+Protect Line
+
+Shield lowest HP ally and reduce damage taken.
+
+Ultimate
+
+Emergency Barrier
+
+Team-wide small shield.
+
+Passive
+
+Stability
+
+First time an ally drops below 30% HP, they gain a shield (once per battle).
+
+Constellations
+
+C1
+Start battle with shield.
+
+C2
++12% DEF.
+
+C3
+Skill shield increased.
+
+C4
++5 SPD.
+
+C5
+Ultimate shield duration increased.
+
+C6
+Shielded allies gain slight damage boost.

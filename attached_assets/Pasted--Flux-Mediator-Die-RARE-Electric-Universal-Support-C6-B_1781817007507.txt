@@ -1,0 +1,363 @@
+# Flux Mediator Die
+
+RARE
+
+Electric
+
+Universal Support
+
+C6
+
+"Balance is just controlled imbalance."
+
+HP
+800
+
+ATK
+112
+
+DEF
+74
+
+SPD
+107
+
+Basic
+
+Static Tap
+
+Deal Electric damage.
+
+Grant 3 Energy to all allies.
+
+Skill
+
+Current Balance
+
+Increase Energy gain for all allies by 20% for 2 turns.
+
+Ultimate
+
+Full Circuit Sync
+
+All allies gain 15 Energy.
+
+Next ally action is advanced forward slightly.
+
+Passive
+
+Flow Correction
+
+Whenever an ally gains Energy, Flux Mediator gains 1 stack. At 10 stacks, heal team slightly.
+
+Constellations
+
+C1
+Start battle with +5 Energy on all allies.
+
+C2
++10 SPD.
+
+C3
+Skill grants +5 extra Energy.
+
+C4
++12% DEF.
+
+C5
+Ultimate cooldown reduced by 1 turn.
+
+C6
+Overflow Energy converts into small damage buff.
+
+---
+
+# Omen Catalyst Die
+
+RARE
+
+Arcane
+
+Omen Amplifier
+
+C6
+
+"It doesn’t create fate. It speeds it up."
+
+HP
+830
+
+ATK
+120
+
+DEF
+65
+
+SPD
+102
+
+Basic
+
+Trace Fate
+
+Deal Arcane damage.
+
+Apply 1 Omen to target.
+
+Skill
+
+Pressure Build
+
+Increase all existing Omen stacks on enemies by 30%.
+
+Ultimate
+
+Accelerated Doom
+
+Trigger 30% of all Omen currently on enemies.
+
+Passive
+
+Omen Resonance
+
+Whenever Omen is triggered, increase next Omen application by 1.
+
+Constellations
+
+C1
+Start battle with 3 Omen on all enemies.
+
+C2
++12% ATK.
+
+C3
+Skill increases Omen by 40% instead.
+
+C4
++10 SPD.
+
+C5
+Triggered Omen deals +10% damage.
+
+C6
+First Omen trigger each battle cannot be reduced.
+
+---
+
+# Chrono Tactician Die
+
+RARE
+
+Time
+
+Turn Manipulation
+
+C6
+
+"Speed is irrelevant when you decide the order."
+
+HP
+790
+
+ATK
+116
+
+DEF
+72
+
+SPD
+109
+
+Basic
+
+Micro Delay
+
+Deal Time damage.
+
+Slightly reduce enemy turn meter.
+
+Skill
+
+Reorder
+
+Swap turn order of two random enemies or allies (controlled selection if possible).
+
+Ultimate
+
+Perfect Timing
+
+Next 2 allied actions immediately advance in turn order.
+
+Passive
+
+Temporal Awareness
+
+First ally each round gains bonus Energy.
+
+Constellations
+
+C1
+Start battle with +10 SPD for team.
+
+C2
++10 SPD.
+
+C3
+Skill always targets enemy with highest speed.
+
+C4
++12% DEF.
+
+C5
+Ultimate affects 3 allies instead of 2.
+
+C6
+Allies affected gain 10% damage boost.
+
+---
+
+# Wound Archivist Die
+
+RARE
+
+Blood
+
+DoT Amplifier
+
+C6
+
+"Every injury is data."
+
+HP
+860
+
+ATK
+124
+
+DEF
+68
+
+SPD
+98
+
+Basic
+
+Open Wound
+
+Deal Blood damage.
+
+Apply Bleed (small DoT stack).
+
+Skill
+
+Record Trauma
+
+Increase all Bleed damage on enemies by 25%.
+
+Ultimate
+
+Pain Index
+
+Trigger all Bleed effects immediately, then reapply half of them.
+
+Passive
+
+Bleeding Memory
+
+Enemies with Bleed take +8% increased damage.
+
+Constellations
+
+C1
+Start battle with Bleed on all enemies.
+
+C2
++15% ATK.
+
+C3
+Skill increases Bleed damage by 35%.
+
+C4
++10 SPD.
+
+C5
+Ultimate re-applies full Bleed instead of half.
+
+C6
+Bleed can stack one additional time.
+
+---
+
+# Shield Weave Die
+
+RARE
+
+Earth
+
+Shield Synergy
+
+C6
+
+"Defense is not blocking—it’s adapting."
+
+HP
+1080
+
+ATK
+88
+
+DEF
+142
+
+SPD
+85
+
+Basic
+
+Weave Guard
+
+Deal Earth damage.
+
+Grant small shield to weakest ally.
+
+Skill
+
+Adaptive Armor
+
+Increase all shields by 25% for 2 turns.
+
+Shielded allies gain damage reduction.
+
+Ultimate
+
+Fortress Pattern
+
+Team-wide shield based on total DEF.
+
+Shields persist for 2 turns longer.
+
+Passive
+
+Layered Defense
+
+Whenever shield is applied, 5% converts into damage boost.
+
+Constellations
+
+C1
+Start battle with shield on all allies.
+
+C2
++20% DEF.
+
+C3
+Skill shields increased by 15%.
+
+C4
++10 SPD.
+
+C5
+Ultimate duration +1 turn.
+
+C6
+Shielded allies gain resistance to Break effects.

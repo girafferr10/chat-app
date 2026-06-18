@@ -1,0 +1,421 @@
+# Gravity Die
+
+MYTHIC
+
+Arcane
+
+Gravity Engine
+
+C6
+
+"No matter how high they rise... everything falls."
+
+Entire battlefields have collapsed beneath a single roll.
+
+HP
+1360
+
+ATK
+142
+
+DEF
+90
+
+SPD
+96
+
+Basic
+
+Crush
+
+Deal Arcane damage.
+
+Apply one Gravity Stack.
+
+Skill
+
+Collapse
+
+Increase every enemy's Gravity Stack by 3.
+
+Enemies with 5 Gravity become Weighed Down:
+• -20 SPD
+• Take 15% more damage.
+
+Ultimate
+
+Singularity
+
+Create a Black Hole for 3 turns.
+
+At the end of every turn:
+
+• Pull all enemies together.
+
+• Deal Arcane damage.
+
+• Increase Gravity by 2.
+
+Passive
+
+Heavy Burden
+
+Enemies lose 2 SPD for every Gravity Stack.
+
+Maximum 20 SPD reduction.
+
+Constellations
+
+C1
+Battle begins with 2 Gravity on all enemies.
+
+C2
++15% DEF.
+
+C3
+Collapse applies 5 Gravity instead.
+
+C4
++10 SPD.
+
+C5
+Black Hole lasts 1 additional turn.
+
+C6
+Enemies reaching maximum Gravity immediately lose their next turn.
+
+---
+
+# Genesis Die
+
+MYTHIC
+
+Nature
+
+Evolution Engine
+
+C6
+
+"Perfection isn't born. It's grown."
+
+Every battle changes what Genesis becomes.
+
+HP
+1285
+
+ATK
+150
+
+DEF
+82
+
+SPD
+102
+
+Basic
+
+Adapt
+
+Deal Nature damage.
+
+Gain one Evolution Point.
+
+Skill
+
+Mutate
+
+Choose one permanent mutation:
+
+• +20% ATK
+
+• +20% DEF
+
+• +15 SPD
+
+• +25% Healing
+
+Mutations stack throughout battle.
+
+Ultimate
+
+Perfect Evolution
+
+Double every mutation bonus for 3 turns.
+
+Fully heal Genesis.
+
+Passive
+
+Rapid Evolution
+
+Whenever an ally defeats an enemy,
+
+gain another Evolution Point.
+
+Constellations
+
+C1
+Start with 2 Evolution Points.
+
+C2
++15% HP.
+
+C3
+Mutations become 25% stronger.
+
+C4
++12 SPD.
+
+C5
+Perfect Evolution lasts 1 extra turn.
+
+C6
+Choose two mutations instead of one.
+
+---
+
+# Mirage Die
+
+MYTHIC
+
+Wind
+
+Illusion Engine
+
+C6
+
+"What you hit was never really there."
+
+Even victory can be an illusion.
+
+HP
+1235
+
+ATK
+155
+
+DEF
+76
+
+SPD
+110
+
+Basic
+
+Phantom Slash
+
+Deal Wind damage.
+
+Create one Mirage.
+
+Skill
+
+False Reality
+
+Consume one Mirage.
+
+Negate the next attack against any ally.
+
+Ultimate
+
+Hall of Mirrors
+
+Summon four Mirages.
+
+Whenever an ally is targeted,
+
+50% chance a Mirage takes the hit instead.
+
+Mirages explode when destroyed.
+
+Passive
+
+Nothing Is Certain
+
+Every Mirage increases the team's Dodge Rate by 4%.
+
+Constellations
+
+C1
+Begin battle with one Mirage.
+
+C2
++15% SPD.
+
+C3
+Mirages explode for more damage.
+
+C4
++12% HP.
+
+C5
+Hall of Mirrors creates six Mirages.
+
+C6
+Destroyed Mirages immediately counterattack.
+
+---
+
+# Retribution Die
+
+MYTHIC
+
+Light
+
+Counter Engine
+
+C6
+
+"They attacked first."
+
+Every enemy action is another mistake.
+
+HP
+1395
+
+ATK
+146
+
+DEF
+95
+
+SPD
+97
+
+Basic
+
+Judgement
+
+Deal Light damage.
+
+Gain one Retribution.
+
+Skill
+
+Stand Firm
+
+Enter Guard Stance.
+
+All attacks against Retribution Die trigger a counterattack.
+
+Ultimate
+
+Final Verdict
+
+For 2 turns:
+
+Every ally counterattacks when damaged.
+
+Counterattacks deal 80% damage.
+
+Passive
+
+Justice Served
+
+Each successful counter increases future counters by 5%.
+
+Stacks up to 10 times.
+
+Constellations
+
+C1
+Begin battle with 3 Retribution.
+
+C2
++15% DEF.
+
+C3
+Counterattacks heal 5% HP.
+
+C4
++12% ATK.
+
+C5
+Guard Stance lasts 1 additional turn.
+
+C6
+Counterattacks ignore 30% DEF.
+
+---
+
+# Chainmaster Die
+
+MYTHIC
+
+Electric
+
+Combo Engine
+
+C6
+
+"One strike is an attack. Ten strikes are a masterpiece."
+
+Every combo pushes the next one further.
+
+HP
+1260
+
+ATK
+162
+
+DEF
+74
+
+SPD
+108
+
+Basic
+
+Spark
+
+Deal Electric damage.
+
+Increase Combo by 1.
+
+Skill
+
+Chain Reaction
+
+Deal Electric damage.
+
+Hits once for every Combo Stack.
+
+Consumes all Combo.
+
+Ultimate
+
+Overload
+
+For 3 turns:
+
+Combo no longer resets.
+
+Every attack gains one bonus hit.
+
+Passive
+
+Momentum
+
+Every consecutive ally attack increases Combo by 1.
+
+Missing an attack resets Combo to 0.
+
+Constellations
+
+C1
+Start battle with 3 Combo.
+
+C2
++15% ATK.
+
+C3
+Maximum Combo increased to 25.
+
+C4
++12 SPD.
+
+C5
+Overload lasts 1 additional turn.
+
+C6
+Every fifth Combo hit deals guaranteed Critical Damage.

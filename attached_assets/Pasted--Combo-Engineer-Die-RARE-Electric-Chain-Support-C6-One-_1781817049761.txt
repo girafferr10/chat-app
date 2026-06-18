@@ -1,0 +1,217 @@
+# Combo Engineer Die
+
+RARE
+
+Electric
+
+Chain Support
+
+C6
+
+"One action is nothing. Sequence is everything."
+
+HP
+820
+
+ATK
+118
+
+DEF
+70
+
+SPD
+106
+
+Basic
+
+Pulse Hit
+
+Deal Electric damage.
+
+Increase Combo counter by 1.
+
+Skill
+
+Chain Extension
+
+Next ally action counts as part of Combo chain (boosted damage).
+
+Ultimate
+
+Overclock Sequence
+
+For 2 turns:
+
+Combo does not reset.
+
+All ally attacks gain bonus hit.
+
+Passive
+
+Momentum Loop
+
+Consecutive ally actions increase damage slightly.
+
+Constellations
+
+C1
+Start battle with 2 Combo.
+
+C2
++10 SPD.
+
+C3
+Skill increases Combo by 2 instead.
+
+C4
++12% ATK.
+
+C5
+Ultimate lasts +1 turn.
+
+C6
+Every 5 Combo hits increases crit rate.
+
+---
+
+# Null Seal Die
+
+RARE
+
+Void
+
+Debuff Control
+
+C6
+
+"Remove the rules. Then remove the target."
+
+HP
+810
+
+ATK
+120
+
+DEF
+66
+
+SPD
+103
+
+Basic
+
+Void Tap
+
+Deal Void damage.
+
+Remove 1 buff from enemy.
+
+Skill
+
+Seal Effect
+
+Prevent enemies from gaining buffs for 2 turns.
+
+Ultimate
+
+Absolute Silence
+
+Enemies cannot apply buffs or energy gain for 2 turns.
+
+Passive
+
+Suppression Field
+
+Enemies with no buffs take +10% damage.
+
+Constellations
+
+C1
+Start battle with enemy buff reduction.
+
+C2
++12% ATK.
+
+C3
+Skill duration +1 turn.
+
+C4
++10 SPD.
+
+C5
+Ultimate also reduces Energy gain.
+
+C6
+First buff applied by enemies is negated once per battle.
+
+---
+
+# Echo Stabilizer Die
+
+RARE
+
+Arcane
+
+Copy Control
+
+C6
+
+"If it worked once, it will work again."
+
+HP
+840
+
+ATK
+115
+
+DEF
+72
+
+SPD
+101
+
+Basic
+
+Resonant Hit
+
+Deal Arcane damage.
+
+Store 1 Echo Charge.
+
+Skill
+
+Controlled Echo
+
+Repeat last ally skill at 50% power.
+
+Ultimate
+
+Perfect Repeat
+
+Repeat last 2 ally actions at 60% power.
+
+Passive
+
+Echo Efficiency
+
+Each Echo increases team damage by 3%.
+
+Constellations
+
+C1
+Start battle with 1 Echo Charge.
+
+C2
++15% ATK.
+
+C3
+Echo repeats can crit.
+
+C4
++10 SPD.
+
+C5
+Ultimate repeats 3 actions.
+
+C6
+Echo repeats ignore 20% enemy DEF.

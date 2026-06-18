@@ -1,0 +1,649 @@
+# Spark Initiate Die
+
+COMMON
+
+Electric
+
+Energy Starter
+
+C6
+
+"Even the smallest current becomes a storm."
+
+HP
+520
+
+ATK
+86
+
+DEF
+55
+
+SPD
+105
+
+Basic
+
+Static Jab
+
+Deal Electric damage.
+
+Gain 3 Energy.
+
+Skill
+
+Quick Charge
+
+Gain 8 Energy.
+
+If used after another ally, gain bonus Energy.
+
+Ultimate
+
+Overload Flicker
+
+Gain full Energy instantly (low impact damage bonus).
+
+Passive
+
+Momentum Spark
+
+First action in battle grants extra Energy.
+
+Constellations
+
+C1
+Start battle with +5 Energy.
+
+C2
++8% ATK.
+
+C3
+Skill grants +2 extra Energy.
+
+C4
++5 SPD.
+
+C5
+Ultimate slightly increases crit chance.
+
+C6
+Energy gain is slightly increased for entire team.
+
+---
+
+# Blade Runner Die
+
+COMMON
+
+Physical
+
+Combo Starter
+
+C6
+
+"One strike starts the chain."
+
+HP
+540
+
+ATK
+92
+
+DEF
+60
+
+SPD
+103
+
+Basic
+
+Clean Cut
+
+Deal Physical damage.
+
+Increase Combo by 1.
+
+Skill
+
+Follow Through
+
+Deal bonus damage if Combo exists.
+
+Increase Combo further.
+
+Ultimate
+
+Chain Break
+
+Consume Combo stacks for burst damage.
+
+Passive
+
+Flow Trigger
+
+First hit in battle always increases Combo twice.
+
+Constellations
+
+C1
+Start battle with 1 Combo.
+
+C2
++8% ATK.
+
+C3
+Skill increases Combo by +1 extra.
+
+C4
++5 SPD.
+
+C5
+Ultimate deals more damage per Combo.
+
+C6
+Combo cannot reset on first turn.
+
+---
+
+# Arc Whisper Die
+
+COMMON
+
+Arcane
+
+Omen Starter
+
+C6
+
+"They never notice the first sign."
+
+HP
+510
+
+ATK
+88
+
+DEF
+58
+
+SPD
+104
+
+Basic
+
+Silent Mark
+
+Deal Arcane damage.
+
+Apply 1 Omen.
+
+Skill
+
+Growing Doubt
+
+Apply 3 Omen.
+
+If target already has Omen, increase stacks instead.
+
+Ultimate
+
+Minor Ill Omen
+
+Trigger 25% of current Omen.
+
+Passive
+
+Faint Curse
+
+Enemies with Omen take slightly increased damage.
+
+Constellations
+
+C1
+Start battle with 2 Omen on all enemies.
+
+C2
++10% ATK.
+
+C3
+Skill applies +1 Omen.
+
+C4
++5 SPD.
+
+C5
+Omen triggered slightly stronger.
+
+C6
+First Omen application each battle is doubled.
+
+---
+
+# Iron Pulse Die
+
+COMMON
+
+Earth
+
+Break Builder
+
+C6
+
+"Pressure always finds a crack."
+
+HP
+600
+
+ATK
+80
+
+DEF
+75
+
+SPD
+95
+
+Basic
+
+Heavy Tap
+
+Deal Earth damage.
+
+Increase Break gauge.
+
+Skill
+
+Structural Pressure
+
+Greatly increase Break buildup on target.
+
+Ultimate
+
+Crack Point
+
+Instantly increase Break progress.
+
+Passive
+
+Weak Spot Learning
+
+Broken enemies take slightly increased damage.
+
+Constellations
+
+C1
+Start battle with small Break progress applied.
+
+C2
++10% DEF.
+
+C3
+Skill increases Break buildup further.
+
+C4
++5 SPD.
+
+C5
+Ultimate applies vulnerability.
+
+C6
+Broken enemies take bonus damage from this unit.
+
+---
+
+# Flux Courier Die
+
+COMMON
+
+Electric
+
+Energy Support
+
+C6
+
+"Energy moves faster than thought."
+
+HP
+530
+
+ATK
+84
+
+DEF
+60
+
+SPD
+107
+
+Basic
+
+Quick Transfer
+
+Deal Electric damage.
+
+Give 2 Energy to ally.
+
+Skill
+
+Energy Drop
+
+Give 6 Energy to chosen ally.
+
+Ultimate
+
+Full Delivery
+
+Distribute small Energy to all allies.
+
+Passive
+
+Relay Chain
+
+Whenever this unit acts, lowest Energy ally gains bonus Energy.
+
+Constellations
+
+C1
+Start battle with +3 Energy on all allies.
+
+C2
++8 SPD.
+
+C3
+Skill gives +2 extra Energy.
+
+C4
++5% DEF.
+
+C5
+Ultimate improves distribution.
+
+C6
+Energy overflow slightly buffs ally damage.
+
+---
+
+# Stone Guard Die
+
+COMMON
+
+Earth
+
+Mini Sustain
+
+C6
+
+"Survival starts with standing still."
+
+HP
+720
+
+ATK
+70
+
+DEF
+95
+
+SPD
+88
+
+Basic
+
+Shield Bash
+
+Deal Earth damage.
+
+Grant small shield.
+
+Skill
+
+Protect Ally
+
+Grant shield to lowest HP ally.
+
+Ultimate
+
+Emergency Wall
+
+Team receives small shield.
+
+Passive
+
+Last Line
+
+Once per battle, prevent ally from falling below 1 HP.
+
+Constellations
+
+C1
+Start battle with shield.
+
+C2
++12% DEF.
+
+C3
+Skill shields increased.
+
+C4
++5 SPD.
+
+C5
+Ultimate shields last longer.
+
+C6
+Shields slightly increase ally damage.
+
+---
+
+# Rift Spark Die
+
+COMMON
+
+Void
+
+Break Assist
+
+C6
+
+"Even fractures begin with light pressure."
+
+HP
+500
+
+ATK
+90
+
+DEF
+55
+
+SPD
+106
+
+Basic
+
+Void Tap
+
+Deal Void damage.
+
+Increase Break slightly.
+
+Skill
+
+Fracture Assist
+
+Increase Break vulnerability slightly.
+
+Ultimate
+
+Soft Collapse
+
+Enemies take increased Break damage briefly.
+
+Passive
+
+Crack Insight
+
+Broken enemies take more damage from allies.
+
+Constellations
+
+C1
+Start battle with slight Break applied.
+
+C2
++8% ATK.
+
+C3
+Skill improves Break vulnerability.
+
+C4
++5 SPD.
+
+C5
+Ultimate lasts longer.
+
+C6
+Break effects applied by allies are slightly stronger.
+
+---
+
+# Echo Sprout Die
+
+COMMON
+
+Arcane
+
+Copy Starter
+
+C6
+
+"Even echoes begin as whispers."
+
+HP
+540
+
+ATK
+85
+
+DEF
+60
+
+SPD
+101
+
+Basic
+
+Resonant Tap
+
+Deal Arcane damage.
+
+Store 1 Echo.
+
+Skill
+
+Light Echo
+
+Repeat last ally Basic Attack at reduced power.
+
+Ultimate
+
+Soft Repeat
+
+Repeat last ally action at 30% power.
+
+Passive
+
+Memory Seed
+
+Each Echo increases ally damage slightly.
+
+Constellations
+
+C1
+Start battle with 1 Echo.
+
+C2
++8% ATK.
+
+C3
+Echo repeats slightly stronger.
+
+C4
++5 SPD.
+
+C5
+Ultimate repeats at higher power.
+
+C6
+Echoes can trigger minor on-hit effects.
+
+---
+
+# Dust Initiate Die
+
+COMMON
+
+Physical
+
+Generalist DPS
+
+C6
+
+"Even dust can cut."
+
+HP
+560
+
+ATK
+96
+
+DEF
+58
+
+SPD
+100
+
+Basic
+
+Quick Strike
+
+Deal Physical damage.
+
+Skill
+
+Focused Hit
+
+Deal increased damage if target has any debuff.
+
+Ultimate
+
+Final Scratch
+
+Simple burst damage.
+
+Passive
+
+Adaptive Edge
+
+Deals slightly more damage each turn.
+
+Constellations
+
+C1
+Start battle with minor ATK buff.
+
+C2
++8% ATK.
+
+C3
+Skill damage increased.
+
+C4
++5 SPD.
+
+C5
+Ultimate damage increased.
+
+C6
+First attack each battle crit chance increased.
