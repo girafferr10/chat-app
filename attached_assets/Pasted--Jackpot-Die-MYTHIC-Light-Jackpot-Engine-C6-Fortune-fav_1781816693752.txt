@@ -1,0 +1,419 @@
+# Jackpot Die
+
+MYTHIC
+
+Light
+
+Jackpot Engine
+
+C6
+
+"Fortune favors the one who keeps rolling."
+
+Every loss was merely another step toward inevitability.
+
+HP
+1215
+
+ATK
+168
+
+DEF
+70
+
+SPD
+106
+
+Basic
+
+Lucky Strike
+
+Deal Light damage and gain 3 Jackpot.
+
+Skill
+
+Double or Nothing
+
+Deal heavy Light damage.
+
+Gain 15 Jackpot.
+
+50% chance to immediately take another action.
+
+Ultimate
+
+🎰 JACKPOT
+
+Requires 100 Jackpot instead of Energy.
+
+Transform for 2 turns.
+
+While transformed:
+
+• Damage increased by 50%.
+
+• Crit Rate +40%.
+
+• Skills cost no Energy.
+
+• Gain one additional action each turn.
+
+After transformation ends, Jackpot resets to 0.
+
+Passive
+
+High Roller
+
+Every attack grants Jackpot.
+
+Critical hits grant double Jackpot.
+
+Taking damage grants 2 Jackpot.
+
+Constellations
+
+C1
+Begin battle with 20 Jackpot.
+
+C2
++15% Max HP.
+
+C3
+Transformation lasts 1 additional turn.
+
+C4
++12% SPD.
+
+C5
+Jackpot never drops below 25 after transforming.
+
+C6
+The first transformation each battle immediately grants another turn.
+
+---
+
+# Timekeeper Die
+
+MYTHIC
+
+Arcane
+
+Time Engine
+
+C6
+
+"Tomorrow can wait."
+
+The Timekeeper never moves faster than necessary.
+
+HP
+1300
+
+ATK
+138
+
+DEF
+88
+
+SPD
+112
+
+Basic
+
+Tick
+
+Deal Arcane damage.
+
+Apply one Time Mark.
+
+Skill
+
+Delay
+
+Push an enemy back 30% on the action timeline.
+
+If they had a Time Mark, stun them for 1 turn instead.
+
+Ultimate
+
+Frozen Clock
+
+Freeze every enemy in place.
+
+Enemies lose their next action.
+
+All allies immediately gain 20 Energy.
+
+Passive
+
+Temporal Drift
+
+Whenever an enemy's turn is delayed,
+
+the entire team heals 4% Max HP.
+
+Constellations
+
+C1
+Begin battle with one Time Mark on every enemy.
+
+C2
++15% DEF.
+
+C3
+Delay strength increased to 40%.
+
+C4
++10 SPD.
+
+C5
+Ultimate grants 30 Energy instead.
+
+C6
+Once per battle, an ally about to die instead skips death and immediately takes their turn.
+
+---
+
+# Eclipse Die
+
+MYTHIC
+
+Dark
+
+Eclipse Engine
+
+C6
+
+"Even the sun must surrender."
+
+HP
+1275
+
+ATK
+156
+
+DEF
+82
+
+SPD
+104
+
+Basic
+
+Twilight
+
+Deal Dark damage.
+
+Gain one Eclipse Charge.
+
+Skill
+
+Shift
+
+Switch between Day Form and Night Form.
+
+Day Form:
+Support-focused.
+
+Night Form:
+Damage-focused.
+
+Ultimate
+
+Total Eclipse
+
+Empower the current form for 3 turns.
+
+Day:
+Massive healing, shields and buffs.
+
+Night:
+Huge damage, lifesteal and splash attacks.
+
+Passive
+
+Solar Cycle
+
+Automatically changes form every 3 turns if not manually switched.
+
+Constellations
+
+C1
+Start battle in chosen form.
+
+C2
++15% HP.
+
+C3
+Switching forms restores 15 Energy.
+
+C4
++12% ATK.
+
+C5
+Ultimate lasts 1 extra turn.
+
+C6
+Switching forms grants an immediate extra action.
+
+---
+
+# Sacrifice Die
+
+MYTHIC
+
+Blood
+
+Sacrifice Engine
+
+C6
+
+"The strongest victories demand the greatest price."
+
+HP
+1600
+
+ATK
+180
+
+DEF
+55
+
+SPD
+94
+
+Basic
+
+Blood Price
+
+Lose 2% HP.
+
+Deal Blood damage.
+
+Skill
+
+Offer
+
+Sacrifice 10% current HP.
+
+Increase all allies' damage by 40% for 2 turns.
+
+Ultimate
+
+Final Bargain
+
+Reduce own HP to 1.
+
+Revive all defeated allies.
+
+Fully restore team Energy.
+
+Grant 2 turns of damage immunity.
+
+Passive
+
+Pain is Power
+
+Every 1% HP missing increases damage by 0.5%.
+
+Constellations
+
+C1
+Begin battle at 80% HP.
+
+C2
++20% HP.
+
+C3
+Offer only sacrifices 8%.
+
+C4
++15% DEF.
+
+C5
+Healing received increased by 25%.
+
+C6
+Final Bargain no longer reduces HP below 20%.
+
+---
+
+# Dominion Die
+
+MYTHIC
+
+Arcane
+
+Summon Engine
+
+C6
+
+"One die is chance. Four are certainty."
+
+HP
+1325
+
+ATK
+145
+
+DEF
+84
+
+SPD
+101
+
+Basic
+
+Call
+
+Summon one Token Die.
+
+Token Dice copy 25% of Dominion's stats.
+
+Skill
+
+Command
+
+Order all summoned Dice to attack.
+
+Ultimate
+
+Dice Kingdom
+
+Summon three empowered Token Dice.
+
+For 3 turns:
+
+• Token Dice gain 100% Speed.
+
+• Their attacks apply your on-hit effects.
+
+• They cannot be defeated in one hit.
+
+Passive
+
+Strength in Numbers
+
+Each summoned die increases Dominion's damage by 8%.
+
+Maximum 5 summons.
+
+Constellations
+
+C1
+Begin battle with one Token Die.
+
+C2
++15% DEF.
+
+C3
+Maximum summons increased to 6.
+
+C4
++12% ATK.
+
+C5
+Summons inherit 40% stats instead.
+
+C6
+Whenever a summon dies, immediately replace it once per turn.
