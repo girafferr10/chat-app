@@ -1,2 +1,2 @@
-- [asyncpg JSONB returns strings](asyncpg-jsonb-strings.md) — JSONB columns come back as raw JSON strings unless a codec is registered; parse before dict()/list().
-- [server.py embedded frontend](serverpy-embedded-frontend.md) — all client HTML/CSS/JS lives in triple-quoted Python strings; validate JS from the served page, not raw source.
+- [Embedded game client JS](embedded-game-js.md) — game JS lives in Python strings; validate via get_js()/served `<script>` + `node --check` + a vm DOM/fake-timer harness, never node-check server.py.
+- [Game reward integrity](game-reward-integrity.md) — client-resolved outcomes make reward msgs client-trusted; keep grants economy-authoritative, idempotent, and precondition/sequence-checked.
