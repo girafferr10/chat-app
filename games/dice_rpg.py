@@ -372,6 +372,124 @@ def get_css():
   .dg-hist-row .hh-banner{display:none;}}
 @media(max-width:560px){.dg-sheet-hd{flex-direction:column;align-items:center;text-align:center;}
   .dg-statbars{grid-template-columns:1fr;}}
+
+/* ===== v4.0 additions ===== */
+/* wallet bar */
+.dg-wallet{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto;}
+.dg-cur{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:10px;font-weight:800;font-size:12px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);}
+.dg-cur .cur-i{font-size:13px;}
+.dg-cur.gems{color:#ffd96b;border-color:rgba(255,206,90,.35);background:rgba(255,206,90,.08);}
+.dg-cur.crystals{color:#9be4ff;border-color:rgba(90,214,255,.3);background:rgba(90,214,255,.07);}
+.dg-cur.shards{color:#d3a8ff;border-color:rgba(196,123,255,.3);background:rgba(196,123,255,.07);}
+.dg-cur.balance{color:var(--text-secondary);}
+.dg-tools{display:flex;gap:6px;align-items:center;}
+.dg-tool-btn{width:32px;height:32px;border-radius:9px;cursor:pointer;font-size:15px;line-height:1;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text-secondary);}
+.dg-tool-btn:hover{color:#fff;background:rgba(255,255,255,.1);}
+.dg-mini{padding:5px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.14);cursor:pointer;
+  background:rgba(255,255,255,.05);color:var(--text-secondary);font-size:11px;font-weight:800;}
+.dg-mini:hover:not(:disabled){color:#fff;background:rgba(255,255,255,.1);}
+.dg-mini:disabled{opacity:.4;cursor:not-allowed;}
+.dg-mini.gold{background:linear-gradient(160deg,#ffce5a,#e0a93a);color:#3a2700;border-color:rgba(255,206,90,.6);}
+.dg-rates-note{font-size:12.5px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px;
+  padding:11px 14px;border-radius:11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
+/* convert cards */
+.dg-convert{padding:15px 16px;border-radius:14px;margin-bottom:12px;
+  background:linear-gradient(120deg,rgba(30,28,54,.6),rgba(16,16,26,.5));border:1px solid rgba(255,255,255,.1);}
+.dg-convert .cv-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
+.dg-convert .cv-h b{font-size:15px;font-weight:900;}
+.dg-convert .cv-h span{font-size:11px;color:var(--text-tertiary);}
+.dg-convert .cv-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+.dg-convert .cv-in{flex:1;min-width:120px;padding:9px 12px;border-radius:9px;font-size:14px;font-weight:700;
+  background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14);color:var(--text-primary);}
+.dg-convert .cv-out{font-size:15px;font-weight:900;color:#ffd96b;}
+.dg-convert .cv-quick{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+/* bundles */
+.dg-bundles{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;}
+.dg-bundle{position:relative;padding:18px 16px;border-radius:16px;text-align:center;display:flex;flex-direction:column;gap:7px;
+  background:linear-gradient(160deg,rgba(30,28,54,.7),rgba(14,14,24,.6));border:1px solid rgba(255,255,255,.1);}
+.dg-bundle.best{border-color:rgba(255,206,90,.5);box-shadow:0 0 0 1px rgba(255,206,90,.25),0 10px 30px rgba(255,206,90,.1);}
+.dg-bundle .bn-best{position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:900;letter-spacing:1px;
+  padding:3px 10px;border-radius:7px;background:linear-gradient(90deg,#ffce5a,#e0a93a);color:#3a2700;}
+.dg-bundle .bn-icon{font-size:34px;}
+.dg-bundle .bn-nm{font-size:15px;font-weight:900;}
+.dg-bundle .bn-grant{font-size:13px;font-weight:800;color:#ffd96b;}
+.dg-bundle .bn-desc{font-size:11px;color:var(--text-tertiary);line-height:1.5;flex:1;}
+.dg-bundle .dg-btn{margin-top:4px;}
+/* picks (bundle die select) */
+.dg-picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+.dg-pick{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:12px;border-radius:12px;cursor:pointer;text-align:left;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text-primary);}
+.dg-pick:hover{background:rgba(167,123,255,.15);border-color:rgba(167,123,255,.5);}
+.dg-pick .pk-face{font-size:26px;}
+.dg-pick .pk-nm{font-size:13px;font-weight:800;}
+.dg-pick .pk-rl{font-size:10px;color:var(--text-tertiary);}
+/* presets */
+.dg-presets{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;margin-bottom:14px;}
+.dg-presets-lbl{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text-tertiary);font-weight:800;
+  display:flex;align-items:center;}
+.dg-preset{flex:1;min-width:150px;padding:9px 11px;border-radius:11px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);}
+.dg-preset.filled{border-color:rgba(167,123,255,.3);}
+.dg-preset .pr-no{font-size:10px;font-weight:800;color:var(--text-tertiary);}
+.dg-preset .pr-faces{font-size:18px;min-height:24px;display:flex;gap:3px;align-items:center;}
+.dg-preset .pr-btns{display:flex;gap:6px;margin-top:6px;}
+/* comps */
+.dg-comps{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:8px;}
+.dg-comp{padding:13px 14px;border-radius:14px;display:flex;flex-direction:column;gap:7px;
+  background:linear-gradient(120deg,rgba(30,28,54,.55),rgba(16,16,26,.5));border:1px solid rgba(255,255,255,.1);}
+.dg-comp .cmp-h{display:flex;align-items:center;gap:7px;}
+.dg-comp .cmp-h b{font-size:14px;font-weight:900;}
+.dg-comp .cmp-tag{font-size:9px;font-weight:900;letter-spacing:.5px;padding:2px 7px;border-radius:6px;
+  background:rgba(167,123,255,.2);color:#d3a8ff;}
+.dg-comp .cmp-d{font-size:11px;color:var(--text-tertiary);line-height:1.5;flex:1;}
+.dg-comp .cmp-faces{display:flex;gap:6px;font-size:22px;}
+.dg-comp .cmp-face.miss{opacity:.3;filter:grayscale(1);}
+.dg-comp .cmp-own{font-size:10px;font-weight:800;color:var(--text-secondary);}
+/* milestones + achievements rows */
+.dg-miles,.dg-achs{display:flex;flex-direction:column;gap:9px;}
+.dg-mile,.dg-ach{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);}
+.dg-mile.ready,.dg-ach.ready{border-color:rgba(255,206,90,.4);background:rgba(255,206,90,.06);}
+.dg-mile.done,.dg-ach.done{opacity:.7;}
+.dg-mile.locked,.dg-ach.locked{opacity:.55;}
+.dg-mile .ml-wave{font-size:14px;font-weight:900;min-width:74px;}
+.dg-mile .ml-rew,.dg-ach .ac-rew{font-size:12px;font-weight:800;color:#ffd96b;}
+.dg-mile .ml-go,.dg-ach .ac-go{margin-left:auto;}
+.ml-tick{font-size:11px;font-weight:800;color:#8fe6a0;}
+.ml-lock{font-size:11px;color:var(--text-tertiary);}
+.dg-ach .ac-icon{font-size:18px;width:26px;text-align:center;}
+.dg-ach.done .ac-icon{color:#8fe6a0;}.dg-ach.ready .ac-icon{color:#ffce5a;}
+.dg-ach .ac-body{flex:1;min-width:0;}
+.dg-ach .ac-nm{font-size:14px;font-weight:800;}
+.dg-ach .ac-desc{font-size:11px;color:var(--text-tertiary);}
+/* ascension block in detail */
+.dg-asc{margin-top:14px;padding:13px 14px;border-radius:12px;
+  background:rgba(196,123,255,.07);border:1px solid rgba(196,123,255,.22);}
+.dg-asc h4{margin:0 0 8px;font-size:13px;font-weight:900;}
+.dg-asc .asc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;}
+.dg-asc .asc-grow{color:#8fe6a0;font-weight:800;}
+.dg-asc .asc-btn{margin-top:10px;}
+.cc-lv{font-size:11px;font-weight:800;color:#d3a8ff;}
+/* turn-order timeline */
+.dg-timeline{display:flex;align-items:center;gap:10px;margin:2px 0 4px;padding:8px 12px;border-radius:12px;
+  background:rgba(8,8,16,.5);border:1px solid rgba(255,255,255,.08);}
+.dg-timeline .tl-lbl{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-tertiary);font-weight:800;flex-shrink:0;}
+.dg-timeline .tl-strip{display:flex;gap:7px;overflow-x:auto;}
+.tl-pip{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);transition:transform .2s,box-shadow .2s;}
+.tl-pip.enemy{border-color:rgba(255,120,144,.35);}
+.tl-pip.now{border-color:#ffce5a;box-shadow:0 0 0 1px #ffce5a,0 0 12px rgba(255,206,90,.4);transform:translateY(-3px) scale(1.08);}
+.tl-pip .tl-face{font-size:20px;}
+.bt-phase{color:#ffd96b;font-weight:800;}
+/* tutorial sections */
+.tut-sec{display:flex;gap:13px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.07);}
+.tut-sec:last-child{border-bottom:none;}
+.tut-sec .tut-ic{font-size:26px;width:34px;text-align:center;flex-shrink:0;}
+.tut-sec .tut-t{font-size:15px;font-weight:900;margin-bottom:4px;}
+.tut-sec .tut-d{font-size:12.5px;color:var(--text-secondary);line-height:1.6;}
+@media(max-width:620px){.dg-wallet .dg-cur.balance{display:none;}}
 """
 
 
@@ -384,7 +502,11 @@ function initDiceRpg(container){
 
   var G={ catalog:null, dice:[], byId:{}, banners:{}, K:{}, state:null, bal:0,
           view:'home', dexFilter:'ALL', timers:[], ready:false, minDone:false,
-          banner:'limited', teamDraft:null, pulling:false, pullOverlay:null, rollTimer:null };
+          banner:'limited', teamDraft:null, pulling:false, pullOverlay:null, rollTimer:null,
+          shopTab:'wallet', speed:1, muted:false, achTab:null, presetDraft:null,
+          selectBundle:null };
+  try{ G.muted = localStorage.getItem('dg_muted')==='1';
+       var sp=parseFloat(localStorage.getItem('dg_speed')); if(sp===0.75||sp===1||sp===1.5) G.speed=sp; }catch(e){}
 
   var DIE_FACES=['\u2680','\u2681','\u2682','\u2683','\u2684','\u2685'];
   function elemColor(e){return getComputedStyle(root).getPropertyValue('--e-'+e)||'#fff';}
@@ -442,8 +564,31 @@ function initDiceRpg(container){
       if(d.ok && G.state){ G.state.team=d.team||G.state.team; }
     } else if(d.type==='dg_reward_result'){
       if(window._dgOnReward) window._dgOnReward(d);
+    } else if(d.type==='dg_convert_result'){
+      applyMut(d, d.ok?('Converted \u2014 +'+fmt(d.gained)+(d.direction==='to_gems'?' Gems':' Crystals')):null);
+    } else if(d.type==='dg_bundle_result'){
+      var bm = d.ok ? (d.grant_kind ? (d.grant_kind==='new'?'New die added!':d.grant_kind==='constellation'?'Duplicate \u2014 Constellation up!':'Already maxed \u2014 Universal Shards added.') : ('Purchased \u2014 +'+fmt(d.gems_added)+' Gems')) : null;
+      G.selectBundle=null; applyMut(d, bm);
+    } else if(d.type==='dg_milestone_result'){
+      applyMut(d, d.ok&&!d.already?('Milestone claimed!'):null); if(d.already) toast('Already claimed.');
+    } else if(d.type==='dg_ascend_result'){
+      applyMut(d, d.ok?('Ascended to A'+d.level+'!'):null);
+    } else if(d.type==='dg_achievement_result'){
+      applyMut(d, d.ok&&!d.already?('Reward claimed!'):null); if(d.already) toast('Already claimed.');
+    } else if(d.type==='dg_presets_result'){
+      if(d.ok){ if(d.state) G.state=d.state; toast('Presets saved.'); }
+      else toast((d&&d.error)||'Save failed.');
     }
   };
+  function applyMut(d, okMsg){
+    if(!d){ return; }
+    if(d.state) G.state=d.state;
+    if(typeof d.balance==='number') G.bal=d.balance;
+    updateBal();
+    if(!d.ok){ toast(d.error||'Something went wrong.'); render(); return; }
+    if(okMsg) toast(okMsg);
+    sfx('ok'); render();
+  }
 
   /* ---------- shell ---------- */
   var bodyEl, balEl, navBtns={};
@@ -451,19 +596,55 @@ function initDiceRpg(container){
     var top=document.createElement('div'); top.className='dg-top';
     var logo=document.createElement('div'); logo.className='dg-logo'; logo.textContent='\u2684 DICE RPG'; top.appendChild(logo);
     var nav=document.createElement('div'); nav.className='dg-nav';
-    [['home','Home'],['summon','Summon'],['battle','Battle'],['team','Team'],['dex','Dex'],['history','History']].forEach(function(p){
+    [['home','Home'],['summon','Summon'],['shop','Shop'],['battle','Battle'],['team','Team'],['dex','Dex'],['achievements','Goals'],['history','History']].forEach(function(p){
       var b=document.createElement('button'); b.className='dg-nav-btn'; b.textContent=p[1];
       b.onclick=function(){ G.view=p[0]; render(); };
       nav.appendChild(b); navBtns[p[0]]=b;
     });
     top.appendChild(nav);
-    balEl=document.createElement('div'); balEl.className='dg-bal';
-    balEl.innerHTML='<span class="dg-coin">$</span> <span class="v"></span>'; top.appendChild(balEl);
+    balEl=document.createElement('div'); balEl.className='dg-wallet';
+    balEl.innerHTML=
+      '<div class="dg-cur c-gem" title="Gems \u2014 used for summons and ascension"><span class="dg-coin gem">\u25C6</span><span class="v-gem">0</span></div>'+
+      '<div class="dg-cur c-cry" title="Crystals \u2014 buy bundles, convert to Gems"><span class="dg-coin cry">\u2756</span><span class="v-cry">0</span></div>'+
+      '<div class="dg-cur c-shd" title="Universal Shards \u2014 ascend your dice"><span class="dg-coin shd">\u269C</span><span class="v-shd">0</span></div>'+
+      '<div class="dg-cur c-bal" title="Balance \u2014 your chat economy"><span class="dg-coin">$</span><span class="v-bal">0</span></div>';
+    top.appendChild(balEl);
+    var tools=document.createElement('div'); tools.className='dg-tools';
+    var tut=document.createElement('button'); tut.className='dg-tool-btn'; tut.title='How to play'; tut.textContent='?';
+    tut.onclick=openTutorial; tools.appendChild(tut);
+    var mute=document.createElement('button'); mute.className='dg-tool-btn'; mute.id='dgMute';
+    mute.title='Sound'; mute.textContent=G.muted?'\uD83D\uDD07':'\uD83D\uDD0A';
+    mute.onclick=function(){ G.muted=!G.muted; try{localStorage.setItem('dg_muted',G.muted?'1':'0');}catch(e){}
+      mute.textContent=G.muted?'\uD83D\uDD07':'\uD83D\uDD0A'; if(!G.muted) sfx('ok'); };
+    tools.appendChild(mute); top.appendChild(tools);
     root.appendChild(top);
     bodyEl=document.createElement('div'); bodyEl.className='dg-body'; root.appendChild(bodyEl);
     updateBal();
+    if(!tutorialSeen()) G.timers.push(setTimeout(openTutorial,400));
   }
-  function updateBal(){ if(balEl) balEl.querySelector('.v').textContent=fmt(G.bal); }
+  function wallet(){ return (G.state&&G.state.gacha)||{}; }
+  function updateBal(){
+    if(!balEl) return; var w=wallet();
+    var g=balEl.querySelector('.v-gem'); if(g) g.textContent=fmt(w.gems||0);
+    var c=balEl.querySelector('.v-cry'); if(c) c.textContent=fmt(w.crystals||0);
+    var s=balEl.querySelector('.v-shd'); if(s) s.textContent=fmt(w.universal_shards||0);
+    var b=balEl.querySelector('.v-bal'); if(b) b.textContent=fmt(G.bal);
+  }
+  /* ---------- sound ---------- */
+  var _actx=null;
+  function sfx(kind){
+    if(G.muted) return;
+    try{ _actx=_actx||new (window.AudioContext||window.webkitAudioContext)();
+      var seq={ok:[660],hit:[180],crit:[520,780],ult:[440,660,880],win:[523,659,784,1046],lose:[330,247,165]}[kind]||[440];
+      var t=_actx.currentTime;
+      seq.forEach(function(f,i){ var o=_actx.createOscillator(),g=_actx.createGain();
+        o.type=(kind==='ult'||kind==='win')?'triangle':'sine'; o.frequency.value=f;
+        var st=t+i*0.07; g.gain.setValueAtTime(0.0001,st);
+        g.gain.exponentialRampToValueAtTime(0.16,st+0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001,st+0.12);
+        o.connect(g); g.connect(_actx.destination); o.start(st); o.stop(st+0.14); });
+    }catch(e){}
+  }
 
   function render(){
     if(!bodyEl) return;
@@ -474,8 +655,10 @@ function initDiceRpg(container){
     if(G.view==='home') renderHome();
     else if(G.view==='dex') renderDex();
     else if(G.view==='summon') renderSummon();
+    else if(G.view==='shop') renderShop();
     else if(G.view==='battle') renderBattleHub();
     else if(G.view==='team') renderTeam();
+    else if(G.view==='achievements') renderAchievements();
     else if(G.view==='history') renderHistory();
   }
 
@@ -578,7 +761,18 @@ function initDiceRpg(container){
         '<div class="ab-d">'+a.desc+'</div></div>'; }
     var consHtml='';
     (G.K.CONSTELLATION_BONUS||[]).forEach(function(c){
-      consHtml+='<div class="dg-cons-item'+(cons>=c.level?' on':'')+'">C'+c.level+' \u2014 '+c.desc+'</div>'; });
+      consHtml+='<div class="dg-cons-item'+(cons>=c.level?' on':'')+'"><span class="cc-lv">C'+c.level+'</span><span>'+c.desc+'</span></div>'; });
+    var owned=!!coll[die.id], lvl=(coll[die.id]&&coll[die.id].level)||0, maxLvl=G.K.ASCENSION_MAX_LEVEL||6;
+    var shards=wallet().universal_shards||0, steps=(G.K.ASCENSION_STEP_COST||{})[die.rarity]||[];
+    var nextCost = lvl<maxLvl ? steps[lvl] : null;
+    var ascPct=Math.round(lvl*(G.K.ASCENSION_STAT_PER_LEVEL||0.06)*100);
+    var ascHtml='<div class="dg-section-title" style="margin-top:18px">Ascension <span style="font-weight:600;color:var(--text-muted);font-size:11px">\u2014 Universal Shards \u2192 flat stats</span></div>'+
+      '<div class="dg-asc"><div class="asc-info">Level <b>A'+lvl+'</b> / A'+maxLvl+'  \u2022  +'+ascPct+'% HP / ATK / DEF</div>'+
+      '<div class="asc-bar"><i style="width:'+(lvl/maxLvl*100)+'%"></i></div>'+
+      (owned ? (lvl<maxLvl ? '<button class="dg-btn gold asc-btn">Ascend \u2014 \u269C '+nextCost+'</button>'
+                           : '<div class="asc-max">\u2605 Fully Ascended</div>')
+             : '<div class="asc-max" style="color:var(--text-muted)">Summon this die to ascend it.</div>')+
+      '</div>';
     var sheet=document.createElement('div'); sheet.className='dg-sheet';
     sheet.innerHTML=
       '<div class="dg-sheet-hd">'+
@@ -595,11 +789,16 @@ function initDiceRpg(container){
         '<div class="dg-statbars">'+bar('HP','hp')+bar('ATK','atk')+bar('DEF','def')+bar('SPD','spd')+'</div>'+
         ability('Basic',die.basic,'#9aa3b8')+ability('Skill',die.skill,'#a77bff')+
         ability('Ultimate',die.ult,'#ffce5a')+ability('Passive',die.passive,'#5ad6ff')+
-        '<div class="dg-section-title" style="margin-top:18px">Constellations</div>'+
+        ascHtml+
+        '<div class="dg-section-title" style="margin-top:18px">Constellations <span style="font-weight:600;color:var(--text-muted);font-size:11px">\u2014 utility effects, not extra damage</span></div>'+
         '<div class="dg-cons-list">'+consHtml+'</div>'+
       '</div>';
     modal.appendChild(sheet); root.appendChild(modal);
     sheet.querySelector('.dg-x').onclick=function(){ modal.remove(); };
+    var ab=sheet.querySelector('.asc-btn');
+    if(ab){ if(shards<nextCost){ ab.disabled=true; ab.title='Need '+nextCost+' Universal Shards'; }
+      ab.onclick=function(){ if(shards<nextCost){ toast('Not enough Universal Shards.'); return; }
+        dgSend({type:'dg_ascend', die_id:die.id}); modal.remove(); }; }
   }
 
   /* ---------- summon ---------- */
@@ -656,16 +855,23 @@ function initDiceRpg(container){
     var foot=document.createElement('div'); foot.className='dg-banner-foot';
     foot.appendChild(pityBox(bid,g));
     var cost1=(bid==='beginner'?G.K.BEGINNER_PULL_COST:G.K.PULL_COST), cost10=cost1*10;
+    var gems=wallet().gems||0;
     var btns=document.createElement('div'); btns.className='dg-pull-btns';
-    btns.innerHTML='<button class="dg-btn ghost" data-c="1">\u2684 \u00D71<small>'+cost1+'</small></button>'+
-      '<button class="dg-btn gold" data-c="10">\u2684 \u00D710<small>'+cost10+'</small></button>';
+    btns.innerHTML='<button class="dg-btn ghost" data-c="1">\u2684 \u00D71<small>\u25C6 '+cost1+'</small></button>'+
+      '<button class="dg-btn gold" data-c="10">\u2684 \u00D710<small>\u25C6 '+cost10+'</small></button>';
     foot.appendChild(btns); card.appendChild(foot);
     bodyEl.appendChild(card);
     btns.querySelectorAll('[data-c]').forEach(function(btn){
       var c=parseInt(btn.getAttribute('data-c'),10), cost=c*cost1;
-      if(G.bal<cost) btn.disabled=true;
+      if(gems<cost) btn.disabled=true;
       btn.onclick=function(){ doPull(bid,c); };
     });
+    if(gems<cost1){
+      var lo=document.createElement('div'); lo.className='dg-rates-note';
+      lo.innerHTML='Low on Gems? <a href="#" style="color:#ffd96b;font-weight:800">Convert in the Shop \u2192</a>';
+      lo.querySelector('a').onclick=function(e){ e.preventDefault(); G.view='shop'; G.shopTab='wallet'; render(); };
+      foot.appendChild(lo);
+    }
 
     var note=document.createElement('div'); note.className='dg-rates-note';
     note.innerHTML='Rates \u2014 Mythic 1% \u2022 Rare 5% \u2022 Common 94%. Mythic soft pity rises from pull 70, guaranteed by 89. Every 10th summon is at least Rare.'+
@@ -680,7 +886,7 @@ function initDiceRpg(container){
   function doPull(bid,count){
     if(G.pulling) return;
     var cost=(bid==='beginner'?G.K.BEGINNER_PULL_COST:G.K.PULL_COST)*count;
-    if(G.bal<cost){ toast('Not enough balance.'); return; }
+    if((wallet().gems||0)<cost){ toast('Not enough Gems \u2014 convert in the Shop.'); return; }
     G.pulling=true;
     dgSend({type:'dg_pull', banner:bid, count:count});
     showPullSuspense();
@@ -768,6 +974,9 @@ function initDiceRpg(container){
     save.onclick=saveTeam; bar.appendChild(save);
     bodyEl.appendChild(bar);
 
+    renderPresets();
+    renderComps(coll);
+
     var title=document.createElement('div'); title.className='dg-section-title';
     title.textContent='Your Dice'; bodyEl.appendChild(title);
     var owned=G.dice.filter(function(d){ return coll[d.id]; });
@@ -805,6 +1014,63 @@ function initDiceRpg(container){
     dgSend({type:'dg_set_team', team:G.teamDraft.slice()});
     if(G.state) G.state.team=G.teamDraft.slice();
     toast('Team saved.');
+  }
+  function presets(){ return ((G.state.campaign&&G.state.campaign.presets)||[]); }
+  function renderPresets(){
+    var slots=G.K.TEAM_PRESET_SLOTS||3, ps=presets();
+    var wrap=document.createElement('div'); wrap.className='dg-presets';
+    var lbl=document.createElement('div'); lbl.className='dg-presets-lbl'; lbl.textContent='Presets'; wrap.appendChild(lbl);
+    for(var i=0;i<slots;i++){
+      (function(idx){
+        var saved=ps[idx]||[];
+        var cell=document.createElement('div'); cell.className='dg-preset'+(saved.length?' filled':'');
+        var faces=saved.map(function(id){ var d=G.byId[id]; return d?'<span style="color:'+rarColor(d.rarity)+'">'+dieGlyph(id)+'</span>':''; }).join('');
+        cell.innerHTML='<div class="pr-no">Slot '+(idx+1)+'</div><div class="pr-faces">'+(faces||'<span style="color:var(--text-muted)">empty</span>')+'</div>';
+        var btns=document.createElement('div'); btns.className='pr-btns';
+        var load=document.createElement('button'); load.className='dg-mini'; load.textContent='Load';
+        load.disabled=!saved.length; load.onclick=function(){ loadPreset(idx); };
+        var sv=document.createElement('button'); sv.className='dg-mini gold'; sv.textContent='Save';
+        sv.onclick=function(){ savePreset(idx); };
+        btns.appendChild(load); btns.appendChild(sv); cell.appendChild(btns);
+        wrap.appendChild(cell);
+      })(i);
+    }
+    bodyEl.appendChild(wrap);
+  }
+  function loadPreset(i){
+    var p=(presets()[i]||[]).filter(function(id){ return (G.state.collection||{})[id]; });
+    if(!p.length){ toast('That preset is empty.'); return; }
+    G.teamDraft=p.slice(0,G.K.TEAM_SIZE||4); renderTeam_refresh(); toast('Preset '+(i+1)+' loaded \u2014 Save Team to use it.');
+  }
+  function savePreset(i){
+    if(!G.teamDraft||!G.teamDraft.length){ toast('Pick a team first.'); return; }
+    var slots=G.K.TEAM_PRESET_SLOTS||3, ps=presets().slice();
+    while(ps.length<slots) ps.push([]);
+    ps[i]=G.teamDraft.slice();
+    if(G.state&&G.state.campaign) G.state.campaign.presets=ps;
+    dgSend({type:'dg_save_presets', presets:ps});
+    renderTeam_refresh();
+  }
+  function renderComps(coll){
+    var comps=G.K.TEAM_COMPS||[]; if(!comps.length) return;
+    var t=document.createElement('div'); t.className='dg-section-title'; t.textContent='Recommended Comps'; bodyEl.appendChild(t);
+    var wrap=document.createElement('div'); wrap.className='dg-comps';
+    comps.forEach(function(c){
+      var core=(c.core||[]).concat(c.flex?[c.flex]:[]);
+      var owned=core.filter(function(id){ return coll[id]; }).length;
+      var card=document.createElement('div'); card.className='dg-comp';
+      var faces=core.map(function(id){ var d=G.byId[id]; var have=!!coll[id];
+        return '<span class="cmp-face'+(have?'':' miss')+'" title="'+((d&&d.name)||id)+(have?'':' (not owned)')+'" style="color:'+(d?rarColor(d.rarity):'#555')+'">'+dieGlyph(id)+'</span>'; }).join('');
+      card.innerHTML='<div class="cmp-h"><span class="cmp-tag">'+c.primary+'</span><b>'+c.name+'</b></div>'+
+        '<div class="cmp-d">'+c.desc+'</div><div class="cmp-faces">'+faces+'</div>'+
+        '<div class="cmp-own">'+owned+' / '+core.length+' owned</div>';
+      var use=document.createElement('button'); use.className='dg-mini gold'; use.textContent='Try This';
+      use.onclick=function(){ var pick=core.filter(function(id){ return coll[id]; }).slice(0,G.K.TEAM_SIZE||4);
+        if(!pick.length){ toast('You don\u2019t own any dice from this comp yet.'); return; }
+        G.teamDraft=pick; renderTeam_refresh(); toast('Loaded what you own from '+c.name+'.'); };
+      card.appendChild(use); wrap.appendChild(card);
+    });
+    bodyEl.appendChild(wrap);
   }
 
   /* ---------- history ---------- */
@@ -926,34 +1192,209 @@ function initDiceRpg(container){
   }
   function renderEndless(){
     var best=(G.state.campaign&&G.state.campaign.best_wave)||0;
+    var sc=G.K.ENDLESS_SCALE||{};
     var card=document.createElement('div'); card.className='dg-stage t-ELITE';
     card.innerHTML='<div class="st-icon">\u267E</div>'+
       '<div class="st-body"><div class="st-nm">Endless Arena<span class="st-tier">SURVIVE</span></div>'+
-      '<div class="st-lore">Wave after wave of the House\u2019s enforcers, scaling forever. No payouts \u2014 only pride. Best wave reached: <b>'+best+'</b>.</div></div>';
+      '<div class="st-lore">Endless waves of the House\u2019s enforcers. Each wave enemies gain +'+Math.round((sc.hp_per_wave||0.2)*100)+'% HP and +'+Math.round((sc.atk_per_wave||0.12)*100)+'% ATK. Every 3rd wave is an Elite, every 5th a Boss. Best wave reached: <b>'+best+'</b>.</div></div>';
     var slot=document.createElement('div'); slot.className='st-go';
     var btn=document.createElement('button'); btn.className='dg-btn gold'; btn.textContent='Enter';
     btn.onclick=function(){ startBattle('endless',null); };
     slot.appendChild(btn); card.appendChild(slot);
     bodyEl.appendChild(card);
+
+    var ms=G.K.ENDLESS_MILESTONES||[];
+    if(ms.length){
+      var claimed=(G.state.campaign&&G.state.campaign.milestones)||[];
+      var t=document.createElement('div'); t.className='dg-section-title'; t.textContent='Milestone Rewards'; bodyEl.appendChild(t);
+      var wrap=document.createElement('div'); wrap.className='dg-miles';
+      ms.forEach(function(m){
+        var done=claimed.indexOf(m.wave)>=0, reached=best>=m.wave;
+        var rew=[]; if(m.gems) rew.push('\u25C6 '+m.gems); if(m.crystals) rew.push('\u2756 '+m.crystals); if(m.shards) rew.push('\u269C '+m.shards);
+        var row=document.createElement('div'); row.className='dg-mile'+(done?' done':reached?' ready':' locked');
+        row.innerHTML='<div class="ml-wave">Wave '+m.wave+'</div><div class="ml-rew">'+rew.join('  \u2022  ')+'</div>';
+        var go=document.createElement('div'); go.className='ml-go';
+        if(done){ go.innerHTML='<span class="ml-tick">\u2713 Claimed</span>'; }
+        else if(reached){ var b=document.createElement('button'); b.className='dg-mini gold'; b.textContent='Claim';
+          b.onclick=function(){ dgSend({type:'dg_claim_milestone', wave:m.wave}); }; go.appendChild(b); }
+        else { go.innerHTML='<span class="ml-lock">Reach wave '+m.wave+'</span>'; }
+        row.appendChild(go); wrap.appendChild(row);
+      });
+      bodyEl.appendChild(wrap);
+    }
+  }
+
+  /* ================= SHOP (convert + bundles) ================= */
+  function renderShop(){
+    var tabs=document.createElement('div'); tabs.className='dg-hub-tabs';
+    [['wallet','Convert'],['bundles','Bundles']].forEach(function(p){
+      var b=document.createElement('button'); b.className='dg-banner-tab'+((G.shopTab||'wallet')===p[0]?' active':'');
+      b.textContent=p[1]; b.onclick=function(){ G.shopTab=p[0]; bodyEl.innerHTML=''; renderShop(); };
+      tabs.appendChild(b);
+    });
+    bodyEl.appendChild(tabs);
+    if((G.shopTab||'wallet')==='wallet') renderWallet(); else renderBundles();
+  }
+  function convertCard(title, sub, dir, maxAmt, rate, fromGlyph, toGlyph){
+    var card=document.createElement('div'); card.className='dg-convert';
+    card.innerHTML='<div class="cv-h"><b>'+title+'</b><span>'+sub+'</span></div>'+
+      '<div class="cv-row"><input type="number" class="cv-in" min="1" placeholder="Amount" />'+
+      '<div class="cv-out">\u2192 <span class="cv-get">0</span> '+toGlyph+'</div></div>'+
+      '<div class="cv-quick"></div>';
+    var inp=card.querySelector('.cv-in'), out=card.querySelector('.cv-get'), quick=card.querySelector('.cv-quick');
+    function calc(){ var v=Math.max(0,Math.floor(parseFloat(inp.value)||0)); out.textContent=fmt(Math.floor(v*rate)); return v; }
+    inp.oninput=calc;
+    [100,500,'Max'].forEach(function(q){
+      var b=document.createElement('button'); b.className='dg-mini'; b.textContent=q==='Max'?'Max':('+'+q);
+      b.onclick=function(){ inp.value = q==='Max'? Math.floor(maxAmt) : Math.min(Math.floor(maxAmt),(parseFloat(inp.value)||0)+q); calc(); };
+      quick.appendChild(b);
+    });
+    var go=document.createElement('button'); go.className='dg-btn gold'; go.textContent='Convert';
+    go.onclick=function(){ var v=calc(); if(v<=0){ toast('Enter an amount.'); return; }
+      if(v>maxAmt){ toast('Not enough to convert.'); return; }
+      dgSend({type:'dg_convert', direction:dir, amount:v}); };
+    card.appendChild(go);
+    return card;
+  }
+  function renderWallet(){
+    var w=wallet();
+    var hd=document.createElement('div'); hd.className='dg-rates-note';
+    hd.innerHTML='Spend your chat <b>Balance</b> to mint <b>Crystals</b> (1:1), then refine Crystals into <b>Gems</b> at '+(G.K.GEM_RATE||0.9)+'\u00D7. Summons and ascension are paid in Gems.';
+    bodyEl.appendChild(hd);
+    bodyEl.appendChild(convertCard('Balance \u2192 Crystals','$1 = \u2756 '+(G.K.CRYSTAL_RATE||1),'to_crystals', G.bal||0, (G.K.CRYSTAL_RATE||1), '$','\u2756'));
+    bodyEl.appendChild(convertCard('Crystals \u2192 Gems','\u2756 1 = \u25C6 '+(G.K.GEM_RATE||0.9),'to_gems', w.crystals||0, (G.K.GEM_RATE||0.9), '\u2756','\u25C6'));
+  }
+  function renderBundles(){
+    var w=wallet(), list=G.K.BUNDLES||[];
+    var note=document.createElement('div'); note.className='dg-rates-note';
+    note.innerHTML='Bundles are bought with <b>Crystals</b>. Gem bundles beat the table rate; choice bundles let you pick a die outright \u2014 no gambling.';
+    bodyEl.appendChild(note);
+    var grid=document.createElement('div'); grid.className='dg-bundles';
+    list.forEach(function(b){
+      var card=document.createElement('div'); card.className='dg-bundle'+(b.best?' best':'');
+      var grant = b.grant==='select' ? ('Pick any '+capit(b.select_rarity)+' die') : ('\u25C6 '+fmt(b.gems)+' Gems');
+      card.innerHTML=(b.best?'<div class="bn-best">BEST VALUE</div>':'')+
+        '<div class="bn-icon">'+(b.grant==='select'?'\uD83C\uDFB4':'\u25C6')+'</div>'+
+        '<div class="bn-nm">'+b.name+'</div>'+
+        '<div class="bn-grant">'+grant+'</div>'+
+        '<div class="bn-desc">'+b.desc+'</div>';
+      var go=document.createElement('button'); go.className='dg-btn gold'; go.textContent='\u2756 '+fmt(b.cost_crystals);
+      if((w.crystals||0)<b.cost_crystals){ go.disabled=true; go.title='Not enough Crystals'; }
+      go.onclick=function(){ if((w.crystals||0)<b.cost_crystals){ toast('Not enough Crystals.'); return; }
+        if(b.grant==='select') openBundleSelect(b); else dgSend({type:'dg_buy_bundle', bundle_id:b.id}); };
+      card.appendChild(go); grid.appendChild(card);
+    });
+    bodyEl.appendChild(grid);
+  }
+  function openBundleSelect(b){
+    var modal=document.createElement('div'); modal.className='dg-modal';
+    modal.onclick=function(e){ if(e.target===modal) modal.remove(); };
+    var sheet=document.createElement('div'); sheet.className='dg-sheet';
+    var pool=G.dice.filter(function(d){ return d.rarity===b.select_rarity; });
+    var grid=pool.map(function(d){
+      var have=(G.state.collection||{})[d.id];
+      return '<button class="dg-pick" data-id="'+d.id+'"><span class="pk-face" style="color:'+rarColor(d.rarity)+'">'+dieGlyph(d.id)+'</span>'+
+        '<span class="pk-nm">'+d.name+'</span><span class="pk-rl">'+d.role+(have?' \u2022 owned':'')+'</span></button>';
+    }).join('');
+    sheet.innerHTML='<div class="dg-sheet-hd"><button class="dg-x">\u00D7</button><div><h2>'+b.name+'</h2>'+
+      '<div class="dg-voice">Choose your '+capit(b.select_rarity)+' die \u2014 costs \u2756 '+fmt(b.cost_crystals)+'.</div></div></div>'+
+      '<div class="dg-sheet-bd"><div class="dg-picks">'+grid+'</div></div>';
+    modal.appendChild(sheet); root.appendChild(modal);
+    sheet.querySelector('.dg-x').onclick=function(){ modal.remove(); };
+    sheet.querySelectorAll('.dg-pick').forEach(function(btn){
+      btn.onclick=function(){ dgSend({type:'dg_buy_bundle', bundle_id:b.id, select_id:btn.getAttribute('data-id')}); modal.remove(); };
+    });
+  }
+
+  /* ================= ACHIEVEMENTS ================= */
+  function achReady(check){
+    var g=G.state.gacha||{}, coll=G.state.collection||{}, camp=G.state.campaign||{};
+    var owned=Object.keys(coll).length;
+    function anyDie(fn){ for(var id in coll){ if(fn(id,coll[id])) return true; } return false; }
+    if(check==='pulls>=1') return (g.total_pulls||0)>=1;
+    if(check==='owned>=10') return owned>=10;
+    if(check==='owned>=all') return owned>=G.dice.length;
+    if(check==='mythic>=1') return anyDie(function(id){ var d=G.byId[id]; return d&&d.rarity==='MYTHIC'; });
+    if(check==='cleared_c6') return (camp.cleared||[]).indexOf('c6')>=0;
+    if(check==='best_wave>=25') return (camp.best_wave||0)>=25;
+    if(check==='ascended>=1') return anyDie(function(id,c){ return (c.level||0)>=1; });
+    if(check==='const6>=1') return anyDie(function(id,c){ return (c.constellation||0)>=6; });
+    return false;
+  }
+  function renderAchievements(){
+    var list=G.K.ACHIEVEMENTS||[], claimed=(G.state.campaign&&G.state.campaign.achievements)||[];
+    var head=document.createElement('div'); head.className='dg-rates-note';
+    var got=list.filter(function(a){ return claimed.indexOf(a.id)>=0; }).length;
+    head.innerHTML='Goals & rewards \u2014 <b>'+got+' / '+list.length+'</b> claimed. Hit the condition, then claim your reward here.';
+    bodyEl.appendChild(head);
+    var wrap=document.createElement('div'); wrap.className='dg-achs';
+    list.forEach(function(a){
+      var done=claimed.indexOf(a.id)>=0, ready=!done&&achReady(a.check);
+      var rew=[]; if(a.gems) rew.push('\u25C6 '+a.gems); if(a.crystals) rew.push('\u2756 '+a.crystals); if(a.shards) rew.push('\u269C '+a.shards);
+      var row=document.createElement('div'); row.className='dg-ach'+(done?' done':ready?' ready':' locked');
+      row.innerHTML='<div class="ac-icon">'+(done?'\u2713':ready?'\u2605':'\u25CB')+'</div>'+
+        '<div class="ac-body"><div class="ac-nm">'+a.name+'</div><div class="ac-desc">'+a.desc+'</div>'+
+        '<div class="ac-rew">'+rew.join('  \u2022  ')+'</div></div>';
+      var go=document.createElement('div'); go.className='ac-go';
+      if(done){ go.innerHTML='<span class="ml-tick">Claimed</span>'; }
+      else if(ready){ var b=document.createElement('button'); b.className='dg-mini gold'; b.textContent='Claim';
+        b.onclick=function(){ dgSend({type:'dg_claim_achievement', ach_id:a.id}); }; go.appendChild(b); }
+      else { go.innerHTML='<span class="ml-lock">In progress</span>'; }
+      row.appendChild(go); wrap.appendChild(row);
+    });
+    bodyEl.appendChild(wrap);
+  }
+
+  /* ================= TUTORIAL ================= */
+  function tutorialSeen(){ try{ return localStorage.getItem('dg_tut_seen')==='1'; }catch(e){ return true; } }
+  function openTutorial(){
+    var modal=document.createElement('div'); modal.className='dg-modal';
+    modal.onclick=function(e){ if(e.target===modal) close(); };
+    function close(){ try{ localStorage.setItem('dg_tut_seen','1'); }catch(e){} modal.remove(); }
+    var secs=[
+      ['\uD83D\uDCB0','Currency','Your chat <b>Balance</b> mints <b>Crystals</b> 1:1 in the Shop. Refine Crystals into <b>Gems</b> (0.9\u00D7). Summons and ascension cost Gems. <b>Universal Shards</b> come from duplicate pulls and power ascension.'],
+      ['\u2684','Summoning','Spend Gems on banners. Mythic 1%, Rare 5%. Soft pity ramps from pull 70 and guarantees a Mythic by 89; every 10th pull is at least Rare. Duplicates raise a die\u2019s Constellation (C1\u2013C6); past C6 they become Shards.'],
+      ['\u2694','Battle','Build a team of up to 4, then fight the Campaign or the Endless Arena. Combat is turn-based on a speed timeline. Each turn pick <b>Attack</b> (builds Energy), <b>Skill</b> (cooldown) or <b>Ultimate</b> (spends Energy). Exploit element advantages and Break enemy toughness.'],
+      ['\u2728','Constellations','Constellations grant <b>utility effects</b> \u2014 starting Energy, more HP, shorter skill cooldowns, shields, even a one-time revive \u2014 never raw damage. View them on any die\u2019s detail page.'],
+      ['\u269C','Ascension','Spend Universal Shards to ascend a die for flat HP/ATK/DEF growth. This is your steady power sink, separate from Constellations.'],
+      ['\uD83C\uDFC6','Goals & Milestones','Claim one-time rewards from the Goals tab and from Endless Arena wave milestones (10/25/50/100). Save team Presets and follow Recommended Comps in the Team tab.']
+    ];
+    var body=secs.map(function(s){ return '<div class="tut-sec"><div class="tut-ic">'+s[0]+'</div><div><div class="tut-t">'+s[1]+'</div><div class="tut-d">'+s[2]+'</div></div></div>'; }).join('');
+    var sheet=document.createElement('div'); sheet.className='dg-sheet';
+    sheet.innerHTML='<div class="dg-sheet-hd"><button class="dg-x">\u00D7</button><div><h2>How to Play \u2014 Dice RPG</h2>'+
+      '<div class="dg-voice">A quick tour of summoning, battle and progression.</div></div></div>'+
+      '<div class="dg-sheet-bd">'+body+'</div>';
+    var foot=document.createElement('div'); foot.style.cssText='padding:14px 18px;text-align:right';
+    var ok=document.createElement('button'); ok.className='dg-btn gold'; ok.textContent='Got it';
+    ok.onclick=close; foot.appendChild(ok); sheet.appendChild(foot);
+    modal.appendChild(sheet); root.appendChild(modal);
+    sheet.querySelector('.dg-x').onclick=close;
   }
 
   /* ---------- unit construction ---------- */
   function buildAlly(id){
     var die=G.byId[id], coll=(G.state.collection||{})[id]||{}, cons=coll.constellation||0;
     var s=die.stats, hp=s.hp, atk=s.atk, def=s.def, spd=s.spd;
-    if(cons>=1) atk*=1.08;
-    if(cons>=2) hp*=1.12;
-    if(cons>=4){ def*=1.10; spd*=1.08; }
+    var lvl=coll.level||0, asc=1+lvl*(G.K.ASCENSION_STAT_PER_LEVEL||0.06);
+    hp*=asc; atk*=asc; def*=asc;
+    var cb=consBuffs(cons);
+    if(cb.max_hp) hp*=(1+cb.max_hp);
+    if(cb.def_spd){ def*=(1+cb.def_spd); spd*=(1+cb.def_spd); }
     var u={ side:'ally', id:id, name:die.name, element:die.element, role:die.role, rarity:die.rarity,
-      tags:die.tags||[], params:die.params||{}, cons:cons,
+      tags:die.tags||[], params:die.params||{}, cons:cons, asc:lvl,
       max:Math.round(hp), hp:Math.round(hp), atk:atk, def:def, spd:spd,
-      energy:0, ultCost:(G.K.ULT_COST||{})[die.rarity]||80, skillCd:0,
+      energy:(cb.start_energy||0), ultCost:(G.K.ULT_COST||{})[die.rarity]||80, skillCd:0,
+      consSkillCdRed:(cb.skill_cd||0), canRevive:!!cb.revive, reviveVal:(cb.revive||0), revived:false,
       dmgUp:0,dmgUpT:0, critUp:0,critUpT:0, spdUp:0,spdUpT:0, defDown:0,
       shield:0, omen:0, alive:true,
       skillName:(die.skill||{}).name||'Skill', ultName:(die.ult||{}).name||'Ultimate',
       basicName:(die.basic||{}).name||'Attack' };
     if((die.params||{}).shield_pct && (die.tags||[]).indexOf('Universal')>=0 && /Shield/.test(die.role)) u.shield=Math.round(die.params.shield_pct*u.max*0.5);
+    if(cb.start_shield) u.shield += Math.round(cb.start_shield*u.max);
     return u;
+  }
+  function consBuffs(cons){
+    var o={}; (G.K.CONSTELLATION_BONUS||[]).forEach(function(c){ if(cons>=c.level) o[c.key]=c.val; }); return o;
   }
   function buildEnemy(t,tier){
     var tough=(G.K.BREAK_THRESHOLD||{})[tier]||100;
@@ -986,7 +1427,11 @@ function initDiceRpg(container){
   function spawnWave(B,wave){
     B.wave=wave;
     var tier = wave%5===0?'BOSS':(wave%3===0?'ELITE':'NORMAL');
-    var mult = 1 + (wave-1)*0.18;
+    var sc=G.K.ENDLESS_SCALE||{};
+    var hpm = 1+(wave-1)*(sc.hp_per_wave||0.20);
+    var atkm= 1+(wave-1)*(sc.atk_per_wave||0.12);
+    var spdm= 1+(wave-1)*(sc.spd_per_wave||0.010);
+    var brkm= 1+(wave-1)*(sc.break_per_wave||0.06);
     var pool=[
       {name:'Arena Pip',element:'Physical',atk:120,def:60,spd:100,hp:1500,pow:1.05,ai:'basic'},
       {name:'Arena Sharp',element:'Arcane',atk:128,def:66,spd:112,hp:1450,pow:1.1,ai:'debuff'},
@@ -996,9 +1441,16 @@ function initDiceRpg(container){
     var ens=[];
     for(var i=0;i<n;i++){
       var base=pool[(wave+i)%pool.length];
-      var bm = tier==='BOSS'?3.4:(tier==='ELITE'?1.8:1.0);
-      ens.push(buildEnemy(scaleEnemy(base, mult*bm), tier));
-      if(tier==='BOSS') ens[ens.length-1].name='Arena Colossus';
+      var bm = tier==='BOSS'?(sc.boss_mult||3.4):(tier==='ELITE'?(sc.elite_mult||1.8):1.0);
+      var t={}; for(var k in base) t[k]=base[k];
+      t.hp =Math.round(base.hp *hpm*bm);
+      t.atk=Math.round(base.atk*atkm*bm);
+      t.def=Math.round(base.def*hpm);
+      t.spd=Math.round(base.spd*spdm);
+      var en=buildEnemy(t, tier);
+      en.maxToughness=en.toughness=Math.round(en.maxToughness*brkm);
+      if(tier==='BOSS') en.name='Arena Colossus';
+      ens.push(en);
     }
     B.enemies=ens; B.tier=tier; B.stageName='Endless Arena \u2014 Wave '+wave;
     B.target=0;
@@ -1020,7 +1472,12 @@ function initDiceRpg(container){
   function applyDamage(tgt,dmg){
     if(tgt.shield>0){ var ab=Math.min(tgt.shield,dmg); tgt.shield-=ab; dmg-=ab; }
     tgt.hp-=dmg; tgt._flash=true;
-    if(tgt.hp<=0){ tgt.hp=0; tgt.alive=false; }
+    if(tgt.hp<=0){
+      if(tgt.side==='ally' && tgt.canRevive && !tgt.revived){
+        tgt.revived=true; tgt.alive=true; tgt.hp=Math.max(1,Math.round(tgt.max*(tgt.reviveVal||0.3)));
+        logMsg('\u2728 <b>'+tgt.name+'</b> defies fate \u2014 revived at '+Math.round((tgt.reviveVal||0.3)*100)+'% HP!','heal');
+      } else { tgt.hp=0; tgt.alive=false; }
+    }
     if(tgt.side==='ally' && tgt.alive) addEnergy(tgt,6);
   }
   function addEnergy(u,a){ u.energy=Math.min(u.ultCost,(u.energy||0)+a); }
@@ -1046,8 +1503,6 @@ function initDiceRpg(container){
     var base = src.atk*mult*roll*SCALE;
     base *= elemMult(src.element,tgt.element);
     base *= (1+(src.dmgUp||0));
-    if(src.side==='ally'){ if(src.cons>=6) base*=1.15;
-      if(opts.ultC5&&src.cons>=5) base*=1.25; if(opts.skillC3&&src.cons>=3) base*=1.20; }
     if(opts.mult) base*=opts.mult;
     var cc=(G.K.CRIT_BASE||0.08)+(src.critUp||0), crit=opts.crit||Math.random()<cc;
     if(crit) base*=(G.K.CRIT_MULT||1.5);
@@ -1071,6 +1526,7 @@ function initDiceRpg(container){
     var t=curTarget(); if(!t) return;
     var p=u.params||{}, dm=K_DM();
     var r=computeHit(u,t,dm.BASIC);
+    sfx(r&&r.crit?'crit':'hit');
     logMsg('<b>'+u.name+'</b> uses '+u.basicName+(r&&r.crit?' \u2014 <span style="color:#ffce5a">CRIT!</span>':'')+' for '+fmt(r?r.dmg:0)+'.','dmg');
     if(p.double_chance && Math.random()<p.double_chance){ var r2=computeHit(u,t,dm.BASIC*0.6);
       if(r2) logMsg('\u21B3 strikes again for '+fmt(r2.dmg)+'.','dmg'); }
@@ -1082,8 +1538,9 @@ function initDiceRpg(container){
   }
   function useSkill(u){
     var t=curTarget(); if(!t) return;
-    var p=u.params||{}, dm=K_DM(), c3=u.cons>=3, mag=c3?1.2:1, tag=primaryTag(u), turns=(p.skill_turns||2);
-    addEnergy(u,12); u.skillCd=2;
+    var p=u.params||{}, dm=K_DM(), c3=false, mag=1, tag=primaryTag(u), turns=(p.skill_turns||2);
+    sfx('hit');
+    addEnergy(u,12); u.skillCd=Math.max(0, 2-(u.consSkillCdRed||0));
     // riders
     if(p.skill_omen) applyOmen(t,Math.round(p.skill_omen*mag));
     if(p.skill_energy) teamEnergy(Math.round(p.skill_energy*mag));
@@ -1108,8 +1565,9 @@ function initDiceRpg(container){
       logMsg('\u21B3 '+u.name+' empowers the team.','sys');
   }
   function useUlt(u){
-    var t=curTarget(); var p=u.params||{}, dm=K_DM(), c5=u.cons>=5, mag=u.cons>=3?1.3:1.1, tag=primaryTag(u);
+    var t=curTarget(); var p=u.params||{}, dm=K_DM(), c5=false, mag=1.15, tag=primaryTag(u);
     u.energy=0;
+    sfx('ult');
     logMsg('\u2728 <b>'+u.name+'</b> unleashes '+u.ultName+'!','sys');
     if(p.ult_energy) teamEnergy(p.ult_energy);
     if(tag==='Omen'){
@@ -1184,7 +1642,8 @@ function initDiceRpg(container){
     if(B.floorTurns>0) B.floorTurns--;
     B.order=B.allies.concat(B.enemies).filter(function(u){return u.alive;}).sort(function(a,b){return effSpd(b)-effSpd(a);});
     B.qi=0; }
-  function scheduleStep(ms){ G.timers.push(setTimeout(step, ms||520)); }
+  function sd(ms){ return Math.max(50, (ms||0)/(G.speed||1)); }
+  function scheduleStep(ms){ G.timers.push(setTimeout(step, sd(ms||520))); }
   function step(){
     var B=G.battle; if(!B||B.over) return;
     if(!B.order || B.qi>=B.order.length) startRound();
@@ -1194,20 +1653,20 @@ function initDiceRpg(container){
     if(u.side==='enemy' && u.broken){ u.brokenTurns--;
       if(u.brokenTurns<=0){ u.broken=false; u.toughness=u.maxToughness; logMsg('<b>'+u.name+'</b> recovers from Break.','brk'); }
       else logMsg('<b>'+u.name+'</b> is Broken and loses its turn.','brk');
-      B.active=u; if(G.view==='battle') renderBattle(); return scheduleStep(700); }
+      B.active=u; B.phase='Broken'; if(G.view==='battle') renderBattle(); return scheduleStep(700); }
     B.active=u;
     if(u.side==='ally'){
       if(u.skillCd>0) u.skillCd--;
-      B.awaiting=true; if(G.view==='battle') renderBattle();
-      if(B.auto) G.timers.push(setTimeout(function(){ autoAct(u); },620));
+      B.awaiting=true; B.phase='Your move'; if(G.view==='battle') renderBattle();
+      if(B.auto) G.timers.push(setTimeout(function(){ autoAct(u); },sd(620)));
     } else {
-      B.awaiting=false; if(G.view==='battle') renderBattle();
-      G.timers.push(setTimeout(function(){ if(G.battle!==B||B.over) return; enemyTurn(u); afterAction(); },680));
+      B.awaiting=false; B.phase='Enemy turn'; if(G.view==='battle') renderBattle();
+      G.timers.push(setTimeout(function(){ if(G.battle!==B||B.over) return; enemyTurn(u); afterAction(); },sd(680)));
     }
   }
   function afterAction(){ var B=G.battle; if(!B) return;
     if(checkEnd()) return;
-    if(G.view==='battle') renderBattle();
+    B.phase='Resolving'; if(G.view==='battle') renderBattle();
     scheduleStep(560); }
   function autoAct(u){ var B=G.battle; if(!B||B.over||B.active!==u) return;
     if(u.energy>=u.ultCost) useUlt(u);
@@ -1232,9 +1691,9 @@ function initDiceRpg(container){
         if(G.view==='battle') renderBattle();
         scheduleStep(900); return true;
       }
-      B.over=true; B.win=true; onWin(); return true;
+      B.over=true; B.win=true; sfx('win'); onWin(); return true;
     }
-    if(!aliveAllies().length){ B.over=true; B.win=false;
+    if(!aliveAllies().length){ B.over=true; B.win=false; sfx('lose');
       if(B.mode==='endless') updateBestWave(B.wave-1);
       logMsg('Your team has fallen\u2026','sys'); if(G.view==='battle') renderBattle(); return true; }
     return false;
@@ -1255,7 +1714,7 @@ function initDiceRpg(container){
       if(typeof d.balance==='number'){ G.bal=d.balance; updateBal(); }
       if(d.state) G.state=d.state;
       if(B){ B.rewardPending=false; B.rewardGot=d.reward||0; if(G.view==='battle') renderBattle(); }
-      toast('First clear! +'+fmt(d.reward||0)+' balance.');
+      sfx('win'); toast('First clear! +'+fmt(d.reward||0)+' Gems.');
     } else if(B){ B.rewardPending=false; if(G.view==='battle') renderBattle(); }
   };
   function fleeBattle(){ if(G.battle) G.battle.over=true; G.battle=null; render(); }
@@ -1273,6 +1732,26 @@ function initDiceRpg(container){
   }
   function appendLog(box,e){ var d=document.createElement('div'); d.className='dg-log-line '+(e.c||''); d.innerHTML=e.h; box.appendChild(d); }
 
+  /* ---------- turn-order timeline ---------- */
+  function turnTimeline(){
+    var B=G.battle;
+    var wrap=document.createElement('div'); wrap.className='dg-timeline';
+    var lbl=document.createElement('span'); lbl.className='tl-lbl'; lbl.textContent='Turn order'; wrap.appendChild(lbl);
+    var strip=document.createElement('div'); strip.className='tl-strip';
+    var ord = B.order && B.order.length ? B.order.slice(B.qi-1<0?0:B.qi-1) : B.allies.concat(B.enemies).filter(function(u){return u.alive;}).sort(function(a,b){return effSpd(b)-effSpd(a);});
+    ord = ord.filter(function(u){ return u&&u.alive; }).slice(0,10);
+    ord.forEach(function(u,idx){
+      var pip=document.createElement('div');
+      pip.className='tl-pip '+(u.side)+(B.active===u?' now':'');
+      var g = u.side==='ally'? dieGlyph(u.id) : tierGlyph(B.tier);
+      pip.innerHTML='<span class="tl-face" style="color:'+(u.side==='ally'?rarColor(u.rarity):'#ff8a8a')+'">'+g+'</span>';
+      pip.title=u.name+(B.active===u?' (acting now)':'')+' \u2022 SPD '+Math.round(effSpd(u));
+      strip.appendChild(pip);
+    });
+    wrap.appendChild(strip);
+    return wrap;
+  }
+
   /* ---------- battle render ---------- */
   function renderBattle(){
     if(G.view!=='battle') return;
@@ -1283,13 +1762,18 @@ function initDiceRpg(container){
     // top bar
     var top=document.createElement('div'); top.className='dg-battle-top';
     top.innerHTML='<div><div class="bt-nm">'+B.stageName+'</div><div class="bt-rd">Round '+Math.max(1,B.round)+
-      ' \u2022 '+B.tier+'</div></div>';
+      ' \u2022 '+B.tier+(B.phase?(' \u2022 <span class="bt-phase">'+B.phase+'</span>'):'')+'</div></div>';
     var acts=document.createElement('div'); acts.className='bt-actions';
+    var speeds=G.K.SPEED_OPTIONS||[0.75,1,1.5];
+    var spd=document.createElement('button'); spd.className='dg-mini-btn'; spd.textContent=(G.speed||1)+'\u00D7'; spd.title='Battle speed';
+    spd.onclick=function(){ var i=speeds.indexOf(G.speed||1); G.speed=speeds[(i+1)%speeds.length]||1;
+      try{ localStorage.setItem('dg_speed',String(G.speed)); }catch(e){} renderBattle(); };
     var autoBtn=document.createElement('button'); autoBtn.className='dg-mini-btn'+(B.auto?' on':''); autoBtn.textContent='Auto';
-    autoBtn.onclick=function(){ B.auto=!B.auto; renderBattle(); if(B.auto && B.awaiting && B.active) G.timers.push(setTimeout(function(){ autoAct(B.active); },300)); };
+    autoBtn.onclick=function(){ B.auto=!B.auto; renderBattle(); if(B.auto && B.awaiting && B.active) G.timers.push(setTimeout(function(){ autoAct(B.active); },sd(300))); };
     var flee=document.createElement('button'); flee.className='dg-mini-btn'; flee.textContent='Flee';
-    flee.onclick=fleeBattle; acts.appendChild(autoBtn); acts.appendChild(flee); top.appendChild(acts);
+    flee.onclick=fleeBattle; acts.appendChild(spd); acts.appendChild(autoBtn); acts.appendChild(flee); top.appendChild(acts);
     main.appendChild(top);
+    main.appendChild(turnTimeline());
     // enemies
     var eg=document.createElement('div'); eg.className='dg-side-group';
     var el=document.createElement('div'); el.className='dg-side-label'; el.textContent='Enemies'; eg.appendChild(el);
