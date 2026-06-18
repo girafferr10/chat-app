@@ -7708,7 +7708,7 @@ function convertTabToBalance(tabId) {
 
   // Nav
   var nav=document.createElement('div');nav.className='bal-nav';
-  var _navTabs=[['dashboard','📈 Overview'],['shop','🛍️ Shop'],['inventory','🎒 Inventory'],['savings','🏦 Savings'],['gamble','🎰 Gamble'],['idle','\u26A1 Idle'],['market','📊 Market'],['story','📖 Story',true]];
+  var _navTabs=[['dashboard','📈 Overview'],['shop','🛍️ Shop'],['inventory','🎒 Inventory'],['savings','🏦 Savings'],['gamble','🎰 Gamble'],['idle','\u26A1 Idle'],['market','📊 Market'],['story','📖 Story',true],['game','🎮 Game']];
   var navBtns={};
   _navTabs.forEach(function(t){
     var b=document.createElement('button');b.className='bal-nav-btn'+(t[0]==='dashboard'?' active':'');
@@ -7730,7 +7730,7 @@ function convertTabToBalance(tabId) {
   var content=document.createElement('div');content.className='bal-content';
   wrap.appendChild(content);
   var panels={};
-  ['dashboard','shop','inventory','savings','gamble','idle','market','story'].forEach(function(t){
+  ['dashboard','shop','inventory','savings','gamble','idle','market','story','game'].forEach(function(t){
     var p=document.createElement('div');p.className='bal-panel'+(t==='dashboard'?' active':'');p.id='bpan-'+tabId+'-'+t;
     content.appendChild(p);panels[t]=p;
   });
@@ -7759,6 +7759,7 @@ function convertTabToBalance(tabId) {
     });
   }
   function switchInner(tab){
+    if(S.innerTab==='game' && tab!=='game' && typeof window._gameCleanup==='function'){ try{window._gameCleanup();}catch(e){} window._gameCleanup=null; }
     S.innerTab=tab;
     Object.keys(panels).forEach(function(k){panels[k].classList.toggle('active',k===tab);});
     Object.keys(navBtns).forEach(function(k){navBtns[k].classList.toggle('active',k===tab);});
@@ -7770,6 +7771,7 @@ function convertTabToBalance(tabId) {
     else if(tab==='idle') renderIdle();
     else if(tab==='market') renderMarket();
     else if(tab==='story') renderStory();
+    else if(tab==='game') renderGame();
   }
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -8803,6 +8805,42 @@ function convertTabToBalance(tabId) {
       }
       p.appendChild(card);
     });
+  }
+
+  function renderGame(){
+    if(typeof window._gameCleanup==='function'){ try{window._gameCleanup();}catch(e){} window._gameCleanup=null; }
+    var p=panels['game'];p.innerHTML='';
+    var wrap=document.createElement('div');
+    wrap.className='bal-game-wrap';
+    wrap.style.cssText='display:flex;flex-direction:column;height:100%;min-height:520px;background:var(--bg-primary,#1e1f22);border-radius:10px;overflow:hidden;';
+    var bar=document.createElement('div');
+    bar.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border,rgba(255,255,255,.08));flex:0 0 auto;';
+    var ttl=document.createElement('div');ttl.style.cssText='font-size:14px;font-weight:800;color:var(--text-primary);';ttl.textContent='🎮 Dice RPG';
+    var fsBtn=document.createElement('button');
+    fsBtn.setAttribute('data-testid','button-game-fullscreen');
+    fsBtn.style.cssText='font-size:12px;font-weight:700;color:var(--accent);background:rgba(var(--accent-rgb,79,156,249),.12);padding:7px 14px;border-radius:8px;border:1px solid rgba(var(--accent-rgb,79,156,249),.25);cursor:pointer;';
+    fsBtn.textContent='\u26F6 Fullscreen';
+    function isFs(){return document.fullscreenElement===wrap||document.webkitFullscreenElement===wrap;}
+    function updFs(){fsBtn.textContent=isFs()?'\u2715 Exit Fullscreen':'\u26F6 Fullscreen';}
+    fsBtn.addEventListener('click',function(){
+      if(isFs()){ (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); }
+      else { (wrap.requestFullscreen||wrap.webkitRequestFullscreen||function(){}).call(wrap); }
+    });
+    document.addEventListener('fullscreenchange',updFs);
+    document.addEventListener('webkitfullscreenchange',updFs);
+    bar.appendChild(ttl);bar.appendChild(fsBtn);
+    var playArea=document.createElement('div');
+    playArea.style.cssText='flex:1 1 auto;position:relative;min-height:0;overflow:hidden;';
+    wrap.appendChild(bar);wrap.appendChild(playArea);
+    p.appendChild(wrap);
+    initDiceRpg(playArea);
+    var _inner=window._gameCleanup;
+    window._gameCleanup=function(){
+      try{ if(typeof _inner==='function') _inner(); }catch(e){}
+      document.removeEventListener('fullscreenchange',updFs);
+      document.removeEventListener('webkitfullscreenchange',updFs);
+      if(isFs()){ try{(document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document);}catch(e){} }
+    };
   }
 
   var _IDLE_EVENTS=[
