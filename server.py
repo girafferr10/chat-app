@@ -13,7 +13,7 @@ from aiohttp import web
 import time as _time
 from datetime import datetime, timedelta
 
-from games import tictactoe, snake, memory, blackjack, blackjack_multi, minesweeper, solitaire, checkers, hangman, war, crazy_eights, twenty_fortyeight, genetic_cars, garlic_phone
+from games import tictactoe, snake, memory, blackjack, blackjack_multi, minesweeper, solitaire, checkers, hangman, war, crazy_eights, twenty_fortyeight, genetic_cars, garlic_phone, dice_data, dice_rpg
 
 try:
     import asyncpg
@@ -106,9 +106,14 @@ _raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
 OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
 
 db_pool = None
-CURRENT_VERSION = "2.9"
+CURRENT_VERSION = "3.0"
 CHANGELOG_NOTES = (
-    "<b>What's new in v2.9</b><br><br>"
+    "<b>What's new in v3.0 \u2014 DICE RPG</b><br><br>"
+    "&#x2022; <b>Dice RPG</b> \u2014 A full turn-based tactical gacha RPG now lives in the Games tab: summon Dice, build a team and battle<br>"
+    "&#x2022; <b>Summon System</b> \u2014 Spend your balance to roll Dice with real pity, a Beginner banner and a 50/50 Limited banner<br>"
+    "&#x2022; <b>Campaign &amp; Endless</b> \u2014 A story campaign (Normal \u2192 Elite \u2192 Boss) plus an endless arena, with a live battle log<br>"
+    "&#x2022; <b>Full Dex</b> \u2014 Collect every Dice with lore, voice lines, skills, stats and Constellation upgrades; saved across devices<br>"
+    "<br><b>Previously in v2.9</b><br>"
     "&#x2022; <b>Balance Cash-Out Fixed</b> \u2014 Collecting idle coins now adds the exact server amount with no corruption or stale jumps<br>"
     "&#x2022; <b>Everything Persists</b> \u2014 Your balance, idle upgrades and equipped cosmetics now save server-side for every player and survive restarts<br>"
     "&#x2022; <b>Cosmetics Actually Apply</b> \u2014 Equipping a nameplate, avatar ring or font now instantly changes how you look in chat and the user list<br>"
@@ -365,6 +370,16 @@ async def init_db():
                 )
             """)
             await conn.execute("""
+                CREATE TABLE IF NOT EXISTS dice_game (
+                    username VARCHAR(20) PRIMARY KEY,
+                    collection JSONB NOT NULL DEFAULT '{}',
+                    gacha JSONB NOT NULL DEFAULT '{}',
+                    history JSONB NOT NULL DEFAULT '[]',
+                    campaign JSONB NOT NULL DEFAULT '{}',
+                    team JSONB NOT NULL DEFAULT '[]'
+                )
+            """)
+            await conn.execute("""
                 CREATE TABLE IF NOT EXISTS savings_plans (
                     id SERIAL PRIMARY KEY,
                     username VARCHAR(20) NOT NULL,
@@ -572,6 +587,312 @@ async def db_add_transaction(username, amount, reason):
     async with db_pool.acquire() as conn:
         await conn.execute("INSERT INTO transactions (username,amount,reason) VALUES ($1,$2,$3)",
                            username, int(amount), reason[:200])
+
+
+# ─── Dice RPG DB helpers ─────────────────────────────────────────────────────
+_DICEGAME_MEM = {}
+
+def _default_dicegame():
+    return {
+        "collection": {d: {"constellation": 0} for d in dice_data.STARTER_DICE},
+        "gacha": {"pity_mythic": 0, "pity_rare": 0, "total_pulls": 0,
+                  "beginner_pulls": 0, "beginner_done": False,
+                  "limited_guarantee": False, "universal_shards": 0},
+        "history": [],
+        "campaign": {"cleared": [], "first_clear": [], "best_wave": 0},
+        "team": list(dice_data.STARTER_DICE),
+    }
+
+def _merge_dicegame(state):
+    base = _default_dicegame()
+    g = dict(base["gacha"]); g.update(state.get("gacha") or {}); state["gacha"] = g
+    c = dict(base["campaign"]); c.update(state.get("campaign") or {}); state["campaign"] = c
+    state.setdefault("collection", {})
+    state.setdefault("history", [])
+    state.setdefault("team", [])
+    return state
+
+async def db_get_dicegame(username):
+    if not db_pool:
+        if username not in _DICEGAME_MEM:
+            _DICEGAME_MEM[username] = _default_dicegame()
+        return _merge_dicegame(_DICEGAME_MEM[username])
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM dice_game WHERE username=$1", username)
+        if not row:
+            d = _default_dicegame()
+            await conn.execute(
+                "INSERT INTO dice_game (username,collection,gacha,history,campaign,team) "
+                "VALUES ($1,$2::jsonb,$3::jsonb,$4::jsonb,$5::jsonb,$6::jsonb) ON CONFLICT DO NOTHING",
+                username, json.dumps(d["collection"]), json.dumps(d["gacha"]),
+                json.dumps(d["history"]), json.dumps(d["campaign"]), json.dumps(d["team"]))
+            return d
+        return _merge_dicegame({
+            "collection": dict(_json_field(row["collection"], {})),
+            "gacha": dict(_json_field(row["gacha"], {})),
+            "history": list(_json_field(row["history"], [])),
+            "campaign": dict(_json_field(row["campaign"], {})),
+            "team": list(_json_field(row["team"], [])),
+        })
+
+async def db_save_dicegame(username, data):
+    if not db_pool:
+        _DICEGAME_MEM[username] = data
+        return
+    async with db_pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO dice_game (username,collection,gacha,history,campaign,team)
+            VALUES ($1,$2::jsonb,$3::jsonb,$4::jsonb,$5::jsonb,$6::jsonb)
+            ON CONFLICT (username) DO UPDATE SET
+                collection=EXCLUDED.collection, gacha=EXCLUDED.gacha,
+                history=EXCLUDED.history, campaign=EXCLUDED.campaign, team=EXCLUDED.team
+        """, username, json.dumps(data.get("collection", {})), json.dumps(data.get("gacha", {})),
+            json.dumps(data.get("history", [])), json.dumps(data.get("campaign", {})),
+            json.dumps(data.get("team", [])))
+
+
+# ─── Dice RPG gacha engine (server is the RNG + economy authority) ────────────
+def _dice_roll_rarity_pity(gacha):
+    """Rarity for a standard/limited pull, honoring mythic soft pity and the
+    'every 10th pull is at least Rare' guarantee. Mutates nothing."""
+    pity_m = gacha.get("pity_mythic", 0)
+    m_rate = dice_data.mythic_rate_at(pity_m)
+    r = random.random()
+    if r < m_rate:
+        return "MYTHIC"
+    # 10-pull rare guarantee: pity_rare counts pulls since last Rare-or-better
+    if gacha.get("pity_rare", 0) + 1 >= 10:
+        return "RARE"
+    if r < m_rate + dice_data.BASE_RATES["RARE"]:
+        return "RARE"
+    return "COMMON"
+
+
+def _dice_roll_rarity_flat(gacha):
+    """Rarity using flat base rates (used by the Beginner banner, which relies
+    on its own by-10 / by-40 guarantees instead of soft pity)."""
+    r = random.random()
+    if r < dice_data.BASE_RATES["MYTHIC"]:
+        return "MYTHIC"
+    if r < dice_data.BASE_RATES["MYTHIC"] + dice_data.BASE_RATES["RARE"]:
+        return "RARE"
+    return "COMMON"
+
+
+def _dice_pick_id(rarity, banner_id, gacha):
+    """Choose a concrete die id for a rarity, applying Limited 50/50 + featured."""
+    if rarity == "MYTHIC":
+        if banner_id == "limited":
+            featured = dice_data.BANNERS["limited"]["featured_mythic"]
+            others = [i for i in dice_data.IDS_BY_RARITY["MYTHIC"] if i != featured]
+            if gacha.get("limited_guarantee"):
+                gacha["limited_guarantee"] = False
+                return featured
+            if random.random() < 0.5:
+                return featured
+            gacha["limited_guarantee"] = True
+            return random.choice(others) if others else featured
+        return random.choice(dice_data.IDS_BY_RARITY["MYTHIC"])
+    if rarity == "RARE":
+        if banner_id == "limited" and random.random() < 0.5:
+            return random.choice(dice_data.BANNERS["limited"]["featured_rares"])
+        return random.choice(dice_data.IDS_BY_RARITY["RARE"])
+    return random.choice(dice_data.IDS_BY_RARITY["COMMON"])
+
+
+def _dice_do_pulls(banner_id, count, dg):
+    """Run `count` pulls on `banner_id`, mutating dg (collection/gacha/history)
+    in place. Returns the list of per-pull result records."""
+    gacha = dg["gacha"]
+    coll = dg["collection"]
+    results = []
+    is_beginner = (banner_id == "beginner")
+    for _ in range(count):
+        if is_beginner:
+            pull_no = gacha.get("beginner_pulls", 0) + 1
+            rarity = _dice_roll_rarity_flat(gacha)
+            if pull_no == 10 and not gacha.get("beg_rare_secured") and rarity == "COMMON":
+                rarity = "RARE"
+            if pull_no == 40 and not gacha.get("beg_mythic_secured") and rarity != "MYTHIC":
+                rarity = "MYTHIC"
+            gacha["beginner_pulls"] = pull_no
+            if rarity in ("RARE", "MYTHIC"):
+                gacha["beg_rare_secured"] = True
+            if rarity == "MYTHIC":
+                gacha["beg_mythic_secured"] = True
+            if pull_no >= dice_data.BEGINNER_MAX_PULLS:
+                gacha["beginner_done"] = True
+        else:
+            rarity = _dice_roll_rarity_pity(gacha)
+            if rarity == "MYTHIC":
+                gacha["pity_mythic"] = 0
+            else:
+                gacha["pity_mythic"] = gacha.get("pity_mythic", 0) + 1
+            if rarity in ("RARE", "MYTHIC"):
+                gacha["pity_rare"] = 0
+            else:
+                gacha["pity_rare"] = gacha.get("pity_rare", 0) + 1
+
+        die_id = _dice_pick_id(rarity, banner_id, gacha)
+        gacha["total_pulls"] = gacha.get("total_pulls", 0) + 1
+
+        is_new = die_id not in coll
+        shards = 0
+        if is_new:
+            coll[die_id] = {"constellation": 0}
+        else:
+            c = coll[die_id].get("constellation", 0)
+            if c < dice_data.MAX_CONSTELLATION:
+                coll[die_id]["constellation"] = c + 1
+            else:
+                shards = dice_data.UNIVERSAL_SHARD_YIELD[rarity]
+                gacha["universal_shards"] = gacha.get("universal_shards", 0) + shards
+
+        rec = {"n": gacha["total_pulls"], "banner": banner_id, "id": die_id,
+               "rarity": rarity, "new": is_new, "cons": coll[die_id]["constellation"],
+               "shards": shards, "t": mtn_now().strftime("%Y-%m-%d %H:%M")}
+        results.append(rec)
+        dg["history"].append(rec)
+
+    if len(dg["history"]) > dice_data.HISTORY_MAX:
+        dg["history"] = dg["history"][-dice_data.HISTORY_MAX:]
+    return results
+
+
+async def dice_pull_txn(username, ws, banner, count, total_cost):
+    """Atomically: lock balance + dice rows, validate, run pulls, persist.
+    Returns a result dict suitable for the dg_pull_result message."""
+    if not db_pool:
+        bal = connected[ws].get("balance", 0)
+        dg = await db_get_dicegame(username)
+        if banner == "beginner" and dg["gacha"].get("beginner_done"):
+            return {"ok": False, "error": "The Beginner banner is closed."}
+        if bal < total_cost:
+            return {"ok": False, "error": "Not enough balance."}
+        results = _dice_do_pulls(banner, count, dg)
+        new_bal = bal - total_cost
+        connected[ws]["balance"] = new_bal
+        _DICEGAME_MEM[username] = dg
+        return {"ok": True, "results": results, "state": dg, "balance": new_bal}
+
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            erow = await conn.fetchrow("SELECT balance FROM user_economy WHERE username=$1 FOR UPDATE", username)
+            if erow is None:
+                await conn.execute("INSERT INTO user_economy (username) VALUES ($1) ON CONFLICT DO NOTHING", username)
+                bal = 1000
+            else:
+                bal = erow["balance"]
+            drow = await conn.fetchrow("SELECT * FROM dice_game WHERE username=$1 FOR UPDATE", username)
+            if drow is None:
+                dg = _default_dicegame()
+                await conn.execute(
+                    "INSERT INTO dice_game (username,collection,gacha,history,campaign,team) "
+                    "VALUES ($1,$2::jsonb,$3::jsonb,$4::jsonb,$5::jsonb,$6::jsonb) ON CONFLICT DO NOTHING",
+                    username, json.dumps(dg["collection"]), json.dumps(dg["gacha"]),
+                    json.dumps(dg["history"]), json.dumps(dg["campaign"]), json.dumps(dg["team"]))
+            else:
+                dg = _merge_dicegame({
+                    "collection": dict(_json_field(drow["collection"], {})),
+                    "gacha": dict(_json_field(drow["gacha"], {})),
+                    "history": list(_json_field(drow["history"], [])),
+                    "campaign": dict(_json_field(drow["campaign"], {})),
+                    "team": list(_json_field(drow["team"], [])),
+                })
+            if banner == "beginner" and dg["gacha"].get("beginner_done"):
+                return {"ok": False, "error": "The Beginner banner is closed."}
+            if bal < total_cost:
+                return {"ok": False, "error": "Not enough balance."}
+            results = _dice_do_pulls(banner, count, dg)
+            new_bal = bal - total_cost
+            await conn.execute("UPDATE user_economy SET balance=$2 WHERE username=$1", username, new_bal)
+            await conn.execute(
+                "UPDATE dice_game SET collection=$2::jsonb, gacha=$3::jsonb, history=$4::jsonb WHERE username=$1",
+                username, json.dumps(dg["collection"]), json.dumps(dg["gacha"]), json.dumps(dg["history"]))
+            await conn.execute("INSERT INTO transactions (username,amount,reason) VALUES ($1,$2,$3)",
+                               username, -int(total_cost), f"Dice RPG summon x{count} ({banner})"[:200])
+    connected[ws]["balance"] = new_bal
+    return {"ok": True, "results": results, "state": dg, "balance": new_bal}
+
+
+async def dice_claim_first_clear_txn(username, ws, stage):
+    """Grant the one-time first-clear reward for a campaign stage.
+
+    Server is the authority: validates the stage id, enforces sequential
+    progression (the previous campaign stage must already be cleared),
+    refuses to pay twice (idempotent on `campaign.first_clear`), credits the
+    main balance and logs the transaction. Returns the new balance and full
+    dice state."""
+    reward = int(dice_data.BATTLE_FIRST_CLEAR_REWARD)
+    stage_ids = list(dice_data.CAMPAIGN_STAGE_IDS)
+    if stage not in stage_ids:
+        return {"ok": False, "error": "Unknown stage.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    stage_idx = stage_ids.index(stage)
+    if not db_pool:
+        dg = await db_get_dicegame(username)
+        camp = dg.setdefault("campaign", {"cleared": [], "first_clear": [], "best_wave": 0})
+        first = camp.setdefault("first_clear", [])
+        cleared = camp.setdefault("cleared", [])
+        if stage in first:
+            return {"ok": True, "reward": 0, "already": True,
+                    "balance": connected[ws].get("balance", 0), "state": dg}
+        if stage_idx > 0 and stage_ids[stage_idx - 1] not in cleared:
+            return {"ok": False, "error": "Stage locked.",
+                    "balance": connected[ws].get("balance", 0), "state": dg}
+        first.append(stage)
+        if stage not in cleared:
+            cleared.append(stage)
+        new_bal = connected[ws].get("balance", 0) + reward
+        connected[ws]["balance"] = new_bal
+        await db_save_dicegame(username, dg)
+        return {"ok": True, "reward": reward, "balance": new_bal, "state": dg}
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            erow = await conn.fetchrow("SELECT balance FROM user_economy WHERE username=$1 FOR UPDATE", username)
+            if not erow:
+                await conn.execute("INSERT INTO user_economy (username) VALUES ($1) ON CONFLICT DO NOTHING", username)
+                bal = 1000
+            else:
+                bal = erow["balance"]
+            drow = await conn.fetchrow("SELECT * FROM dice_game WHERE username=$1 FOR UPDATE", username)
+            if not drow:
+                dg = _default_dicegame()
+                await conn.execute(
+                    "INSERT INTO dice_game (username,collection,gacha,history,campaign,team) "
+                    "VALUES ($1,$2::jsonb,$3::jsonb,$4::jsonb,$5::jsonb,$6::jsonb) ON CONFLICT DO NOTHING",
+                    username, json.dumps(dg["collection"]), json.dumps(dg["gacha"]),
+                    json.dumps(dg["history"]), json.dumps(dg["campaign"]), json.dumps(dg["team"]))
+            else:
+                dg = _merge_dicegame({
+                    "collection": dict(_json_field(drow["collection"], {})),
+                    "gacha": dict(_json_field(drow["gacha"], {})),
+                    "history": list(_json_field(drow["history"], [])),
+                    "campaign": dict(_json_field(drow["campaign"], {})),
+                    "team": list(_json_field(drow["team"], [])),
+                })
+            camp = dg.setdefault("campaign", {"cleared": [], "first_clear": [], "best_wave": 0})
+            first = camp.setdefault("first_clear", [])
+            cleared = camp.setdefault("cleared", [])
+            if stage in first:
+                connected[ws]["balance"] = bal
+                return {"ok": True, "reward": 0, "already": True, "balance": bal, "state": dg}
+            if stage_idx > 0 and stage_ids[stage_idx - 1] not in cleared:
+                connected[ws]["balance"] = bal
+                return {"ok": False, "error": "Stage locked.", "balance": bal, "state": dg}
+            first.append(stage)
+            if stage not in cleared:
+                cleared.append(stage)
+            new_bal = bal + reward
+            await conn.execute("UPDATE user_economy SET balance=$2 WHERE username=$1", username, new_bal)
+            await conn.execute(
+                "UPDATE dice_game SET campaign=$2::jsonb WHERE username=$1",
+                username, json.dumps(dg["campaign"]))
+            await conn.execute("INSERT INTO transactions (username,amount,reason) VALUES ($1,$2,$3)",
+                               username, reward, f"Dice RPG first clear ({stage})"[:200])
+    connected[ws]["balance"] = new_bal
+    return {"ok": True, "reward": reward, "balance": new_bal, "state": dg}
+
 
 async def db_get_transactions(username, limit=15):
     if not db_pool: return []
@@ -1790,7 +2111,7 @@ body.theme-rose {
 @media (max-width: 600px) {
   .sidebar { display: none; }
 }
-""" + tictactoe.get_css() + snake.get_css() + memory.get_css() + blackjack.get_css() + blackjack_multi.get_css() + minesweeper.get_css() + solitaire.get_css() + checkers.get_css() + hangman.get_css() + war.get_css() + crazy_eights.get_css() + twenty_fortyeight.get_css() + """
+""" + tictactoe.get_css() + snake.get_css() + memory.get_css() + blackjack.get_css() + blackjack_multi.get_css() + minesweeper.get_css() + solitaire.get_css() + checkers.get_css() + hangman.get_css() + war.get_css() + crazy_eights.get_css() + twenty_fortyeight.get_css() + dice_rpg.get_css() + """
 </style>
 </head>
 <body>
@@ -3903,6 +4224,8 @@ function handleMessage(data) {
     }
   } else if (data.type === 'garlic_state' || data.type === 'garlic_error' || data.type === 'garlic_draw' || data.type === 'garlic_guess' || data.type === 'garlic_reveal' || data.type === 'garlic_lobby') {
     if (typeof window._garlicMessageHandler === 'function') window._garlicMessageHandler(data);
+  } else if (typeof data.type === 'string' && data.type.indexOf('dg_') === 0) {
+    if (typeof window._diceMessageHandler === 'function') window._diceMessageHandler(data);
   } else if (data.type === 'react') {
     var mid = data.msg_id;
     if (mid) {
@@ -8590,6 +8913,7 @@ var allGames = [
   { id: 'hangman', name: 'Hangman', desc: 'Guess the hidden word one letter at a time before the hangman is complete', badge: 'single' },
   { id: 'genetic_cars', name: 'Genetic Cars', desc: 'Watch AI-evolved cars learn to drive using genetic algorithms and natural selection', badge: 'single' },
   { id: 'garlic_phone', name: 'Garlic Phone', desc: 'Multiplayer telephone game with drawing — write a phrase, draw it, guess the drawing!', badge: 'multi' },
+  { id: 'dice_rpg', name: 'Dice RPG', desc: 'Turn-based tactical gacha RPG — summon Dice, build a team, and battle through a campaign and endless arena', badge: 'single' },
 ];
 
 function buildGamesHub(container) {
@@ -8738,9 +9062,10 @@ function showGame(container, gameId) {
   else if (gameId === 'twenty_fortyeight') init2048(playArea);
   else if (gameId === 'genetic_cars') initGeneticCars(playArea);
   else if (gameId === 'garlic_phone') initGarlicPhone(playArea);
+  else if (gameId === 'dice_rpg') initDiceRpg(playArea);
 }
 
-""" + tictactoe.get_js() + snake.get_js() + memory.get_js() + blackjack.get_js() + blackjack_multi.get_js() + minesweeper.get_js() + solitaire.get_js() + checkers.get_js() + hangman.get_js() + war.get_js() + crazy_eights.get_js() + twenty_fortyeight.get_js() + genetic_cars.get_js() + garlic_phone.get_js() + r"""
+""" + tictactoe.get_js() + snake.get_js() + memory.get_js() + blackjack.get_js() + blackjack_multi.get_js() + minesweeper.get_js() + solitaire.get_js() + checkers.get_js() + hangman.get_js() + war.get_js() + crazy_eights.get_js() + twenty_fortyeight.get_js() + genetic_cars.get_js() + garlic_phone.get_js() + dice_rpg.get_js() + r"""
 
 tabs.push({ id: 'chat', type: 'chat', label: 'Chat' });
 renderTabBar();
@@ -9995,6 +10320,78 @@ async def handle_client_ws(request):
                         "shop_catalog":  list({"id":k,**v} for k,v in SHOP_CATALOG.items()),
                     }))
 
+                elif data.get("type") == "dg_get_state":
+                    if ws not in connected: continue
+                    dg = await db_get_dicegame(username)
+                    await ws.send_str(json.dumps({
+                        "type": "dg_state",
+                        "catalog": dice_data.public_catalog(),
+                        "state": dg,
+                        "balance": connected[ws].get("balance", 1000),
+                    }))
+
+                elif data.get("type") == "dg_pull":
+                    if ws not in connected: continue
+                    banner = data.get("banner", "standard")
+                    count = data.get("count", 1)
+                    if banner not in ("standard", "limited", "beginner"):
+                        await ws.send_str(json.dumps({"type": "dg_pull_result", "ok": False, "error": "Unknown banner."})); continue
+                    if count not in (1, 10):
+                        await ws.send_str(json.dumps({"type": "dg_pull_result", "ok": False, "error": "Invalid pull count."})); continue
+                    per_cost = dice_data.BEGINNER_PULL_COST if banner == "beginner" else dice_data.PULL_COST
+                    total_cost = per_cost * count
+                    try:
+                        result = await dice_pull_txn(username, ws, banner, count, total_cost)
+                    except Exception as _e:
+                        print(f"[dice_pull] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_pull_result", "ok": False, "error": "Summon failed, try again."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_pull_result", **result}))
+
+                elif data.get("type") == "dg_set_team":
+                    if ws not in connected: continue
+                    raw = data.get("team", [])
+                    if not isinstance(raw, list):
+                        await ws.send_str(json.dumps({"type": "dg_team_result", "ok": False, "error": "Bad team."})); continue
+                    dg = await db_get_dicegame(username)
+                    owned = dg.get("collection", {})
+                    seen = set()
+                    team = []
+                    for did in raw:
+                        if isinstance(did, str) and did in owned and did not in seen:
+                            seen.add(did); team.append(did)
+                        if len(team) >= dice_data.TEAM_SIZE:
+                            break
+                    dg["team"] = team
+                    await db_save_dicegame(username, dg)
+                    await ws.send_str(json.dumps({"type": "dg_team_result", "ok": True, "team": team}))
+
+                elif data.get("type") == "dg_claim_reward":
+                    if ws not in connected: continue
+                    stage = data.get("stage", "")
+                    if stage not in dice_data.CAMPAIGN_STAGE_IDS:
+                        await ws.send_str(json.dumps({"type": "dg_reward_result", "ok": False, "error": "Unknown stage."})); continue
+                    try:
+                        result = await dice_claim_first_clear_txn(username, ws, stage)
+                    except Exception as _e:
+                        print(f"[dice_reward] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_reward_result", "ok": False, "error": "Reward failed."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_reward_result", "stage": stage, **result}))
+
+                elif data.get("type") == "dg_set_best_wave":
+                    if ws not in connected: continue
+                    try:
+                        wave = int(data.get("wave", 0))
+                    except (TypeError, ValueError):
+                        wave = 0
+                    if wave < 1:
+                        await ws.send_str(json.dumps({"type": "dg_best_wave_result", "ok": False})); continue
+                    dg = await db_get_dicegame(username)
+                    camp = dg.setdefault("campaign", {"cleared": [], "first_clear": [], "best_wave": 0})
+                    if wave > int(camp.get("best_wave", 0)):
+                        camp["best_wave"] = wave
+                        await db_save_dicegame(username, dg)
+                    await ws.send_str(json.dumps({"type": "dg_best_wave_result", "ok": True, "best_wave": camp.get("best_wave", 0)}))
+
                 elif data.get("type") == "shop_buy":
                     if ws not in connected: continue
                     item_id = data.get("item_id","")
@@ -10845,4 +11242,5 @@ async def main():
 
     await asyncio.Future()
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -30,6 +30,8 @@ Preferred communication style: Simple, everyday language.
 - `games/checkers.py` - Checkers vs AI (singleplayer)
 - `games/twenty_fortyeight.py` - 2048 puzzle game (singleplayer)
 - `games/hangman.py` - Hangman word guessing (singleplayer)
+- `games/dice_rpg.py` - Dice RPG (v3.0): turn-based tactical gacha RPG (client engine: gacha, team, dex, combat)
+- `games/dice_data.py` - Dice RPG catalog (~19 dice), constants, banners, constellation/shard config, `CAMPAIGN_STAGE_IDS`, `public_catalog()`
 
 ### Routes
 - `GET /` - Main page with unified Guest/Admin/Owner join flow
@@ -81,6 +83,16 @@ Preferred communication style: Simple, everyday language.
 - `ban` / `unban` - Owner bans/unbans a user
 - `bj_action` - Multiplayer blackjack actions (create/join/hit/stand/leave/start)
 - `bj_room_created` / `bj_joined` / `bj_state` / `bj_error` - Server responses for multiplayer blackjack
+- `dg_get_state` - Client requests Dice RPG catalog + per-user state + balance
+- `dg_state` - Server sends catalog, full dice state, and balance
+- `dg_pull` - Client requests a gacha pull (`{banner, count}`)
+- `dg_pull_result` - Server sends pull results, updated state, and balance
+- `dg_set_team` - Client saves its battle team
+- `dg_team_result` - Server confirms saved team
+- `dg_claim_reward` - Client claims a campaign first-clear reward (`{stage}`)
+- `dg_reward_result` - Server grants (or refuses) the one-time first-clear reward
+- `dg_set_best_wave` - Client reports endless-arena best wave
+- `dg_best_wave_result` - Server confirms the stored best wave
 
 ### Key Design Decisions
 1. **Three-tier join page**: Single page at `/` offers Guest, Admin, or Owner choice
@@ -134,6 +146,22 @@ Preferred communication style: Simple, everyday language.
 - **30s turn timeout**: Auto-stands if player doesn't act within 30 seconds
 - **UI layout**: Your hand on the left, other players on the right
 - **Room system**: Create/join rooms with 5-char alphanumeric codes
+
+### Dice RPG (v3.0)
+- **What it is**: Turn-based tactical gacha RPG inside the Games tab. Premium Genshin/HSR-style UI with a dice-wall loading screen, full Dex, and a live battle log.
+- **Currency**: Uses the main account balance (start 1000). 1-pull = 160, 10-pull = 1600. Beginner banner is −20% (128/pull).
+- **Gacha**: 94% common / 5% rare / 1% mythic. Mythic soft pity starts at pull 70 (5%) ramping to 100% at 89; rare guaranteed every 10th pull. First copy unlocks the die; dupes raise Constellation C1→C6, then overflow into Universal Shards.
+- **Banners**: Standard, Limited (50/50 featured), Beginner (first 50 pulls, −20%, rare by pull 10, mythic by pull 40). Last-200 pull history per user.
+- **Modes**: Story campaign (Normal → Elite → Boss, stages `c1`..`c6`) plus an endless arena. First-clear reward = 50 balance, one-time per stage (not farmable).
+- **Combat**: Client-resolved engine (initiative, energy/ult, Omen detonate, Break, elements/resist, crit). Like all games here, outcomes are computed on the client.
+- **Free starters**: Two common dice (`green_pip`, `chain_pip`) seeded on first load.
+- **Persistence**: `dice_game` table (username PK; JSONB columns: collection, gacha, history, campaign, team). Catalog/constants live in `games/dice_data.py`.
+
+### Dice RPG Server Authority
+- **Pulls**: `dice_pull_txn` — `FOR UPDATE` lock, cost check, pity engine, 50/50, dupes→constellation/shards, history cap 200, balance deducted via the economy table + transaction log.
+- **First-clear reward**: `dice_claim_first_clear_txn` — server-authoritative balance credit, **idempotent** on `campaign.first_clear` (can't pay twice), and **sequential** (a stage's reward requires the previous stage already cleared, mirroring the client's unlock order). Validates `stage` against `dice_data.CAMPAIGN_STAGE_IDS`.
+- **Best wave**: `dg_set_best_wave` stores the endless high score (monotonic, cosmetic/untrusted).
+- **Trust model**: Because combat is client-resolved (consistent with every other game in this app), reward grants are client-trusted but bounded by idempotency + sequence checks to a small finite amount.
 
 ### Logging System
 - **File**: `chat_logs.json` - JSON array of log entries with unique IDs
