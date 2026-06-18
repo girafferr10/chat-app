@@ -1,0 +1,367 @@
+# Ember Analyst Die
+
+RARE
+
+Fire
+
+Omen Support
+
+C6
+
+"They don’t see the pattern… until it burns them."
+
+HP
+820
+
+ATK
+118
+
+DEF
+62
+
+SPD
+101
+
+Basic
+
+Sear Insight
+
+Deal Fire damage.
+
+Apply 2 Omen to target.
+
+Skill
+
+Predictive Burn
+
+Apply Omen to all enemies (small amount).
+
+If target already has Omen, increase stacks instead.
+
+Ultimate
+
+Forecast Collapse
+
+Trigger 50% of Omen on all enemies instantly.
+
+Passive
+
+Pattern Recognition
+
+All allies deal +10% damage to enemies with Omen.
+
+Constellations
+
+C1
+Start battle with 5 Omen on all enemies.
+
+C2
++12% ATK.
+
+C3
+Skill applies +1 extra Omen.
+
+C4
++10 SPD.
+
+C5
+Omen-trigger damage increased by 15%.
+
+C6
+First Omen trigger each battle is doubled.
+
+---
+
+# Circuit Relay Die
+
+RARE
+
+Electric
+
+Energy Support
+
+C6
+
+"Power is useless if it doesn't move."
+
+HP
+780
+
+ATK
+110
+
+DEF
+70
+
+SPD
+108
+
+Basic
+
+Spark Link
+
+Deal Electric damage.
+
+Grant 5 Energy to lowest-energy ally.
+
+Skill
+
+Overcharge Transfer
+
+Distribute Energy equally across all allies.
+
+If an ally is above 80% Energy, grant them bonus turn meter.
+
+Ultimate
+
+Full Relay
+
+All allies immediately gain 25 Energy.
+
+Passive
+
+Flow State
+
+Whenever an ally uses a Skill, gain 2 Energy for random ally.
+
+Constellations
+
+C1
+Start battle with +10 Energy on all allies.
+
+C2
++10 SPD.
+
+C3
+Skill gives +5 extra Energy.
+
+C4
++12% DEF.
+
+C5
+Ultimate cooldown reduced by 1 turn.
+
+C6
+Energy overflow converts into shield (small).
+
+---
+
+# Fragment Scribe Die
+
+RARE
+
+Arcane
+
+Combo Extension
+
+C6
+
+"Every action leaves a shadow behind."
+
+HP
+840
+
+ATK
+122
+
+DEF
+68
+
+SPD
+99
+
+Basic
+
+Echo Mark
+
+Deal Arcane damage.
+
+Store 1 Echo Stack.
+
+Skill
+
+Rewrite Echo
+
+Consume Echo Stacks.
+
+Repeat last ally skill at 40% power per stack.
+
+Ultimate
+
+Perfect Record
+
+All ally skills used in last turn are repeated at 50% power.
+
+Passive
+
+Memory Drift
+
+Each Echo Stack increases team damage by 3%.
+
+Constellations
+
+C1
+Start battle with 2 Echo Stacks.
+
+C2
++15% ATK.
+
+C3
+Echo repeat power increased to 50%.
+
+C4
++10 SPD.
+
+C5
+Ultimate repeats 1 extra skill.
+
+C6
+Echoes can now crit.
+
+---
+
+# Bastion Guard Die
+
+RARE
+
+Earth
+
+Universal Sustain
+
+C6
+
+"You don't fall while I still stand."
+
+HP
+1050
+
+ATK
+92
+
+DEF
+140
+
+SPD
+88
+
+Basic
+
+Shield Strike
+
+Deal Earth damage.
+
+Grant small shield to ally with lowest HP.
+
+Skill
+
+Fortify Line
+
+Grant team-wide shield based on Bastion’s DEF.
+
+Reduce incoming damage for 2 turns.
+
+Ultimate
+
+Last Wall
+
+Massive shield to all allies.
+
+Cleanse 1 debuff per ally.
+
+Passive
+
+Steadfast
+
+When ally drops below 30% HP, grant them a shield once per battle.
+
+Constellations
+
+C1
+Start battle with shield on all allies.
+
+C2
++20% DEF.
+
+C3
+Skill shield increased by 20%.
+
+C4
++10 SPD.
+
+C5
+Ultimate duration +1 turn.
+
+C6
+Shields also grant +10% damage reduction.
+
+---
+
+# Rift Tracker Die
+
+RARE
+
+Void
+
+Break Support
+
+C6
+
+"Find the weak point. Then widen it."
+
+HP
+810
+
+ATK
+125
+
+DEF
+66
+
+SPD
+104
+
+Basic
+
+Expose
+
+Deal Void damage.
+
+Increase Break gauge by small amount.
+
+Skill
+
+Fracture Point
+
+Increase Break damage taken by enemies for 2 turns.
+
+Ultimate
+
+Structural Collapse
+
+Instantly reduce all enemies’ Break resistance.
+
+Passive
+
+Weak Point Analysis
+
+Broken enemies take +12% extra damage from all sources.
+
+Constellations
+
+C1
+Start battle with enemies at 20% Break.
+
+C2
++12% ATK.
+
+C3
+Skill duration +1 turn.
+
+C4
++10 SPD.
+
+C5
+Ultimate increases Break vulnerability more.
+
+C6
+Broken enemies cannot recover Break resistance for 1 turn.

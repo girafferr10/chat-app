@@ -1,0 +1,383 @@
+# Sync Warden Die
+
+RARE
+
+Arcane
+
+Team Synchronization
+
+C6
+
+"If one falls out of rhythm, the whole song breaks."
+
+HP
+860
+
+ATK
+114
+
+DEF
+78
+
+SPD
+104
+
+Basic
+
+Rhythm Strike
+
+Deal Arcane damage.
+
+Slightly advance ally turn meter.
+
+Skill
+
+Team Sync
+
+All allies gain equal Energy distribution adjustment (brings lowest allies closer to highest).
+
+Ultimate
+
+Perfect Sync
+
+For 2 turns:
+
+• Turn order becomes more stable (reduced RNG variance if applicable)
+
+• Allies gain +10% damage if acting in sequence
+
+Passive
+
+Harmonic Flow
+
+Whenever allies act in consecutive turns, gain team-wide Energy.
+
+Constellations
+
+C1
+Start battle with +5 Energy on all allies.
+
+C2
++10 SPD.
+
+C3
+Skill also grants small shield to lowest HP ally.
+
+C4
++12% DEF.
+
+C5
+Ultimate lasts +1 turn.
+
+C6
+Consecutive ally actions also increase crit rate.
+
+---
+
+# Rift Cleaner Die
+
+RARE
+
+Void
+
+Debuff Removal Support
+
+C6
+
+"Chaos only wins when you let it stay."
+
+HP
+900
+
+ATK
+110
+
+DEF
+80
+
+SPD
+100
+
+Basic
+
+Void Sweep
+
+Deal Void damage.
+
+Remove 1 debuff from ally.
+
+Skill
+
+Cleanse Field
+
+Remove all minor debuffs from team.
+
+Gain damage reduction for 1 turn.
+
+Ultimate
+
+Reset State
+
+Fully cleanse team.
+
+Convert 1 debuff per ally into Energy.
+
+Passive
+
+Purity Loop
+
+Whenever an ally is cleansed, they gain small damage boost.
+
+Constellations
+
+C1
+Start battle with partial debuff immunity.
+
+C2
++15% DEF.
+
+C3
+Skill also heals small amount.
+
+C4
++10 SPD.
+
+C5
+Ultimate cooldown reduced by 1 turn.
+
+C6
+Cleanse also grants temporary shield.
+
+---
+
+# Overclock Broker Die
+
+RARE
+
+Electric
+
+Risk/Reward Energy Engine
+
+C6
+
+"Power is never free. It is just prepaid."
+
+HP
+780
+
+ATK
+125
+
+DEF
+65
+
+SPD
+110
+
+Basic
+
+Charge Deal
+
+Deal Electric damage.
+
+Gain bonus Energy, but self takes small recoil damage.
+
+Skill
+
+Overclock
+
+Massively increase Energy gain for team for 2 turns.
+
+All allies take minor continuous recoil.
+
+Ultimate
+
+Critical Overload
+
+All allies instantly gain full Energy.
+
+For 1 turn:
+• Damage increased significantly
+• Afterwards, allies become slightly weakened
+
+Passive
+
+Debt System
+
+Whenever Energy is gained quickly, gain “Debt Stack.”
+
+Debt reduces incoming healing slightly until cleared.
+
+Constellations
+
+C1
+Start battle with 10 Energy on all allies.
+
+C2
++10 SPD.
+
+C3
+Skill increases Energy gain further.
+
+C4
++12% ATK.
+
+C5
+Ultimate also grants small shield.
+
+C6
+Debt no longer reduces healing.
+
+---
+
+# Fate Anchor Die
+
+RARE
+
+Arcane
+
+Stability Control
+
+C6
+
+"The future bends, but it does not break."
+
+HP
+920
+
+ATK
+112
+
+DEF
+85
+
+SPD
+96
+
+Basic
+
+Anchor Strike
+
+Deal Arcane damage.
+
+Reduce enemy turn meter slightly.
+
+Skill
+
+Stabilize Fate
+
+Reduce randomness in next enemy action (less variance / crit suppression / reduced burst spikes).
+
+Ultimate
+
+Locked Timeline
+
+For 2 turns:
+
+• Turn order cannot be disrupted
+
+• No bonus turns can occur
+
+• Damage becomes more consistent (reduced variance effects)
+
+Passive
+
+Stability Field
+
+Allies take reduced damage from critical hits.
+
+Constellations
+
+C1
+Start battle with stability buff for team.
+
+C2
++15% DEF.
+
+C3
+Skill also grants Energy.
+
+C4
++10 SPD.
+
+C5
+Ultimate duration +1 turn.
+
+C6
+Enemies cannot gain extra actions during ultimate.
+
+---
+
+# Resonance Thief Die
+
+RARE
+
+Arcane
+
+Resource Steal Support
+
+C6
+
+"Everything you gain… can be taken back."
+
+HP
+800
+
+ATK
+122
+
+DEF
+68
+
+SPD
+108
+
+Basic
+
+Drift Tap
+
+Deal Arcane damage.
+
+Steal small Energy from enemy.
+
+Skill
+
+Resonance Theft
+
+Steal Energy / buffs from enemy and distribute to allies.
+
+If no buffs exist, increase ally damage instead.
+
+Ultimate
+
+Full Extraction
+
+Remove all buffs from enemies.
+
+Convert each buff into Energy for allies.
+
+Passive
+
+Leech Frequency
+
+Whenever enemy gains buff, Resonance Thief gains partial benefit.
+
+Constellations
+
+C1
+Start battle stealing small Energy from all enemies.
+
+C2
++12% ATK.
+
+C3
+Skill steals more Energy.
+
+C4
++10 SPD.
+
+C5
+Ultimate also reduces enemy Energy gain.
+
+C6
+Stolen buffs also increase ally damage temporarily.

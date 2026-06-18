@@ -1,0 +1,445 @@
+# Glass Tap Die
+
+COMMON
+
+Void
+
+Fracture Starter
+
+C6
+
+"One crack is all it takes."
+
+HP
+520
+
+ATK
+88
+
+DEF
+55
+
+SPD
+104
+
+Basic
+
+Glass Strike
+
+Deal Void damage.
+
+Apply 1 Fracture.
+
+Skill
+
+Weak Point Mark
+
+Apply 3 Fracture to one enemy.
+
+Ultimate
+
+Micro Collapse
+
+Trigger 5 Fracture threshold effect immediately.
+
+Passive
+
+Crack Sense
+
+Fractured enemies take slightly increased damage.
+
+Constellations
+
+C1
+Start battle with 2 Fracture on all enemies.
+
+C2
++8% ATK.
+
+C3
+Skill applies +1 Fracture.
+
+C4
++5 SPD.
+
+C5
+Fracture thresholds trigger slightly stronger effects.
+
+C6
+First Fracture applied each battle is doubled.
+
+---
+
+# Shatter Spark Die
+
+COMMON
+
+Electric
+
+Fracture Accelerator
+
+C6
+
+"Stress builds faster than strength."
+
+HP
+510
+
+ATK
+90
+
+DEF
+54
+
+SPD
+106
+
+Basic
+
+Pulse Crack
+
+Deal Electric damage.
+
+Apply 1 Fracture.
+
+Skill
+
+Overload Stress
+
+Apply 2 Fracture to all enemies.
+
+Ultimate
+
+Static Break
+
+Increase Fracture gain for 1 turn.
+
+Passive
+
+Voltage Pressure
+
+Enemies gain extra Fracture when hit by allies.
+
+Constellations
+
+C1
+Start battle with +1 Fracture on enemies.
+
+C2
++10 SPD.
+
+C3
+Skill applies +1 Fracture.
+
+C4
++8% ATK.
+
+C5
+Fracture gain increased slightly.
+
+C6
+Fracture applied by this unit cannot be reduced once per battle.
+
+---
+
+# Fault Line Die
+
+COMMON
+
+Earth
+
+Fracture Builder
+
+C6
+
+"The ground always remembers pressure."
+
+HP
+600
+
+ATK
+82
+
+DEF
+74
+
+SPD
+95
+
+Basic
+
+Heavy Chip
+
+Deal Earth damage.
+
+Apply 1 Fracture.
+
+Skill
+
+Structural Weakening
+
+Apply 4 Fracture to one target.
+
+Ultimate
+
+Seismic Crack
+
+Spread Fracture from one enemy to others.
+
+Passive
+
+Pressure Memory
+
+Broken enemies gain Fracture faster.
+
+Constellations
+
+C1
+Start battle with Fracture applied.
+
+C2
++10% DEF.
+
+C3
+Skill applies +1 Fracture.
+
+C4
++5 SPD.
+
+C5
+Fracture spread range increased.
+
+C6
+First spread each battle doubles Fracture transferred.
+
+---
+
+# 🟡 RARES (FRACTURE SET)
+
+---
+
+# Structural Analyst Die
+
+RARE
+
+Arcane
+
+Fracture Amplifier
+
+C6
+
+"You don’t break things. You learn where they already are broken."
+
+HP
+820
+
+ATK
+118
+
+DEF
+70
+
+SPD
+102
+
+Basic
+
+Scan Weakness
+
+Deal Arcane damage.
+
+Apply 2 Fracture.
+
+Skill
+
+Pressure Mapping
+
+Enemies take +25% Fracture gain for 2 turns.
+
+Ultimate
+
+Critical Collapse
+
+Trigger all Exposed enemies (5+ Fracture) immediately.
+
+Passive
+
+Weak Point Study
+
+Fractured enemies take increased Break damage.
+
+Constellations
+
+C1
+Start battle with 3 Fracture on all enemies.
+
+C2
++12% ATK.
+
+C3
+Skill increases Fracture gain further.
+
+C4
++10 SPD.
+
+C5
+Ultimate deals bonus damage per Fracture.
+
+C6
+Exposed enemies also lose Energy.
+
+---
+
+# Rift Engineer Die
+
+RARE
+
+Void
+
+System Breaker
+
+C6
+
+"If the system holds, increase pressure."
+
+HP
+800
+
+ATK
+124
+
+DEF
+68
+
+SPD
+106
+
+Basic
+
+Pressure Shot
+
+Deal Void damage.
+
+Apply 2 Fracture.
+
+Skill
+
+System Strain
+
+Increase Fracture gain by allies.
+
+Ultimate
+
+Overload Collapse
+
+Immediately push all enemies to Exposed state if near threshold.
+
+Passive
+
+Structural Instability
+
+Enemies with Fracture take increased damage from all sources.
+
+Constellations
+
+C1
+Start battle with Fracture already applied.
+
+C2
++10 SPD.
+
+C3
+Skill increases Fracture gain further.
+
+C4
++12% ATK.
+
+C5
+Ultimate reduces enemy resistance.
+
+C6
+Exposed enemies take bonus Break damage.
+
+---
+
+# 🟣 MYTHIC (FRACTURE ENGINE)
+
+---
+
+# Singularity Fracture Die
+
+MYTHIC
+
+Void
+
+Fracture Engine
+
+C6
+
+"Everything breaks. I just decide when."
+
+HP
+1340
+
+ATK
+160
+
+DEF
+88
+
+SPD
+101
+
+Basic
+
+Reality Chip
+
+Deal Void damage.
+
+Apply 2 Fracture.
+
+Skill
+
+Cascade Break
+
+Increase all enemy Fracture by +4.
+
+If any enemy is Exposed, instantly apply Break vulnerability.
+
+Ultimate
+
+Total Structural Failure
+
+For 3 turns:
+
+• All enemies gain Fracture every turn automatically
+
+• Exposed enemies immediately take bonus damage when hit
+
+• Break effects are doubled on Shattered targets
+
+Passive
+
+Collapse Prediction
+
+Whenever an enemy reaches Exposed, allies gain Energy.
+
+Constellations
+
+C1
+Start battle with 5 Fracture on all enemies.
+
+C2
++15% ATK.
+
+C3
+Skill applies +1 extra Fracture.
+
+C4
++10 SPD.
+
+C5
+Ultimate lasts +1 turn.
+
+C6
+Shattered enemies cannot resist Break effects at all.
