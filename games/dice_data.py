@@ -190,6 +190,69 @@ BUNDLES = [
 ]
 BUNDLES_BY_ID = {b["id"]: b for b in BUNDLES}
 
+# ─── v7.0 Relic / Gear system ─────────────────────────────────────────────────
+# Relics are equippable gear bought with Crystals. One relic per die; each
+# owned copy can only be equipped on one die at a time. Stats are applied
+# client-side at unit build (hp_pct/atk_pct/def_pct/spd_pct/spd_flat/
+# start_energy/start_shield/heal_recv). Ownership + equips persist in
+# campaign.relics = {"owned": {relic_id: count}, "equipped": {die_id: relic_id}}.
+RELICS = [
+    # Tier 1 — Worn (300 Crystals)
+    {"id": "iron_totem",    "name": "Iron Totem",         "tier": "WORN",     "cost": 300,
+     "icon": "\u265F", "stat": {"hp_pct": 0.08},
+     "desc": "+8% HP. A humble charm carved from meteoric iron."},
+    {"id": "whetstone",     "name": "Ancient Whetstone",  "tier": "WORN",     "cost": 300,
+     "icon": "\u2694", "stat": {"atk_pct": 0.06},
+     "desc": "+6% ATK. Every edge it touches remembers being sharp."},
+    {"id": "swift_charm",   "name": "Swift Charm",        "tier": "WORN",     "cost": 300,
+     "icon": "\u21AF", "stat": {"spd_flat": 4},
+     "desc": "+4 SPD. It hums when the wearer starts running."},
+    {"id": "guard_sigil",   "name": "Guard Sigil",        "tier": "WORN",     "cost": 300,
+     "icon": "\u26E8", "stat": {"def_pct": 0.08},
+     "desc": "+8% DEF. Pressed into shields before every siege."},
+    # Tier 2 — Honed (900 Crystals)
+    {"id": "vital_core",    "name": "Vital Core",         "tier": "HONED",    "cost": 900,
+     "icon": "\u2764", "stat": {"hp_pct": 0.15},
+     "desc": "+15% HP. A crystallized heartbeat that never tires."},
+    {"id": "war_banner",    "name": "War Banner",         "tier": "HONED",    "cost": 900,
+     "icon": "\u2691", "stat": {"atk_pct": 0.10},
+     "desc": "+10% ATK. Armies rally to it; dice do too."},
+    {"id": "gale_boots",    "name": "Gale Boots",         "tier": "HONED",    "cost": 900,
+     "icon": "\u2708", "stat": {"spd_pct": 0.08},
+     "desc": "+8% SPD. Stitched from a storm that refused to end."},
+    {"id": "aegis_plate",   "name": "Aegis Plate",        "tier": "HONED",    "cost": 900,
+     "icon": "\u26CA", "stat": {"def_pct": 0.12, "start_shield": 0.05},
+     "desc": "+12% DEF, start with a 5% shield. Dented, never pierced."},
+    # Tier 3 — Exalted (2,200 Crystals)
+    {"id": "titan_heart",   "name": "Titan Heart",        "tier": "EXALTED",  "cost": 2200,
+     "icon": "\u26F0", "stat": {"hp_pct": 0.22, "def_pct": 0.06},
+     "desc": "+22% HP, +6% DEF. Still beating. Try not to think about it."},
+    {"id": "executioner",   "name": "Executioner's Brand","tier": "EXALTED",  "cost": 2200,
+     "icon": "\u2020", "stat": {"atk_pct": 0.16},
+     "desc": "+16% ATK. The verdict is always the same."},
+    {"id": "stormstride",   "name": "Stormstride",        "tier": "EXALTED",  "cost": 2200,
+     "icon": "\u26A1", "stat": {"spd_pct": 0.12, "start_energy": 15},
+     "desc": "+12% SPD, start with 15 energy. Arrives before the thunder."},
+    {"id": "sanctum_ward",  "name": "Sanctum Ward",       "tier": "EXALTED",  "cost": 2200,
+     "icon": "\u269C", "stat": {"start_shield": 0.15, "heal_recv": 0.10},
+     "desc": "Start with a 15% shield, +10% healing received. Holy ground, portable."},
+    # Tier 4 — Transcendent (4,500 Crystals)
+    {"id": "world_engine",  "name": "World Engine",       "tier": "TRANSCENDENT", "cost": 4500,
+     "icon": "\u2699", "stat": {"atk_pct": 0.15, "hp_pct": 0.15},
+     "desc": "+15% ATK, +15% HP. A fragment of the machine that turns the sky."},
+    {"id": "chrono_locket", "name": "Chrono Locket",      "tier": "TRANSCENDENT", "cost": 4500,
+     "icon": "\u23F3", "stat": {"start_energy": 30, "spd_flat": 6},
+     "desc": "Start with 30 energy, +6 SPD. It ticks backwards on purpose."},
+    {"id": "eternity_shell","name": "Eternity Shell",     "tier": "TRANSCENDENT", "cost": 4500,
+     "icon": "\u26E9", "stat": {"def_pct": 0.20, "start_shield": 0.20, "heal_recv": 0.10},
+     "desc": "+20% DEF, 20% start shield, +10% healing received. Outlives its wearers."},
+    {"id": "apex_idol",     "name": "Apex Idol",          "tier": "TRANSCENDENT", "cost": 4500,
+     "icon": "\u265B", "stat": {"atk_pct": 0.20, "spd_pct": 0.05},
+     "desc": "+20% ATK, +5% SPD. Worshipped by everything that hunts."},
+]
+RELICS_BY_ID = {r["id"]: r for r in RELICS}
+RELIC_TIER_COLORS = {"WORN": "#9aa3b8", "HONED": "#a77bff", "EXALTED": "#ff9d5c", "TRANSCENDENT": "#ffce5a"}
+
 # ─── v4.0 Endless arena milestone rewards (one-time, by best wave reached) ────
 # Claimable once each, in ascending order, only up to the player's best wave.
 ENDLESS_MILESTONES = [
@@ -256,7 +319,7 @@ ACHIEVEMENTS = [
 ACHIEVEMENTS_BY_ID = {a["id"]: a for a in ACHIEVEMENTS}
 
 # ─── v4.0 Battle pacing / speed options (client UX only) ──────────────────────
-SPEED_OPTIONS = [0.75, 1.0, 1.5]
+SPEED_OPTIONS = [0.75, 1.0, 1.5, 2.0]
 
 # ─── v4.0 Team presets ───────────────────────────────────────────────────────
 TEAM_PRESET_SLOTS = 3
@@ -10002,26 +10065,55 @@ BANNERS = {
         "type": "beginner", "cost": BEGINNER_PULL_COST,
         "featured": [],
     },
+    # ── v7 themed sub-banners — each keeps its OWN 50/50 pity ──────────────
     "eternal_convergence": {
         "id": "eternal_convergence", "name": "Eternal Convergence",
         "subtitle": "Featured: Prime Tempest. The rarest die in creation descends \u2014 all outcomes converge on one.",
-        "type": "limited", "cost": PULL_COST,
+        "type": "limited", "sub": True, "theme": "Eternal", "cost": PULL_COST,
         "featured_eternal": "prime_tempest",
         "featured_rares": ["eternal_reckoner", "lunar_payout", "sovereign_fortune"],
     },
-    "legends_rising": {
-        "id": "legends_rising", "name": "Legends Rising",
-        "subtitle": "Featured: Ivory Warden. New legends take the table, one strong hand at a time.",
-        "type": "limited", "cost": PULL_COST,
-        "featured_mythic": "ivory_warden",
-        "featured_rares": ["emerald_reaver", "voidforged_ante", "pale_roulette"],
+    "dawn_procession": {
+        "id": "dawn_procession", "name": "Dawn Procession",
+        "subtitle": "Featured: Dawnbreaker Apex. The last sunrise marches to war \u2014 stand in its light.",
+        "type": "limited", "sub": True, "theme": "Eternal", "cost": PULL_COST,
+        "featured_eternal": "dawnbreaker_apex",
+        "featured_rares": ["candle_page", "beacon_cadet", "drift_lantern"],
     },
-    "shadow_court": {
-        "id": "shadow_court", "name": "Shadow Court",
-        "subtitle": "Featured: Gleaming Eclipse. The court of umbral dealers convenes \u2014 place your bet in the dark.",
-        "type": "limited", "cost": PULL_COST,
-        "featured_mythic": "gleaming_eclipse",
-        "featured_rares": ["gilded_cipher", "ruby_whale", "fractal_zenith"],
+    "solar_dominion": {
+        "id": "solar_dominion", "name": "Solar Dominion",
+        "subtitle": "Featured: Solar Tyrant. A star that refused to set demands your ante.",
+        "type": "limited", "sub": True, "theme": "Combo", "cost": PULL_COST,
+        "featured_mythic": "solar_tyrant",
+        "featured_rares": ["matchstick", "ember_squire", "glass_arbiter"],
+    },
+    "winter_court": {
+        "id": "winter_court", "name": "The Winter Court",
+        "subtitle": "Featured: Glacier Empress. Her palace is other people's stopped hearts.",
+        "type": "limited", "sub": True, "theme": "Control", "cost": PULL_COST,
+        "featured_mythic": "glacier_empress",
+        "featured_rares": ["sleet_pixie", "brine_oracle", "tick_tocker"],
+    },
+    "grave_requiem": {
+        "id": "grave_requiem", "name": "Grave Requiem",
+        "subtitle": "Featured: Gravemind Die. Six feet under, six faces up \u2014 the dead count cards.",
+        "type": "limited", "sub": True, "theme": "Omen", "cost": PULL_COST,
+        "featured_mythic": "gravemind_die",
+        "featured_rares": ["black_cat", "moon_moth", "vial_tosser"],
+    },
+    "hall_of_mirrors": {
+        "id": "hall_of_mirrors", "name": "Hall of Mirrors",
+        "subtitle": "Featured: Mirror Monarch. Every reflection is a rematch.",
+        "type": "limited", "sub": True, "theme": "Echo", "cost": PULL_COST,
+        "featured_mythic": "mirror_monarch",
+        "featured_rares": ["rune_clerk", "static_jester", "sundial_monk"],
+    },
+    "iron_stampede": {
+        "id": "iron_stampede", "name": "Iron Stampede",
+        "subtitle": "Featured: Iron Colossus. Built to break banks. Renovated to break bones.",
+        "type": "limited", "sub": True, "theme": "Break", "cost": PULL_COST,
+        "featured_mythic": "iron_colossus",
+        "featured_rares": ["grit_miner", "anvil_clerk", "scrap_pugilist"],
     },
 }
 
@@ -10640,6 +10732,10 @@ ABYSS_FLOORS = [
 
 ABYSS_FLOOR_IDS = ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10", "a11", "a12"]
 
+# ─── v7 Expansion: +90 dice (210 -> 300) ────────────────────────────────────
+from games.dice_data_v7 import V7_DICE
+DICE_CATALOG += V7_DICE
+
 # ─── Lookups ─────────────────────────────────────────────────────────────────
 DICE_BY_ID = {d["id"]: d for d in DICE_CATALOG}
 IDS_BY_RARITY = {
@@ -10669,6 +10765,8 @@ def public_catalog():
             "CRYSTAL_RATE": CRYSTAL_RATE, "GEM_RATE": GEM_RATE,
             "STARTER_GEMS": STARTER_GEMS,
             "BUNDLES": BUNDLES,
+            "RELICS": RELICS,
+            "RELIC_TIER_COLORS": RELIC_TIER_COLORS,
             "ENDLESS_MILESTONES": ENDLESS_MILESTONES,
             "ENDLESS_SCALE": ENDLESS_SCALE,
             "ASCENSION_MAX_LEVEL": ASCENSION_MAX_LEVEL,
