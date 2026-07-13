@@ -251,8 +251,25 @@ def get_css():
 .dg-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
 .dg-rates-note{margin-top:14px;font-size:12px;color:var(--text-tertiary);line-height:1.6;text-align:center;}
 
+/* ---- v7 relic / gear ---- */
+.dg-relic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:10px;}
+.dg-relic-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid;border-radius:12px;background:var(--bg-secondary);}
+.dg-relic-card .rl-ic{font-size:30px;line-height:1;flex:0 0 auto;text-shadow:0 0 14px currentColor;}
+.dg-relic-card .rl-bd{flex:1;min-width:0;}
+.dg-relic-card .rl-nm{font-weight:700;font-size:13px;}
+.dg-relic-card .rl-own{font-size:11px;color:var(--text-muted);font-weight:600;}
+.dg-relic-card .rl-st{font-size:11px;font-weight:600;margin-top:2px;}
+.dg-relic-card .rl-ds{font-size:11px;color:var(--text-tertiary);margin-top:3px;line-height:1.45;}
+.dg-gear{border:1px solid var(--border-color,#2a2a3a);border-radius:12px;padding:12px 14px;background:var(--bg-secondary);}
+.gear-opts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+.gear-opt{background:transparent;border:1px solid;border-radius:9px;padding:6px 11px;font-size:12px;font-weight:600;cursor:pointer;transition:transform .12s;}
+.gear-opt:hover{transform:translateY(-1px);}
+.gear-opt.on{background:rgba(255,206,90,.08);box-shadow:0 0 10px rgba(255,206,90,.15);}
+.gear-opt.out{opacity:.4;}
+.gear-cur{font-size:12px;color:var(--text-secondary);display:flex;align-items:center;flex-wrap:wrap;gap:4px;}
+
 /* ---- pull animation overlay ---- */
-.dg-pull-overlay{position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;
+.dg-pull-overlay{position:fixed;inset:0;z-index:4000;display:flex;flex-direction:column;
   align-items:center;justify-content:center;background:radial-gradient(circle at 50% 45%,rgba(123,97,255,.18),rgba(4,4,10,.92));}
 .dg-pull-overlay.r-RARE{background:radial-gradient(circle at 50% 45%,rgba(167,123,255,.3),rgba(4,4,10,.93));}
 .dg-pull-overlay.r-LEGENDARY{background:radial-gradient(circle at 50% 45%,rgba(255,157,92,.3),rgba(4,4,10,.94));}
@@ -607,6 +624,14 @@ def get_css():
 .tut-sec .tut-ic{font-size:26px;width:34px;text-align:center;flex-shrink:0;}
 .tut-sec .tut-t{font-size:15px;font-weight:900;margin-bottom:4px;}
 .tut-sec .tut-d{font-size:12.5px;color:var(--text-secondary);line-height:1.6;}
+.dg-gloss-search{width:100%;box-sizing:border-box;background:var(--bg-secondary);border:1px solid rgba(255,255,255,.12);
+  border-radius:9px;color:var(--text-primary);padding:8px 12px;font-size:12.5px;margin-bottom:8px;outline:none;}
+.dg-gloss-search:focus{border-color:var(--accent,#7b61ff);}
+.dg-gloss{max-height:300px;overflow-y:auto;border:1px solid rgba(255,255,255,.08);border-radius:10px;}
+.dg-gloss .gl-row{display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px;line-height:1.5;}
+.dg-gloss .gl-row:last-child{border-bottom:none;}
+.dg-gloss .gl-row b{flex:0 0 96px;color:var(--accent,#a77bff);}
+.dg-gloss .gl-row span{color:var(--text-secondary);}
 @media(max-width:620px){.dg-wallet .dg-cur.balance{display:none;}}
 """
 
@@ -673,7 +698,8 @@ function initDiceRpg(container){
   var minis=[];
   for(var i=0;i<42;i++){ var s=document.createElement('div'); s.className='dg-die-mini';
     s.textContent=DIE_FACES[(Math.random()*6)|0]; wall.appendChild(s); minis.push(s); }
-  var flick=setInterval(function(){ for(var j=0;j<minis.length;j++){ if(Math.random()<0.5)
+  var flick=setInterval(function(){ if(document.hidden) return;
+    for(var j=0;j<minis.length;j++){ if(Math.random()<0.5)
     minis[j].textContent=DIE_FACES[(Math.random()*6)|0]; } }, 90);
   G.timers.push(flick);
   G.timers.push(setTimeout(function(){
@@ -736,6 +762,9 @@ function initDiceRpg(container){
       } else applyMut(d, d.ok?('Ascended to A'+d.level+'!'):null);
     } else if(d.type==='dg_achievement_result'){
       applyMut(d, d.ok&&!d.already?('Reward claimed!'):null); if(d.already) toast('Already claimed.');
+    } else if(d.type==='dg_relic_result'){
+      var rm = d.ok ? (d.kind==='buy' ? 'Relic purchased!' : (d.relic_id?'Relic equipped.':'Relic removed.')) : null;
+      applyMut(d, rm);
     } else if(d.type==='dg_presets_result'){
       if(d.ok){ if(d.state) G.state=d.state; toast('Presets saved.'); }
       else toast((d&&d.error)||'Save failed.');
@@ -796,7 +825,7 @@ function initDiceRpg(container){
   /* ---------- sound ---------- */
   var _actx=null;
   function sfx(kind){
-    if(G.muted) return;
+    if(G.muted || document.hidden) return;
     try{ _actx=_actx||new (window.AudioContext||window.webkitAudioContext)();
       var seq={ok:[660],hit:[180],crit:[520,780],ult:[440,660,880],win:[523,659,784,1046],lose:[330,247,165]}[kind]||[440];
       var t=_actx.currentTime;
@@ -939,6 +968,30 @@ function initDiceRpg(container){
                            : '<div class="asc-max">\u2605 Fully Ascended</div>')
              : '<div class="asc-max" style="color:var(--text-muted)">Summon this die to ascend it.</div>')+
       '</div>';
+    // v7 relic / gear block
+    var curRelic=relicFor(die.id);
+    var relicHtml='<div class="dg-section-title" style="margin-top:18px">Gear <span style="font-weight:600;color:var(--text-muted);font-size:11px">\u2014 one relic per die, bought in the Shop</span></div>'+
+      '<div class="dg-gear">';
+    if(owned){
+      var ownedRelics=(G.K.RELICS||[]).filter(function(r){ return (relicsState().owned[r.id]||0)>0; });
+      if(!ownedRelics.length){
+        relicHtml+='<div class="asc-max" style="color:var(--text-muted)">No relics owned yet \u2014 buy them in the Shop\u2019s Relics tab.</div>';
+      } else {
+        relicHtml+='<div class="gear-opts">';
+        ownedRelics.forEach(function(r){
+          var on=curRelic&&curRelic.id===r.id;
+          var free=relicFreeCount(r.id)+(on?1:0);
+          var tc=relicTierColor(r.tier);
+          relicHtml+='<button class="gear-opt'+(on?' on':'')+(free<=0&&!on?' out':'')+'" data-relic="'+r.id+'" data-tip="'+String(relicStatText(r)+' \u2014 '+r.desc).replace(/"/g,'&quot;')+'" data-tip-h="'+r.name+'" style="border-color:'+tc+(on?'':'44')+';color:'+tc+'">'+r.icon+' '+r.name+(on?' \u2713':'')+'</button>';
+        });
+        relicHtml+='</div>';
+        relicHtml+=curRelic?('<div class="gear-cur">Equipped: <b style="color:'+relicTierColor(curRelic.tier)+'">'+curRelic.icon+' '+curRelic.name+'</b> \u2014 '+relicStatText(curRelic)+' <button class="dg-btn gear-unequip" style="margin-left:8px;padding:4px 10px;font-size:11px">Unequip</button></div>')
+                           :'<div class="gear-cur" style="color:var(--text-muted)">Nothing equipped.</div>';
+      }
+    } else {
+      relicHtml+='<div class="asc-max" style="color:var(--text-muted)">Summon this die to equip gear.</div>';
+    }
+    relicHtml+='</div>';
     var sheet=document.createElement('div'); sheet.className='dg-sheet';
     sheet.innerHTML=
       '<div class="dg-sheet-hd">'+
@@ -956,6 +1009,7 @@ function initDiceRpg(container){
         ability('Basic',die.basic,'#9aa3b8')+ability('Skill',die.skill,'#a77bff')+
         ability('Ultimate',die.ult,'#ffce5a')+ability('Passive',die.passive,'#5ad6ff')+
         ascHtml+
+        relicHtml+
         '<div class="dg-section-title" style="margin-top:18px">Constellations <span style="font-weight:600;color:var(--text-muted);font-size:11px">\u2014 utility effects, not extra damage</span></div>'+
         '<div class="dg-cons-list">'+consHtml+'</div>'+
       '</div>';
@@ -965,13 +1019,25 @@ function initDiceRpg(container){
     if(ab){ if(shards<nextCost){ ab.disabled=true; ab.title='Need '+nextCost+' Universal Shards'; }
       ab.onclick=function(){ if(shards<nextCost){ toast('Not enough Universal Shards.'); return; }
         dgSend({type:'dg_ascend', die_id:die.id}); modal.remove(); }; }
+    sheet.querySelectorAll('.gear-opt').forEach(function(btn){
+      btn.onclick=function(){
+        var rid=btn.getAttribute('data-relic');
+        var cur=relicFor(die.id);
+        if(cur&&cur.id===rid){ dgSend({type:'dg_equip_relic', die_id:die.id, relic_id:null}); modal.remove(); return; }
+        if(relicFreeCount(rid)<=0){ toast('All copies of this relic are already equipped.'); return; }
+        dgSend({type:'dg_equip_relic', die_id:die.id, relic_id:rid}); modal.remove();
+      };
+    });
+    var unq=sheet.querySelector('.gear-unequip');
+    if(unq){ unq.onclick=function(){ dgSend({type:'dg_equip_relic', die_id:die.id, relic_id:null}); modal.remove(); }; }
   }
 
   /* ---------- summon ---------- */
   function bannerKicker(bid){ if(bid==='limited') return 'Limited Banner'; if(bid==='beginner') return 'Beginner Banner';
     if(bid==='standard') return 'Standard Banner';
-    var b=G.banners[bid]; if(b&&b.featured_eternal) return 'Eternal Banner';
-    return (b&&b.featured_mythic)?'Featured Banner':'Event Banner'; }
+    var b=G.banners[bid]; var th=(b&&b.sub&&b.theme)?(b.theme+' \u2022 '):'';
+    if(b&&b.featured_eternal) return th+'Eternal Banner';
+    return (b&&b.featured_mythic)?(th+'Featured Banner'):'Event Banner'; }
   function featChip(die,big){
     if(!die) return '';
     return '<div class="feat-chip'+(big?' big':'')+'" style="border-color:'+rarColor(die.rarity)+'66">'+
@@ -1009,7 +1075,8 @@ function initDiceRpg(container){
   }
   function renderSummon(){
     var g=G.state.gacha||{};
-    var order=['eternal_convergence','limited','legends_rising','shadow_court','cosmic','endless_winter','house_of_fortune','standard'];
+    var order=['limited','eternal_convergence','dawn_procession','solar_dominion','winter_court','grave_requiem','hall_of_mirrors','iron_stampede','cosmic','endless_winter','house_of_fortune','standard'];
+    Object.keys(G.banners).forEach(function(bid){ if(order.indexOf(bid)<0 && bid!=='beginner') order.push(bid); });
     var avail=order.filter(function(bid){ return G.banners[bid]; });
     if(!g.beginner_done && G.banners['beginner']) avail.unshift('beginner');
     if(avail.indexOf(G.banner)<0) G.banner=avail[0];
@@ -1077,7 +1144,7 @@ function initDiceRpg(container){
     var ov=document.createElement('div'); ov.className='dg-pull-overlay';
     ov.innerHTML='<div class="dg-pull-suspense"><div class="dg-roller">\u2684</div>'+
       '<div class="dg-sus-txt">Rolling the dice\u2026</div></div>';
-    root.appendChild(ov); G.pullOverlay=ov; G.pullStart=Date.now();
+    document.body.appendChild(ov); G.pullOverlay=ov; G.pullStart=Date.now();
     var roller=ov.querySelector('.dg-roller');
     G.rollTimer=setInterval(function(){ roller.textContent=DIE_FACES[(Math.random()*6)|0]; },110);
     G.timers.push(G.rollTimer);
@@ -1595,13 +1662,46 @@ function initDiceRpg(container){
   /* ================= SHOP (convert + bundles) ================= */
   function renderShop(){
     var tabs=document.createElement('div'); tabs.className='dg-hub-tabs';
-    [['wallet','Convert'],['bundles','Bundles']].forEach(function(p){
+    [['wallet','Convert'],['bundles','Bundles'],['relics','Relics']].forEach(function(p){
       var b=document.createElement('button'); b.className='dg-banner-tab'+((G.shopTab||'wallet')===p[0]?' active':'');
       b.textContent=p[1]; b.onclick=function(){ G.shopTab=p[0]; bodyEl.innerHTML=''; renderShop(); };
       tabs.appendChild(b);
     });
     bodyEl.appendChild(tabs);
-    if((G.shopTab||'wallet')==='wallet') renderWallet(); else renderBundles();
+    var stb=G.shopTab||'wallet';
+    if(stb==='wallet') renderWallet(); else if(stb==='relics') renderRelics(); else renderBundles();
+  }
+  function renderRelics(){
+    var w=wallet(), st=relicsState();
+    var hd=document.createElement('div'); hd.className='dg-rates-note'; hd.style.textAlign='left';
+    hd.innerHTML='<b>Relics</b> are gear for your dice \u2014 bought with <b>Crystals</b>, equipped one per die from a die\u2019s detail page. Each copy can only be worn by one die at a time.';
+    bodyEl.appendChild(hd);
+    var tiers=[['WORN','Worn'],['HONED','Honed'],['EXALTED','Exalted'],['TRANSCENDENT','Transcendent']];
+    tiers.forEach(function(tp){
+      var list=(G.K.RELICS||[]).filter(function(r){ return r.tier===tp[0]; });
+      if(!list.length) return;
+      var tc=relicTierColor(tp[0]);
+      var t=document.createElement('div'); t.className='dg-section-title'; t.style.marginTop='16px';
+      t.innerHTML=tp[1]+' <span style="font-weight:600;font-size:11px;color:'+tc+'">\u25C8 '+fmt(list[0].cost)+' Crystals</span>';
+      bodyEl.appendChild(t);
+      var grid=document.createElement('div'); grid.className='dg-relic-grid';
+      list.forEach(function(r){
+        var own=st.owned[r.id]||0, free=relicFreeCount(r.id);
+        var c=document.createElement('div'); c.className='dg-relic-card'; c.style.borderColor=tc+'55';
+        c.innerHTML='<div class="rl-ic" style="color:'+tc+'">'+r.icon+'</div>'+
+          '<div class="rl-bd"><div class="rl-nm">'+r.name+(own>0?' <span class="rl-own">x'+own+(own>free?' ('+free+' free)':'')+'</span>':'')+'</div>'+
+          '<div class="rl-st" style="color:'+tc+'">'+relicStatText(r)+'</div>'+
+          '<div class="rl-ds">'+r.desc+'</div></div>';
+        var buy=document.createElement('button'); buy.className='dg-btn'+(tp[0]==='TRANSCENDENT'?' gold':'');
+        buy.textContent='\u25C8 '+fmt(r.cost);
+        buy.setAttribute('data-testid','button-buy-relic-'+r.id);
+        if((w.crystals||0)<r.cost){ buy.disabled=true; buy.title='Not enough Crystals'; }
+        buy.onclick=function(){ dgSend({type:'dg_buy_relic', relic_id:r.id}); };
+        c.appendChild(buy);
+        grid.appendChild(c);
+      });
+      bodyEl.appendChild(grid);
+    });
   }
   function convertCard(title, sub, dir, maxAmt, rate, fromGlyph, toGlyph){
     var card=document.createElement('div'); card.className='dg-convert';
@@ -1725,13 +1825,26 @@ function initDiceRpg(container){
       ['\u2694','Battle','Build a team of up to 4, then fight the Campaign or the Endless Arena. Combat is turn-based on a speed timeline. Each turn pick <b>Attack</b> (builds Energy), <b>Skill</b> (cooldown) or <b>Ultimate</b> (spends Energy). Exploit element advantages and Break enemy toughness.'],
       ['\u2728','Constellations','Constellations grant <b>utility effects</b> \u2014 starting Energy, more HP, shorter skill cooldowns, shields, even a one-time revive \u2014 never raw damage. View them on any die\u2019s detail page.'],
       ['\u269C','Ascension','Spend Universal Shards to ascend a die for flat HP/ATK/DEF growth. This is your steady power sink, separate from Constellations.'],
+      ['\uD83D\uDC8E','Relics & Gear','Buy <b>Relics</b> with Crystals in the Shop\u2019s Relics tab, then equip one per die from its detail page. Four tiers \u2014 Worn, Honed, Exalted, Transcendent \u2014 each copy can only be worn by one die at a time.'],
       ['\uD83C\uDFC6','Goals & Milestones','Claim one-time rewards from the Goals tab and from Endless Arena wave milestones (10/25/50/100). Save team Presets and follow Recommended Comps in the Team tab.']
     ];
     var body=secs.map(function(s){ return '<div class="tut-sec"><div class="tut-ic">'+s[0]+'</div><div><div class="tut-t">'+s[1]+'</div><div class="tut-d">'+s[2]+'</div></div></div>'; }).join('');
+    // v7: gimmick glossary built from STATUS_INFO, with live search
+    var si=G.K.STATUS_INFO||{}, keys=Object.keys(si).sort();
+    var gloss='<div class="tut-sec" style="display:block"><div class="tut-t" style="margin-bottom:6px">\uD83E\uDDFF Gimmick Guide</div>'+
+      '<div class="tut-d" style="margin-bottom:8px">Every mythic mechanic and status explained. Hover the same names in battle for the same info.</div>'+
+      '<input class="dg-gloss-search" type="text" placeholder="Search gimmicks\u2026 (e.g. Omen, Freeze, Jackpot)" data-testid="input-gimmick-search"/>'+
+      '<div class="dg-gloss">'+keys.map(function(k){
+        return '<div class="gl-row" data-k="'+k.toLowerCase()+' '+String(si[k]).toLowerCase().replace(/"/g,'')+'"><b>'+k+'</b><span>'+si[k]+'</span></div>';
+      }).join('')+'</div></div>';
     var sheet=document.createElement('div'); sheet.className='dg-sheet';
     sheet.innerHTML='<div class="dg-sheet-hd"><button class="dg-x">\u00D7</button><div><h2>How to Play \u2014 Dice RPG</h2>'+
       '<div class="dg-voice">A quick tour of summoning, battle and progression.</div></div></div>'+
-      '<div class="dg-sheet-bd">'+body+'</div>';
+      '<div class="dg-sheet-bd">'+body+gloss+'</div>';
+    var gs=sheet.querySelector('.dg-gloss-search');
+    if(gs){ gs.oninput=function(){ var q=gs.value.trim().toLowerCase();
+      sheet.querySelectorAll('.gl-row').forEach(function(rw){
+        rw.style.display=(!q||rw.getAttribute('data-k').indexOf(q)>=0)?'':'none'; }); }; }
     var foot=document.createElement('div'); foot.style.cssText='padding:14px 18px;text-align:right';
     var ok=document.createElement('button'); ok.className='dg-btn gold'; ok.textContent='Got it';
     ok.onclick=close; foot.appendChild(ok); sheet.appendChild(foot);
@@ -1755,12 +1868,19 @@ function initDiceRpg(container){
     if(dc.def_pct) def*=(1+dc.def_pct);
     if(dc.spd_pct) spd*=(1+dc.spd_pct);
     if(dc.spd_flat) spd+=dc.spd_flat;
+    // v7 relic / gear bonuses
+    var rl=relicFor(id), rs=(rl&&rl.stat)||{};
+    if(rs.hp_pct) hp*=(1+rs.hp_pct);
+    if(rs.atk_pct) atk*=(1+rs.atk_pct);
+    if(rs.def_pct) def*=(1+rs.def_pct);
+    if(rs.spd_pct) spd*=(1+rs.spd_pct);
+    if(rs.spd_flat) spd+=rs.spd_flat;
     var u={ side:'ally', id:id, name:die.name, element:die.element, role:die.role, rarity:die.rarity,
       tags:die.tags||[], engine:die.engine||[], params:die.params||{}, cons:cons, asc:lvl,
       max:Math.round(hp), hp:Math.round(hp), atk:atk, def:def, spd:spd,
-      energy:(cb.start_energy||0), ultCost:(G.K.ULT_COST||{})[die.rarity]||80, skillCd:0,
+      energy:(cb.start_energy||0)+(rs.start_energy||0), ultCost:(G.K.ULT_COST||{})[die.rarity]||80, skillCd:0,
       consSkillCdRed:(cb.skill_cd||0), canRevive:!!cb.revive, reviveVal:(cb.revive||0), revived:false,
-      healRecv:(dc.heal_recv_pct||0),
+      healRecv:(dc.heal_recv_pct||0)+(rs.heal_recv||0), relic:rl?rl.id:null,
       dmgUp:0,dmgUpT:0, critUp:0,critUpT:0, spdUp:0,spdUpT:0, defDown:0,
       shield:0, omen:0, alive:true,
       mirages:0, dodge:0, retri:0, retriHits:0, guardTurns:0, immuneTurns:0,
@@ -1770,8 +1890,26 @@ function initDiceRpg(container){
       basicDesc:(die.basic||{}).desc||'', skillDesc:(die.skill||{}).desc||'', ultDesc:(die.ult||{}).desc||'' };
     if((die.params||{}).shield_pct && (die.tags||[]).indexOf('Universal')>=0 && /Shield/.test(die.role)) u.shield=Math.round(die.params.shield_pct*u.max*0.5);
     if(cb.start_shield) u.shield += Math.round(cb.start_shield*u.max);
+    if(rs.start_shield) u.shield += Math.round(rs.start_shield*u.max);
     return u;
   }
+  /* ---- v7 relic helpers ---- */
+  function relicsState(){ var c=(G.state&&G.state.campaign)||{}; var r=c.relics||{}; return {owned:r.owned||{}, equipped:r.equipped||{}}; }
+  function relicById(rid){ var L=G.K.RELICS||[]; for(var i=0;i<L.length;i++){ if(L[i].id===rid) return L[i]; } return null; }
+  function relicFor(dieId){ var eq=relicsState().equipped[dieId]; return eq?relicById(eq):null; }
+  function relicFreeCount(rid){ var st=relicsState(); var have=st.owned[rid]||0; var used=0;
+    for(var d in st.equipped){ if(st.equipped[d]===rid) used++; } return have-used; }
+  function relicTierColor(t){ return (G.K.RELIC_TIER_COLORS||{})[t]||'#9aa3b8'; }
+  function relicStatText(r){ var s=r.stat||{}, out=[];
+    if(s.hp_pct) out.push('+'+Math.round(s.hp_pct*100)+'% HP');
+    if(s.atk_pct) out.push('+'+Math.round(s.atk_pct*100)+'% ATK');
+    if(s.def_pct) out.push('+'+Math.round(s.def_pct*100)+'% DEF');
+    if(s.spd_pct) out.push('+'+Math.round(s.spd_pct*100)+'% SPD');
+    if(s.spd_flat) out.push('+'+s.spd_flat+' SPD');
+    if(s.start_energy) out.push('+'+s.start_energy+' start energy');
+    if(s.start_shield) out.push(Math.round(s.start_shield*100)+'% start shield');
+    if(s.heal_recv) out.push('+'+Math.round(s.heal_recv*100)+'% healing received');
+    return out.join(' \u2022 '); }
   function consBuffs(cons){
     var o={}; (G.K.CONSTELLATION_BONUS||[]).forEach(function(c){ if(cons>=c.level) o[c.key]=c.val; }); return o;
   }
@@ -1924,7 +2062,7 @@ function initDiceRpg(container){
     n=n*(1+synB('omen_apply')); tgt.omen=Math.min((G.K.OMEN_SOFT_CAP||9999),(tgt.omen||0)+n); }
   function detonateOmen(tgt){
     if(!tgt||!tgt.alive||tgt.omen<=0) return 0;
-    var dmg=Math.round(tgt.omen*22*(tgt.omenMult||1.1)*(1+synB('omen_dmg')));
+    var dmg=Math.round(tgt.omen*22*(tgt.omenMult||1.1)*(1+synB('omen_dmg'))*(1+auraSum('omen_amp')));
     dmg=Math.round(dmg*statusDmgMult(tgt));
     applyDamage(tgt,dmg);
     logMsg('Omen detonates on <b>'+tgt.name+'</b> for '+fmt(dmg)+' ('+Math.round(tgt.omen)+' stacks).','omen');
@@ -1969,18 +2107,22 @@ function initDiceRpg(container){
     var dmg=Math.round(tgt.fracture*pct*40*statusDmgMult(tgt)); applyDamage(tgt,dmg);
     logMsg('Fracture detonates on <b>'+tgt.name+'</b> for '+fmt(dmg)+'.','frac'); }
   function applyChill(tgt,n){ if(!tgt||!tgt.alive) return; tgt.chill=(tgt.chill||0)+n;
-    var at=(tgt._freezeAt||10);
+    var act=G.battle&&G.battle.active, fa=(act&&act.params&&act.params.freeze_at)||10;
+    var at=Math.min(tgt._freezeAt||10, fa);
     if(tgt.chill>=at && tgt.frozen<=0){
       if(tgt.ccImmune){ tgt.chill=0; logMsg('<b>'+tgt.name+'</b> shrugs off the freeze (Unstoppable).','chill'); return; }
       tgt.frozen=ccTurns(2); tgt.chill=0; logMsg('\u2744 <b>'+tgt.name+'</b> is <b>Frozen</b>!','chill'); } }
   function applyGravity(tgt,n){ if(!tgt||!tgt.alive) return; tgt.gravity=Math.min(8,(tgt.gravity||0)+n);
+    var act=G.battle&&G.battle.active, wa=(act&&act.params&&act.params.weighed_at)||5;
+    if(tgt.gravity>=wa) tgt.gravity=Math.max(tgt.gravity,5);
     if(tgt.gravity>=5 && !tgt._weighed){ tgt._weighed=true; logMsg('<b>'+tgt.name+'</b> is <b>Weighed Down</b>.','grav'); } }
   function applyPlague(tgt,n,dmg){ if(!tgt||!tgt.alive) return; tgt.plague=(tgt.plague||0)+n;
     tgt.plagueDmg=Math.max(tgt.plagueDmg||0, dmg||Math.round((G.battle.active&&G.battle.active.atk||100)*0.4)); }
   function applyCollapse(tgt,n){ if(!tgt||!tgt.alive) return; tgt.collapse=(tgt.collapse||0)+n;
     if(tgt.collapse>=5 && !tgt._collapsed){ tgt._collapsed=true; logMsg('<b>'+tgt.name+'</b> suffers <b>Collapse</b> \u2014 buffs sealed.','coll'); } }
   function applyBleed(tgt,n,dmg){ if(!tgt||!tgt.alive) return; tgt.bleed=(tgt.bleed||0)+n;
-    tgt.bleedDmg=Math.max(tgt.bleedDmg||0, dmg||Math.round((G.battle.active&&G.battle.active.atk||100)*0.5)); }
+    var act=G.battle.active, bAmp=(act&&act.params&&act.params.bleed_dmg)||0;
+    tgt.bleedDmg=Math.max(tgt.bleedDmg||0, dmg||Math.round(((act&&act.atk)||100)*(0.5+bAmp))); }
   function addCombo(n){ var B=G.battle; B.combo=Math.min(99,(B.combo||0)+(n||1)); }
   function spendCombo(){ var B=G.battle; var c=B.combo||0; B.combo=0; return c; }
   function healUnit(u,amt){ if(!u||!u.alive) return 0; amt=Math.round(amt*(1+synB('heal')+(u.healRecv||0)));
@@ -2100,6 +2242,7 @@ function initDiceRpg(container){
     if(p.basic_gravity) applyGravity(t,p.basic_gravity);
     if(p.basic_plague) applyPlague(t,p.basic_plague);
     if(p.basic_combo) addCombo(p.basic_combo);
+    if(p.combo_max && (G.battle.combo||0)<p.combo_max) addCombo(1);
     if(p.basic_jackpot){ u.jackpot=(u.jackpot||0)+p.basic_jackpot; checkJackpot(u); }
     if(p.basic_mirage){ u.mirages=Math.min((p.max_threads||3),(u.mirages||0)+p.basic_mirage); logMsg('\u21B3 '+u.name+' weaves '+p.basic_mirage+' mirage(s).','sys'); }
     if(p.basic_energy) addEnergy(u,p.basic_energy);
@@ -2136,6 +2279,7 @@ function initDiceRpg(container){
     if(p.steal_energy){ var st=Math.round((t.energy||0)*0.5)+p.steal_energy; t.energy=Math.max(0,(t.energy||0)-st); addEnergy(u,st); logMsg('\u21B3 steals '+st+' energy.','sys'); }
     if(p.expose_energy && (t.fracture>=5||t.defDown>0)) addEnergy(u,p.expose_energy);
     if(p.skill_hp_cost){ u.hp=Math.max(1,u.hp-Math.round(u.max*p.skill_hp_cost)); }
+    if(p.recoil){ u.hp=Math.max(1,u.hp-Math.round(u.max*p.recoil)); logMsg('\u21B3 '+u.name+' takes recoil.','sys'); }
     if(p.floor_pct){ G.battle.floorTurns=Math.max(G.battle.floorTurns,turns); }
     if(p.team_fortune) G.battle.fortune+=p.team_fortune;
     if(p.crit_up) buffTeam('critUp',p.crit_up,turns);
@@ -2174,7 +2318,7 @@ function initDiceRpg(container){
     else { var rs=computeHit(u,t,dm.SKILL); msg+=' for '+fmt(rs?rs.dmg:0)+'.'; }
     logMsg(msg,'dmg');
     if(tag==='Omen') detonateOmen(t);
-    if(p.echo_repeat_pct && Math.random()<p.echo_repeat_pct){ var re=computeHit(u,curTarget(),dm.SKILL*(p.echo_power||0.5)); if(re) logMsg('\u21B3 echo repeats for '+fmt(re.dmg)+'.','dmg'); }
+    if(p.echo_repeat_pct && Math.random()<p.echo_repeat_pct){ var re=computeHit(u,curTarget(),dm.SKILL*(p.echo_power||p.echo_dmg||0.5)); if(re) logMsg('\u21B3 echo repeats for '+fmt(re.dmg)+'.','dmg'); }
   }
   function useUlt(u){
     preAct(u);
@@ -2182,6 +2326,7 @@ function initDiceRpg(container){
     u.energy=0; sfx('ult');
     logMsg('\u2728 <b>'+u.name+'</b> unleashes '+u.ultName+'!','sys');
     if(p.ult_energy) teamEnergy(p.ult_energy);
+    if(p.recoil){ u.hp=Math.max(1,u.hp-Math.round(u.max*p.recoil*1.5)); logMsg('\u21B3 '+u.name+' takes heavy recoil.','sys'); }
     if(p.ult_team_energy) teamEnergy(p.ult_team_energy);
     if(p.ult_full_energy) aliveAllies().forEach(function(a){ a.energy=a.ultCost; });
     if(p.ult_team_dmg) buffTeam('dmgUp',p.ult_team_dmg,p.ult_turns||3);
@@ -2725,6 +2870,7 @@ function initDiceRpg(container){
   window._gameCleanup=function(){
     G.timers.forEach(function(t){ clearTimeout(t); clearInterval(t); });
     G.timers=[];
+    if(G.pullOverlay){ G.pullOverlay.remove(); G.pullOverlay=null; }
     window._diceMessageHandler=null; window._dgOnPull=null; window._dgOnReward=null; window._dgOnAbyss=null;
     window._gameCleanup=null;
   };
