@@ -110,9 +110,22 @@ OWNER_PASSWORD = secrets.token_urlsafe(10)
 OWNER_TOKEN = secrets.token_hex(16)  # internal session token handed out after owner login
 
 db_pool = None
-CURRENT_VERSION = "3.1"
+CURRENT_VERSION = "3.2"
 CHANGELOG_NOTES = (
-    "<b>What's new in v3.1 \u2014 MEGA UPDATE 2</b><br><br>"
+    "<b>What's new in v3.2 \u2014 RIFT &amp; RITUAL</b><br><br>"
+    "&#x2022; <b>Rift of Ruin</b> \u2014 A brand-new roguelike mode: dive depth by depth, pick a blessing after every victory, and claim one-time depth milestone rewards<br>"
+    "&#x2022; <b>Target Banners</b> \u2014 Four new archetype banners (Sealed Fate, Warpath, Bulwark Oath, House Tempo) where YOU pick the rate-up Mythic<br>"
+    "&#x2022; <b>MEGA Jackpot Rally</b> \u2014 New banner where every 10th summon is guaranteed Legendary or better<br>"
+    "&#x2022; <b>Summon Rates Rebalanced</b> \u2014 Mythic and Legendary rates lowered so big pulls feel earned; soft pity now starts at 75<br>"
+    "&#x2022; <b>Relic Sanctum</b> \u2014 Genshin-style relic menu in the Team tab with full lore for all 16 relics, one-click swaps and Auto-Equip<br>"
+    "&#x2022; <b>Relic Tutorial</b> \u2014 New guided intro to Relics &amp; Gear from the Shop's Relics tab<br>"
+    "&#x2022; <b>Campaign Act II</b> \u2014 Six new story stages (7\u201312) with tougher bosses and new-element enemies<br>"
+    "&#x2022; <b>Abyss Deepens</b> \u2014 Eight new Astral Abyss floors (13\u201320) ending at THE HOUSE ETERNAL<br>"
+    "&#x2022; <b>Ascend All in Dex</b> \u2014 Spend your Universal Shards across the whole roster in one click, right from the Dex<br>"
+    "&#x2022; <b>4 New Team Comps</b> \u2014 Solar Rush, Winter Lockdown, Grave Curse and Colossus Wall join the recommended comps<br>"
+    "&#x2022; <b>Better Summon Cinematic</b> \u2014 Fully opaque pull screen, longer suspense and a pity counter on the summon page<br>"
+    "&#x2022; <b>Profile Fixes</b> \u2014 Equipped message effects now show correctly in your profile showcase<br>"
+    "<br><b>Previously in v3.1 \u2014 MEGA UPDATE 2</b><br>"
     "&#x2022; <b>300 Dice</b> \u2014 90 brand-new dice join the Dex (now 300 total) with new mythic gimmicks across every element<br>"
     "&#x2022; <b>Relics &amp; Gear</b> \u2014 Buy Relics with Crystals in the Shop's new Relics tab and equip one per die for stat bonuses; four tiers from Worn to Transcendent<br>"
     "&#x2022; <b>Banner Rework</b> \u2014 Refreshed event banners with new featured mythics and their own 50/50 guarantees<br>"
@@ -981,6 +994,11 @@ def _dice_pick_id(rarity, banner_id, gacha):
     featured_mythic = bdef.get("featured_mythic")
     featured_eternal = bdef.get("featured_eternal")
     featured_rares = bdef.get("featured_rares") or []
+    if bdef.get("type") == "target":
+        # v3.2 target banners: the user-chosen mythic is the rate-up.
+        tgt = (gacha.get("targets") or {}).get(banner_id)
+        if tgt and tgt in dice_data.target_banner_pool(banner_id):
+            featured_mythic = tgt
     if rarity == "ETERNAL":
         pool = dice_data.IDS_BY_RARITY.get("ETERNAL") or dice_data.IDS_BY_RARITY["MYTHIC"]
         if featured_eternal:
@@ -1040,6 +1058,12 @@ def _dice_do_pulls(banner_id, count, dg):
                 gacha["beginner_done"] = True
         else:
             rarity = _dice_roll_rarity_pity(gacha)
+            if banner_id == "mega":
+                # MEGA banner: every 10th mega summon is Legendary or better.
+                mp = gacha.get("mega_pulls", 0) + 1
+                gacha["mega_pulls"] = mp
+                if mp % 10 == 0 and rarity in ("COMMON", "RARE"):
+                    rarity = "LEGENDARY"
             if rarity in ("MYTHIC", "ETERNAL"):
                 gacha["pity_mythic"] = 0
             else:
@@ -1172,6 +1196,9 @@ async def dice_pull_txn(username, ws, banner, count, total_cost):
         gacha = dg["gacha"]
         if banner == "beginner" and gacha.get("beginner_done"):
             return None, {"ok": False, "error": "The Beginner banner is closed."}
+        binfo = dice_data.BANNERS.get(banner) or {}
+        if binfo.get("type") == "target" and not (gacha.get("targets") or {}).get(banner):
+            return None, {"ok": False, "error": "Choose a target die for this banner first."}
         gems = int(gacha.get("gems", 0))
         if gems < total_cost:
             return None, {"ok": False, "error": "Not enough Gems."}
@@ -1452,6 +1479,67 @@ async def dice_save_presets_txn(username, ws, presets):
     def _do(bal, dg):
         dg["campaign"]["presets"] = clean
         return None, {"ok": True, "presets": clean}
+    return await _dg_mutate(username, ws, _do)
+
+
+async def dice_set_target_txn(username, ws, banner_id, die_id):
+    """v3.2 — pick the rate-up mythic for a target banner. Server validates
+    the banner is a target banner and the die is in its archetype pool."""
+    bdef = dice_data.BANNERS.get(banner_id) or {}
+    if bdef.get("type") != "target":
+        return {"ok": False, "error": "Not a target banner.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    if die_id not in dice_data.target_banner_pool(banner_id):
+        return {"ok": False, "error": "That die isn't in this banner's pool.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    def _do(bal, dg):
+        gacha = dg["gacha"]
+        targets = gacha.setdefault("targets", {})
+        targets[banner_id] = die_id
+        return None, {"ok": True, "banner": banner_id, "die_id": die_id, "targets": targets}
+    return await _dg_mutate(username, ws, _do)
+
+
+async def dice_set_rift_best_txn(username, ws, depth):
+    """v3.2 — store best Rift depth (monotonic, untrusted progress marker)."""
+    try:
+        depth = int(depth)
+    except (TypeError, ValueError):
+        depth = 0
+    if depth < 1 or depth > 9999:
+        return {"ok": False, "balance": connected.get(ws, {}).get("balance", 0)}
+    def _do(bal, dg):
+        rift = dg["campaign"].setdefault("rift", {"best": 0, "claimed": []})
+        if depth > int(rift.get("best", 0)):
+            rift["best"] = depth
+        return None, {"ok": True, "best": rift["best"]}
+    return await _dg_mutate(username, ws, _do)
+
+
+async def dice_claim_rift_txn(username, ws, depth):
+    """v3.2 — one-time Rift depth milestone reward. Idempotent per depth and
+    monotonic (best recorded depth must already reach the milestone)."""
+    try:
+        depth = int(depth)
+    except (TypeError, ValueError):
+        depth = -1
+    m = dice_data.RIFT_MILESTONES_BY_DEPTH.get(depth)
+    if not m:
+        return {"ok": False, "error": "Unknown milestone.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    def _do(bal, dg):
+        rift = dg["campaign"].setdefault("rift", {"best": 0, "claimed": []})
+        claimed = rift.setdefault("claimed", [])
+        if depth in claimed:
+            return None, {"ok": True, "already": True, "depth": depth}
+        if int(rift.get("best", 0)) < depth:
+            return None, {"ok": False, "error": "Reach this depth first."}
+        claimed.append(depth)
+        gacha = dg["gacha"]
+        gacha["gems"] = int(gacha.get("gems", 0)) + int(m.get("gems", 0))
+        gacha["universal_shards"] = int(gacha.get("universal_shards", 0)) + int(m.get("shards", 0))
+        return None, {"ok": True, "depth": depth,
+                      "reward": {"gems": m.get("gems", 0), "shards": m.get("shards", 0)}}
     return await _dg_mutate(username, ws, _do)
 
 
@@ -5522,7 +5610,7 @@ document.getElementById('profileBtn').addEventListener('click', function() {
   showProfileModal();
 });
 
-var _PROFILE_CAT_ICON = {nameplate:'\U0001F3F7\uFE0F', ring:'\u2B55', font:'\U0001F524', effect:'\u2728', title:'\U0001F396\uFE0F', bubble:'\U0001F4AC', msgfx:'\U0001F308', theme:'\U0001F3A8'};
+var _PROFILE_CAT_ICON = {nameplate:'\U0001F3F7\uFE0F', ring:'\u2B55', font:'\U0001F524', effect:'\u2728', title:'\U0001F396\uFE0F', bubble:'\U0001F4AC', message:'\U0001F308', theme:'\U0001F3A8'};
 function showProfileModal() {
   var modal = document.getElementById('profileModal');
   modal.style.display = 'flex';
@@ -5567,7 +5655,7 @@ function showProfileModal() {
   var row = document.getElementById('profileEquippedRow');
   row.innerHTML = '';
   var chips = [];
-  ['title','nameplate','ring','font','effect','bubble','msgfx','theme'].forEach(function(cat){
+  ['title','nameplate','ring','font','effect','bubble','message','theme'].forEach(function(cat){
     var id = eq[cat];
     if (!id) return;
     var item = (window.SHOP_BY_ID && window.SHOP_BY_ID[id]) || null;
@@ -11584,6 +11672,33 @@ async def handle_client_ws(request):
                         print(f"[dice_presets] error: {_e}")
                         await ws.send_str(json.dumps({"type": "dg_presets_result", "ok": False, "error": "Save failed."})); continue
                     await ws.send_str(json.dumps({"type": "dg_presets_result", **result}))
+
+                elif data.get("type") == "dg_set_target":
+                    if ws not in connected: continue
+                    try:
+                        result = await dice_set_target_txn(username, ws, data.get("banner", ""), data.get("die_id", ""))
+                    except Exception as _e:
+                        print(f"[dice_target] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_target_result", "ok": False, "error": "Save failed."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_target_result", **result}))
+
+                elif data.get("type") == "dg_set_rift_best":
+                    if ws not in connected: continue
+                    try:
+                        result = await dice_set_rift_best_txn(username, ws, data.get("depth", 0))
+                    except Exception as _e:
+                        print(f"[dice_rift_best] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_rift_best_result", "ok": False})); continue
+                    await ws.send_str(json.dumps({"type": "dg_rift_best_result", **result}))
+
+                elif data.get("type") == "dg_claim_rift":
+                    if ws not in connected: continue
+                    try:
+                        result = await dice_claim_rift_txn(username, ws, data.get("depth", 0))
+                    except Exception as _e:
+                        print(f"[dice_rift] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_rift_result", "ok": False, "error": "Claim failed."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_rift_result", **result}))
 
                 elif data.get("type") == "shop_buy":
                     if ws not in connected: continue
