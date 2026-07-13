@@ -79,6 +79,9 @@ Preferred communication style: Simple, everyday language.
 - `users` - Online user list broadcast
 - `system` - System messages (join/leave)
 - `banned_list` - Banned user list (owner only)
+- `edit_message` - Author edits their own #General message (server verifies via `msg_authors`); server broadcasts `edit`
+- `pin_message` / `unpin_message` - Staff pin/unpin a #General message by `msg_id` (content resolved server-side); server broadcasts `pins_update`
+- `daily_reward` - Server grants a once-per-day (Mountain Time) login bonus with streak on join (`amount`, `streak`, `balance`)
 - `kick` - Owner/Admin kicks a user
 - `ban` / `unban` - Owner bans/unbans a user
 - `bj_action` - Multiplayer blackjack actions (create/join/hit/stand/leave/start)
@@ -216,6 +219,18 @@ Preferred communication style: Simple, everyday language.
 - **Typing indicator**: Shows "X is typing..." in chat when others type (debounced 2s)
 - **User status**: Online/Idle/DND/Invisible status with colored dot on avatar
 - **Notification sounds**: Beep sound for new messages and DMs (Web Audio API)
+
+### QoL Features (chat)
+- **Pinned messages**: Staff right-click → Pin; collapsible 📌 bar above #General (max 20, in-memory); server resolves pinned content by `msg_id` from `msg_authors` — client text is never trusted
+- **Daily login rewards**: `daily_rewards` table (username PK, last_claim DATE, streak); granted once per Mountain-Time day on join under a `FOR UPDATE` lock; $100 + min(streak,7)×$50, toast + confetti at 3+ streak, balance chip updates live
+- **Edit own messages**: right-click → Edit (own #General messages while server remembers the id, ~600 recent); modal editor, broadcasts to everyone with an "(edited)" tag; edits sync into pinned copies
+- **Starred messages**: right-click → Star saves a local bookmark (localStorage, cap 100); ⭐ header button opens the starred list with per-item remove
+
+### Dice RPG v6 additions (T7)
+- **Battle layout**: unit cards flow in a row (flex-wrap, 150–260px), enemies rendered above allies
+- **Smart auto-battle**: `autoAct` scores ult/skill/basic per target (damage estimate, element advantage, Omen detonation, focus fire, don't-waste-ult)
+- **AI team builder**: "AI Build" button — `buildBestTeam` compares raw-power and engine-synergy candidate teams via `teamValue` (synergy min counts, element/role diversity)
+- **Ascend All**: one click spends Universal Shards across the roster (rarity-priority round-robin using `ASCENSION_STEP_COST`), batched `dg_ascend` with a bulk summary toast
 
 ### External Dependencies
 - **aiohttp**: Python async web framework
