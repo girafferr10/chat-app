@@ -24,10 +24,10 @@ ELEMENT_COLORS = {
     "Poison": "#bff04a", "Nature": "#5fd17a", "Wind": "#86e8d0",
     "Time": "#7fb8ff", "Void": "#b15be0", "Earth": "#c8975a",
 }
-RARITIES = ["COMMON", "RARE", "MYTHIC"]
+RARITIES = ["COMMON", "RARE", "LEGENDARY", "MYTHIC", "ETERNAL"]
 
-ULT_COST   = {"COMMON": 60, "RARE": 80, "MYTHIC": 100}
-RARITY_DIE = {"COMMON": 6,  "RARE": 10, "MYTHIC": 20}
+ULT_COST   = {"COMMON": 60, "RARE": 80, "LEGENDARY": 90, "MYTHIC": 100, "ETERNAL": 110}
+RARITY_DIE = {"COMMON": 6,  "RARE": 10, "LEGENDARY": 12, "MYTHIC": 20, "ETERNAL": 24}
 DMG_MULT   = {"BASIC": 0.015, "SKILL": 0.045, "ULT": 0.18}
 CRIT_MULT  = 1.5
 CRIT_BASE  = 0.08  # ~8% baseline crit
@@ -48,7 +48,7 @@ BATTLE_FIRST_CLEAR_REWARD = 150  # paid in Gems (v4.0)
 # Must stay in sync with the CAMPAIGN array in games/dice_rpg.py.
 CAMPAIGN_STAGE_IDS = ["c1", "c2", "c3", "c4", "c5", "c6"]
 
-BASE_RATES = {"MYTHIC": 0.01, "RARE": 0.05, "COMMON": 0.94}
+BASE_RATES = {"COMMON": 0.87, "RARE": 0.09, "LEGENDARY": 0.03, "MYTHIC": 0.009, "ETERNAL": 0.001}
 
 # Mythic soft pity: pull index (1-based count since last mythic) -> rate.
 # 1..69 = 1%, then ramps; hard pity at 89 = 100%.
@@ -57,7 +57,7 @@ MYTHIC_HARD_PITY       = 89
 
 # Duplicate -> constellation (max C6); overflow -> universal shards by rarity.
 MAX_CONSTELLATION       = 6
-UNIVERSAL_SHARD_YIELD   = {"COMMON": 5, "RARE": 20, "MYTHIC": 50}
+UNIVERSAL_SHARD_YIELD   = {"COMMON": 5, "RARE": 20, "LEGENDARY": 35, "MYTHIC": 50, "ETERNAL": 90}
 
 # Universal constellation bonuses (v4.0 redesign — EFFECTS / utility, never raw
 # damage multipliers). Each level grants a battle-start or per-round buff that
@@ -146,6 +146,16 @@ STATUS_INFO = {
     "Summon":      "Allied token units that act in the turn order and copy a share of their owner's stats.",
     "Mutation":    "A stacking permanent buff (ATK/DEF/SPD/Healing) granted by Evolution dice.",
     "Echo":        "Stored memory of ally actions that can be repeated at reduced power.",
+    "Resonance":   "A stacking charge. Once enough stacks are built, the die's next action is empowered and the stacks are spent.",
+    "Overload":    "A self-inflicted ATK surge with recoil: the die hits far harder but pays a share of the boost in HP.",
+    "Lifesteal":   "The die heals for a fraction of the damage it deals.",
+    "Reflect":     "A portion of incoming damage is bounced straight back at the attacker.",
+    "Execute":     "Attacks against low-HP foes below a threshold deal massive bonus damage.",
+    "Ramp":        "The die's ATK grows a little every round, snowballing the longer the fight lasts.",
+    "ShieldBreak": "Bonus damage dealt to shielded targets, tearing through buffers fast.",
+    "TwinStrike":  "The basic attack lands twice in one action.",
+    "Aura":        "A passive team-wide buff to ATK and/or DEF that persists while the die is alive.",
+    "Decay":       "Reduces the healing enemies receive, capping their recovery.",
 }
 
 HISTORY_MAX = 200
@@ -207,9 +217,11 @@ ENDLESS_SCALE = {
 ASCENSION_MAX_LEVEL = 6
 # Cumulative cost reference is per-step; index i = cost to go from level i to i+1.
 ASCENSION_STEP_COST = {
-    "COMMON": [30, 50, 80, 120, 180, 260],
-    "RARE":   [60, 100, 160, 240, 360, 520],
-    "MYTHIC": [120, 200, 320, 480, 720, 1040],
+    "COMMON":    [30, 50, 80, 120, 180, 260],
+    "RARE":      [60, 100, 160, 240, 360, 520],
+    "LEGENDARY": [90, 150, 240, 360, 540, 780],
+    "MYTHIC":    [120, 200, 320, 480, 720, 1040],
+    "ETERNAL":   [200, 340, 540, 820, 1240, 1800],
 }
 ASCENSION_STAT_PER_LEVEL = 0.06  # +6% hp/atk/def per ascension level
 
@@ -1595,6 +1607,8379 @@ DICE_CATALOG = [
             {"level": 6, "desc": "First attack each battle has increased crit chance."},
         ],
     },
+    {
+            "id": "wild_rake",
+            "name": "Wild Rake",
+            "rarity": "COMMON",
+            "element": "Fire",
+            "role": "Energy Starter",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 984,
+                    "atk": 112,
+                    "def": 88,
+                    "spd": 106
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little energy."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds energy."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles energy support each turn."
+            },
+            "lore": "Some dice remember every hand they ever lost. This one keeps the receipts.",
+            "voice": "\u201cAnte up. The table's mine.\u201d",
+            "params": {
+                    "basic_energy": 4,
+                    "skill_energy": 10,
+                    "passive_energy": 3
+            }
+    },
+    {
+            "id": "lunar_streak",
+            "name": "Lunar Streak",
+            "rarity": "COMMON",
+            "element": "Ice",
+            "role": "Break Starter",
+            "tags": [
+                    "Fracture"
+            ],
+            "engine": [
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1180,
+                    "atk": 98,
+                    "def": 72,
+                    "spd": 99
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little break."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds break."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles break support each turn."
+            },
+            "lore": "It was carved from a debt no one could pay and rolled ever since.",
+            "voice": "\u201cI don't gamble. I collect.\u201d",
+            "params": {
+                    "basic_fracture": 2,
+                    "skill_break": 1,
+                    "break_gain": 0.2
+            }
+    },
+    {
+            "id": "vivid_gambit",
+            "name": "Vivid Gambit",
+            "rarity": "COMMON",
+            "element": "Electric",
+            "role": "Omen Starter",
+            "tags": [
+                    "Break"
+            ],
+            "engine": [
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1068,
+                    "atk": 121,
+                    "def": 100,
+                    "spd": 92
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little omen."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds omen."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles omen support each turn."
+            },
+            "lore": "Fortune is a wheel; this die is the axle it turns on.",
+            "voice": "\u201cRoll again. I dare you.\u201d",
+            "params": {
+                    "basic_omen": 2,
+                    "skill_omen": 6
+            }
+    },
+    {
+            "id": "tidal_comet",
+            "name": "Tidal Comet",
+            "rarity": "COMMON",
+            "element": "Physical",
+            "role": "Chill Starter",
+            "tags": [
+                    "Energy"
+            ],
+            "engine": [
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 956,
+                    "atk": 108,
+                    "def": 84,
+                    "spd": 104
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little chill."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds chill."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles chill support each turn."
+            },
+            "lore": "They say it fell from a table in a room that no longer exists.",
+            "voice": "\u201cThe count never lies.\u201d",
+            "params": {
+                    "basic_chill": 1,
+                    "skill_chill_all": 4
+            }
+    },
+    {
+            "id": "jade_reel",
+            "name": "Jade Reel",
+            "rarity": "COMMON",
+            "element": "Arcane",
+            "role": "Shield Starter",
+            "tags": [
+                    "Combo"
+            ],
+            "engine": [
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1152,
+                    "atk": 95,
+                    "def": 68,
+                    "spd": 97
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little shield."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds shield."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles shield support each turn."
+            },
+            "lore": "Every pip is a promise, and every promise is a threat.",
+            "voice": "\u201cEvens or odds, you still lose.\u201d",
+            "params": {
+                    "skill_shield": 0.2,
+                    "shield_pct": 0.18
+            }
+    },
+    {
+            "id": "sable_stake",
+            "name": "Sable Stake",
+            "rarity": "COMMON",
+            "element": "Light",
+            "role": "Combo Starter",
+            "tags": [
+                    "Sustain"
+            ],
+            "engine": [
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1040,
+                    "atk": 118,
+                    "def": 96,
+                    "spd": 90
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little combo."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds combo."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles combo support each turn."
+            },
+            "lore": "Cut from cold starlight, it counts outcomes before they happen.",
+            "voice": "\u201cWatch the wheel. Watch it break.\u201d",
+            "params": {
+                    "basic_combo": 1,
+                    "skill_combo": 2,
+                    "combo_max": 6
+            }
+    },
+    {
+            "id": "frostbound_fold",
+            "name": "Frostbound Fold",
+            "rarity": "COMMON",
+            "element": "Dark",
+            "role": "Fortune Starter",
+            "tags": [
+                    "Fortune"
+            ],
+            "engine": [
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 928,
+                    "atk": 105,
+                    "def": 80,
+                    "spd": 103
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little fortune."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds fortune."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles fortune support each turn."
+            },
+            "lore": "The house forgot it in a drawer. It has been dealing itself in ever since.",
+            "voice": "\u201cEvery face is the winning face.\u201d",
+            "params": {
+                    "give_energy": 8,
+                    "team_dmg": 0.1
+            }
+    },
+    {
+            "id": "sovereign_hazard",
+            "name": "Sovereign Hazard",
+            "rarity": "COMMON",
+            "element": "Blood",
+            "role": "Fracture Starter",
+            "tags": [
+                    "Summon"
+            ],
+            "engine": [
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1124,
+                    "atk": 128,
+                    "def": 64,
+                    "spd": 95
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little fracture."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds fracture."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles fracture support each turn."
+            },
+            "lore": "Where it lands, probability kneels.",
+            "voice": "\u201cLuck? No. Arithmetic.\u201d",
+            "params": {
+                    "basic_fracture": 3,
+                    "skill_fracture": 4
+            }
+    },
+    {
+            "id": "grave_comet",
+            "name": "Grave Comet",
+            "rarity": "COMMON",
+            "element": "Poison",
+            "role": "Bleed Starter",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1012,
+                    "atk": 115,
+                    "def": 92,
+                    "spd": 108
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little bleed."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds bleed."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles bleed support each turn."
+            },
+            "lore": "A gambler's last breath, pressed into six unforgiving faces.",
+            "voice": "\u201cDouble or nothing \u2014 it's always nothing.\u201d",
+            "params": {
+                    "basic_bleed": 2,
+                    "bleed_dmg": 0.15
+            }
+    },
+    {
+            "id": "endless_bluff",
+            "name": "Endless Bluff",
+            "rarity": "COMMON",
+            "element": "Nature",
+            "role": "Gravity Starter",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 900,
+                    "atk": 102,
+                    "def": 76,
+                    "spd": 101
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little gravity."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds gravity."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles gravity support each turn."
+            },
+            "lore": "It does not roll so much as decide.",
+            "voice": "\u201cI already know your number.\u201d",
+            "params": {
+                    "basic_gravity": 1,
+                    "spd_up": 0.1
+            }
+    },
+    {
+            "id": "twisted_mark",
+            "name": "Twisted Mark",
+            "rarity": "COMMON",
+            "element": "Wind",
+            "role": "Energy Starter",
+            "tags": [
+                    "Fracture"
+            ],
+            "engine": [
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1096,
+                    "atk": 125,
+                    "def": 60,
+                    "spd": 94
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little energy."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds energy."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles energy support each turn."
+            },
+            "lore": "Born in the space between a bet and its regret.",
+            "voice": "\u201cThe pot's called. Pay up.\u201d",
+            "params": {
+                    "basic_energy": 4,
+                    "skill_energy": 10,
+                    "passive_energy": 3
+            }
+    },
+    {
+            "id": "ashen_comet",
+            "name": "Ashen Comet",
+            "rarity": "COMMON",
+            "element": "Time",
+            "role": "Break Starter",
+            "tags": [
+                    "Break"
+            ],
+            "engine": [
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 984,
+                    "atk": 112,
+                    "def": 88,
+                    "spd": 106
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little break."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds break."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles break support each turn."
+            },
+            "lore": "The odds bend around it like light around a stone.",
+            "voice": "\u201cSix ways to fall, one way to win.\u201d",
+            "params": {
+                    "basic_fracture": 2,
+                    "skill_break": 1,
+                    "break_gain": 0.2
+            }
+    },
+    {
+            "id": "burning_roulette",
+            "name": "Burning Roulette",
+            "rarity": "COMMON",
+            "element": "Void",
+            "role": "Omen Starter",
+            "tags": [
+                    "Energy"
+            ],
+            "engine": [
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1180,
+                    "atk": 98,
+                    "def": 72,
+                    "spd": 99
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little omen."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds omen."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles omen support each turn."
+            },
+            "lore": "It has never lost. It simply has not finished playing.",
+            "voice": "\u201cBet against me. Please.\u201d",
+            "params": {
+                    "basic_omen": 2,
+                    "skill_omen": 6
+            }
+    },
+    {
+            "id": "withered_ante",
+            "name": "Withered Ante",
+            "rarity": "COMMON",
+            "element": "Earth",
+            "role": "Chill Starter",
+            "tags": [
+                    "Combo"
+            ],
+            "engine": [
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1068,
+                    "atk": 121,
+                    "def": 100,
+                    "spd": 92
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little chill."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds chill."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles chill support each turn."
+            },
+            "lore": "A relic of a game whose rules were rewritten mid-throw.",
+            "voice": "\u201cThe dealer folds first.\u201d",
+            "params": {
+                    "basic_chill": 1,
+                    "skill_chill_all": 4
+            }
+    },
+    {
+            "id": "broken_bettor",
+            "name": "Broken Bettor",
+            "rarity": "COMMON",
+            "element": "Fire",
+            "role": "Shield Starter",
+            "tags": [
+                    "Sustain"
+            ],
+            "engine": [
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 956,
+                    "atk": 108,
+                    "def": 84,
+                    "spd": 104
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little shield."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds shield."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles shield support each turn."
+            },
+            "lore": "Loaded not with lead, but with certainty.",
+            "voice": "\u201cCome closer. Let me read your odds.\u201d",
+            "params": {
+                    "skill_shield": 0.2,
+                    "shield_pct": 0.18
+            }
+    },
+    {
+            "id": "ruby_verdict",
+            "name": "Ruby Verdict",
+            "rarity": "COMMON",
+            "element": "Ice",
+            "role": "Combo Starter",
+            "tags": [
+                    "Fortune"
+            ],
+            "engine": [
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1152,
+                    "atk": 95,
+                    "def": 68,
+                    "spd": 97
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little combo."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds combo."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles combo support each turn."
+            },
+            "lore": "It hums with the sound of every coin that ever hit the felt.",
+            "voice": "\u201cThe wheel remembers your name.\u201d",
+            "params": {
+                    "basic_combo": 1,
+                    "skill_combo": 2,
+                    "combo_max": 6
+            }
+    },
+    {
+            "id": "cursed_tally",
+            "name": "Cursed Tally",
+            "rarity": "COMMON",
+            "element": "Electric",
+            "role": "Fortune Starter",
+            "tags": [
+                    "Summon"
+            ],
+            "engine": [
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1040,
+                    "atk": 118,
+                    "def": 96,
+                    "spd": 90
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little fortune."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds fortune."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles fortune support each turn."
+            },
+            "lore": "The dealer who made it never blinked again.",
+            "voice": "\u201cAll in. There was never another option.\u201d",
+            "params": {
+                    "give_energy": 8,
+                    "team_dmg": 0.1
+            }
+    },
+    {
+            "id": "hollow_tally",
+            "name": "Hollow Tally",
+            "rarity": "COMMON",
+            "element": "Physical",
+            "role": "Fracture Starter",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 928,
+                    "atk": 105,
+                    "def": 80,
+                    "spd": 103
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little fracture."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds fracture."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles fracture support each turn."
+            },
+            "lore": "It keeps a tally no ledger could hold.",
+            "voice": "\u201cMy pips are your obituary.\u201d",
+            "params": {
+                    "basic_fracture": 3,
+                    "skill_fracture": 4
+            }
+    },
+    {
+            "id": "prime_bluff",
+            "name": "Prime Bluff",
+            "rarity": "COMMON",
+            "element": "Arcane",
+            "role": "Bleed Starter",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1124,
+                    "atk": 128,
+                    "def": 64,
+                    "spd": 95
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little bleed."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds bleed."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles bleed support each turn."
+            },
+            "lore": "Rolled once at the end of the world; it liked the result.",
+            "voice": "\u201cThe game ended when I entered it.\u201d",
+            "params": {
+                    "basic_bleed": 2,
+                    "bleed_dmg": 0.15
+            }
+    },
+    {
+            "id": "thunderous_chance",
+            "name": "Thunderous Chance",
+            "rarity": "COMMON",
+            "element": "Light",
+            "role": "Gravity Starter",
+            "tags": [
+                    "Fracture"
+            ],
+            "engine": [
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1012,
+                    "atk": 115,
+                    "def": 92,
+                    "spd": 108
+            },
+            "basic": {
+                    "name": "Toss",
+                    "desc": "Deal damage and build a little gravity."
+            },
+            "skill": {
+                    "name": "Press",
+                    "desc": "A stronger strike that adds gravity."
+            },
+            "ult": {
+                    "name": "Spill",
+                    "desc": "A burst of damage across the foe."
+            },
+            "passive": {
+                    "name": "Habit",
+                    "desc": "Passively trickles gravity support each turn."
+            },
+            "lore": "Fate whittled it down to exactly what it needed to be.",
+            "voice": "\u201cSpin. I enjoy the noise.\u201d",
+            "params": {
+                    "basic_gravity": 1,
+                    "spd_up": 0.1
+            }
+    },
+    {
+            "id": "sanguine_fold",
+            "name": "Sanguine Fold",
+            "rarity": "RARE",
+            "element": "Dark",
+            "role": "Energy Specialist",
+            "tags": [
+                    "Break",
+                    "Energy"
+            ],
+            "engine": [
+                    "Break",
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1050,
+                    "atk": 124,
+                    "def": 88,
+                    "spd": 107
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply energy."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify energy and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored energy."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's energy handling."
+            },
+            "lore": "Some dice remember every hand they ever lost. This one keeps the receipts.",
+            "voice": "\u201cAnte up. The table's mine.\u201d",
+            "params": {
+                    "basic_energy": 4,
+                    "skill_energy": 10,
+                    "passive_energy": 3
+            }
+    },
+    {
+            "id": "feral_marker",
+            "name": "Feral Marker",
+            "rarity": "RARE",
+            "element": "Blood",
+            "role": "Break Specialist",
+            "tags": [
+                    "Combo"
+            ],
+            "engine": [
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1267,
+                    "atk": 156,
+                    "def": 66,
+                    "spd": 96
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply break."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify break and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored break."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's break handling."
+            },
+            "lore": "It was carved from a debt no one could pay and rolled ever since.",
+            "voice": "\u201cI don't gamble. I collect.\u201d",
+            "params": {
+                    "basic_fracture": 2,
+                    "skill_break": 1,
+                    "break_gain": 0.2
+            }
+    },
+    {
+            "id": "fractal_odds",
+            "name": "Fractal Odds",
+            "rarity": "RARE",
+            "element": "Poison",
+            "role": "Omen Specialist",
+            "tags": [
+                    "Sustain"
+            ],
+            "engine": [
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1143,
+                    "atk": 138,
+                    "def": 105,
+                    "spd": 115
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply omen."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify omen and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored omen."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's omen handling."
+            },
+            "lore": "Fortune is a wheel; this die is the axle it turns on.",
+            "voice": "\u201cRoll again. I dare you.\u201d",
+            "params": {
+                    "basic_omen": 2,
+                    "skill_omen": 6
+            }
+    },
+    {
+            "id": "ruby_gambit",
+            "name": "Ruby Gambit",
+            "rarity": "RARE",
+            "element": "Nature",
+            "role": "Chill Specialist",
+            "tags": [
+                    "Fortune",
+                    "Summon"
+            ],
+            "engine": [
+                    "Fortune",
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1360,
+                    "atk": 120,
+                    "def": 83,
+                    "spd": 104
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply chill."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify chill and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored chill."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's chill handling."
+            },
+            "lore": "They say it fell from a table in a room that no longer exists.",
+            "voice": "\u201cThe count never lies.\u201d",
+            "params": {
+                    "basic_chill": 1,
+                    "skill_chill_all": 4
+            }
+    },
+    {
+            "id": "broken_trickster",
+            "name": "Broken Trickster",
+            "rarity": "RARE",
+            "element": "Wind",
+            "role": "Shield Specialist",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1236,
+                    "atk": 151,
+                    "def": 122,
+                    "spd": 93
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply shield."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify shield and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored shield."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's shield handling."
+            },
+            "lore": "Every pip is a promise, and every promise is a threat.",
+            "voice": "\u201cEvens or odds, you still lose.\u201d",
+            "params": {
+                    "skill_shield": 0.2,
+                    "shield_pct": 0.18
+            }
+    },
+    {
+            "id": "umbral_ledger",
+            "name": "Umbral Ledger",
+            "rarity": "RARE",
+            "element": "Time",
+            "role": "Combo Specialist",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1112,
+                    "atk": 133,
+                    "def": 100,
+                    "spd": 112
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply combo."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify combo and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored combo."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's combo handling."
+            },
+            "lore": "Cut from cold starlight, it counts outcomes before they happen.",
+            "voice": "\u201cWatch the wheel. Watch it break.\u201d",
+            "params": {
+                    "basic_combo": 1,
+                    "skill_combo": 2,
+                    "combo_max": 6
+            }
+    },
+    {
+            "id": "sanguine_rounder",
+            "name": "Sanguine Rounder",
+            "rarity": "RARE",
+            "element": "Void",
+            "role": "Fortune Specialist",
+            "tags": [
+                    "Fracture",
+                    "Break"
+            ],
+            "engine": [
+                    "Fracture",
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1329,
+                    "atk": 115,
+                    "def": 77,
+                    "spd": 101
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply fortune."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify fortune and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored fortune."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's fortune handling."
+            },
+            "lore": "The house forgot it in a drawer. It has been dealing itself in ever since.",
+            "voice": "\u201cEvery face is the winning face.\u201d",
+            "params": {
+                    "give_energy": 8,
+                    "team_dmg": 0.1
+            }
+    },
+    {
+            "id": "eternal_shill",
+            "name": "Eternal Shill",
+            "rarity": "RARE",
+            "element": "Earth",
+            "role": "Fracture Specialist",
+            "tags": [
+                    "Energy"
+            ],
+            "engine": [
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1205,
+                    "atk": 146,
+                    "def": 116,
+                    "spd": 90
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply fracture."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify fracture and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored fracture."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's fracture handling."
+            },
+            "lore": "Where it lands, probability kneels.",
+            "voice": "\u201cLuck? No. Arithmetic.\u201d",
+            "params": {
+                    "basic_fracture": 3,
+                    "skill_fracture": 4
+            }
+    },
+    {
+            "id": "sanguine_pot",
+            "name": "Sanguine Pot",
+            "rarity": "RARE",
+            "element": "Fire",
+            "role": "Bleed Specialist",
+            "tags": [
+                    "Combo"
+            ],
+            "engine": [
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1081,
+                    "atk": 128,
+                    "def": 94,
+                    "spd": 110
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply bleed."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify bleed and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored bleed."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's bleed handling."
+            },
+            "lore": "A gambler's last breath, pressed into six unforgiving faces.",
+            "voice": "\u201cDouble or nothing \u2014 it's always nothing.\u201d",
+            "params": {
+                    "basic_bleed": 2,
+                    "bleed_dmg": 0.15
+            }
+    },
+    {
+            "id": "silent_roulette",
+            "name": "Silent Roulette",
+            "rarity": "RARE",
+            "element": "Ice",
+            "role": "Gravity Specialist",
+            "tags": [
+                    "Sustain",
+                    "Fortune"
+            ],
+            "engine": [
+                    "Sustain",
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1298,
+                    "atk": 160,
+                    "def": 72,
+                    "spd": 98
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply gravity."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify gravity and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored gravity."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's gravity handling."
+            },
+            "lore": "It does not roll so much as decide.",
+            "voice": "\u201cI already know your number.\u201d",
+            "params": {
+                    "basic_gravity": 1,
+                    "spd_up": 0.1
+            }
+    },
+    {
+            "id": "static_verdict",
+            "name": "Static Verdict",
+            "rarity": "RARE",
+            "element": "Electric",
+            "role": "Energy Specialist",
+            "tags": [
+                    "Summon"
+            ],
+            "engine": [
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1174,
+                    "atk": 142,
+                    "def": 111,
+                    "spd": 118
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply energy."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify energy and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored energy."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's energy handling."
+            },
+            "lore": "Born in the space between a bet and its regret.",
+            "voice": "\u201cThe pot's called. Pay up.\u201d",
+            "params": {
+                    "basic_energy": 4,
+                    "skill_energy": 10,
+                    "passive_energy": 3
+            }
+    },
+    {
+            "id": "hollow_fold",
+            "name": "Hollow Fold",
+            "rarity": "RARE",
+            "element": "Physical",
+            "role": "Break Specialist",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1050,
+                    "atk": 124,
+                    "def": 88,
+                    "spd": 107
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply break."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify break and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored break."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's break handling."
+            },
+            "lore": "The odds bend around it like light around a stone.",
+            "voice": "\u201cSix ways to fall, one way to win.\u201d",
+            "params": {
+                    "basic_fracture": 2,
+                    "skill_break": 1,
+                    "break_gain": 0.2
+            }
+    },
+    {
+            "id": "wild_cascade",
+            "name": "Wild Cascade",
+            "rarity": "RARE",
+            "element": "Arcane",
+            "role": "Omen Specialist",
+            "tags": [
+                    "Omen",
+                    "Fracture"
+            ],
+            "engine": [
+                    "Omen",
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1267,
+                    "atk": 156,
+                    "def": 66,
+                    "spd": 96
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply omen."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify omen and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored omen."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's omen handling."
+            },
+            "lore": "It has never lost. It simply has not finished playing.",
+            "voice": "\u201cBet against me. Please.\u201d",
+            "params": {
+                    "basic_omen": 2,
+                    "skill_omen": 6
+            }
+    },
+    {
+            "id": "burning_bettor",
+            "name": "Burning Bettor",
+            "rarity": "RARE",
+            "element": "Light",
+            "role": "Chill Specialist",
+            "tags": [
+                    "Break"
+            ],
+            "engine": [
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1143,
+                    "atk": 138,
+                    "def": 105,
+                    "spd": 115
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply chill."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify chill and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored chill."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's chill handling."
+            },
+            "lore": "A relic of a game whose rules were rewritten mid-throw.",
+            "voice": "\u201cThe dealer folds first.\u201d",
+            "params": {
+                    "basic_chill": 1,
+                    "skill_chill_all": 4
+            }
+    },
+    {
+            "id": "endless_reel",
+            "name": "Endless Reel",
+            "rarity": "RARE",
+            "element": "Dark",
+            "role": "Shield Specialist",
+            "tags": [
+                    "Energy"
+            ],
+            "engine": [
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1360,
+                    "atk": 120,
+                    "def": 83,
+                    "spd": 104
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply shield."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify shield and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored shield."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's shield handling."
+            },
+            "lore": "Loaded not with lead, but with certainty.",
+            "voice": "\u201cCome closer. Let me read your odds.\u201d",
+            "params": {
+                    "skill_shield": 0.2,
+                    "shield_pct": 0.18
+            }
+    },
+    {
+            "id": "charged_zenith",
+            "name": "Charged Zenith",
+            "rarity": "RARE",
+            "element": "Blood",
+            "role": "Combo Specialist",
+            "tags": [
+                    "Combo",
+                    "Sustain"
+            ],
+            "engine": [
+                    "Combo",
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1236,
+                    "atk": 151,
+                    "def": 122,
+                    "spd": 93
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply combo."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify combo and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored combo."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's combo handling."
+            },
+            "lore": "It hums with the sound of every coin that ever hit the felt.",
+            "voice": "\u201cThe wheel remembers your name.\u201d",
+            "params": {
+                    "basic_combo": 1,
+                    "skill_combo": 2,
+                    "combo_max": 6
+            }
+    },
+    {
+            "id": "shrouded_aeon",
+            "name": "Shrouded Aeon",
+            "rarity": "RARE",
+            "element": "Poison",
+            "role": "Fortune Specialist",
+            "tags": [
+                    "Fortune"
+            ],
+            "engine": [
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1112,
+                    "atk": 133,
+                    "def": 100,
+                    "spd": 112
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply fortune."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify fortune and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored fortune."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's fortune handling."
+            },
+            "lore": "The dealer who made it never blinked again.",
+            "voice": "\u201cAll in. There was never another option.\u201d",
+            "params": {
+                    "give_energy": 8,
+                    "team_dmg": 0.1
+            }
+    },
+    {
+            "id": "marked_wager",
+            "name": "Marked Wager",
+            "rarity": "RARE",
+            "element": "Nature",
+            "role": "Fracture Specialist",
+            "tags": [
+                    "Summon"
+            ],
+            "engine": [
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1329,
+                    "atk": 115,
+                    "def": 77,
+                    "spd": 101
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply fracture."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify fracture and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored fracture."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's fracture handling."
+            },
+            "lore": "It keeps a tally no ledger could hold.",
+            "voice": "\u201cMy pips are your obituary.\u201d",
+            "params": {
+                    "basic_fracture": 3,
+                    "skill_fracture": 4
+            }
+    },
+    {
+            "id": "ruby_nebula",
+            "name": "Ruby Nebula",
+            "rarity": "RARE",
+            "element": "Wind",
+            "role": "Bleed Specialist",
+            "tags": [
+                    "Control",
+                    "Omen"
+            ],
+            "engine": [
+                    "Control",
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1205,
+                    "atk": 146,
+                    "def": 116,
+                    "spd": 90
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply bleed."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify bleed and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored bleed."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's bleed handling."
+            },
+            "lore": "Rolled once at the end of the world; it liked the result.",
+            "voice": "\u201cThe game ended when I entered it.\u201d",
+            "params": {
+                    "basic_bleed": 2,
+                    "bleed_dmg": 0.15
+            }
+    },
+    {
+            "id": "gilded_zenith",
+            "name": "Gilded Zenith",
+            "rarity": "RARE",
+            "element": "Time",
+            "role": "Gravity Specialist",
+            "tags": [
+                    "Fracture"
+            ],
+            "engine": [
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1081,
+                    "atk": 128,
+                    "def": 94,
+                    "spd": 110
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply gravity."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify gravity and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored gravity."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's gravity handling."
+            },
+            "lore": "Fate whittled it down to exactly what it needed to be.",
+            "voice": "\u201cSpin. I enjoy the noise.\u201d",
+            "params": {
+                    "basic_gravity": 1,
+                    "spd_up": 0.1
+            }
+    },
+    {
+            "id": "verdant_roller",
+            "name": "Verdant Roller",
+            "rarity": "RARE",
+            "element": "Void",
+            "role": "Energy Specialist",
+            "tags": [
+                    "Break"
+            ],
+            "engine": [
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1298,
+                    "atk": 160,
+                    "def": 72,
+                    "spd": 98
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply energy."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify energy and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored energy."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's energy handling."
+            },
+            "lore": "Some dice remember every hand they ever lost. This one keeps the receipts.",
+            "voice": "\u201cAnte up. The table's mine.\u201d",
+            "params": {
+                    "basic_energy": 4,
+                    "skill_energy": 10,
+                    "passive_energy": 3
+            }
+    },
+    {
+            "id": "wild_pot",
+            "name": "Wild Pot",
+            "rarity": "RARE",
+            "element": "Earth",
+            "role": "Break Specialist",
+            "tags": [
+                    "Energy",
+                    "Combo"
+            ],
+            "engine": [
+                    "Energy",
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1174,
+                    "atk": 142,
+                    "def": 111,
+                    "spd": 118
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply break."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify break and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored break."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's break handling."
+            },
+            "lore": "It was carved from a debt no one could pay and rolled ever since.",
+            "voice": "\u201cI don't gamble. I collect.\u201d",
+            "params": {
+                    "basic_fracture": 2,
+                    "skill_break": 1,
+                    "break_gain": 0.2
+            }
+    },
+    {
+            "id": "argent_verdict",
+            "name": "Argent Verdict",
+            "rarity": "RARE",
+            "element": "Fire",
+            "role": "Omen Specialist",
+            "tags": [
+                    "Sustain"
+            ],
+            "engine": [
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1050,
+                    "atk": 124,
+                    "def": 88,
+                    "spd": 107
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply omen."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify omen and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored omen."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's omen handling."
+            },
+            "lore": "Fortune is a wheel; this die is the axle it turns on.",
+            "voice": "\u201cRoll again. I dare you.\u201d",
+            "params": {
+                    "basic_omen": 2,
+                    "skill_omen": 6
+            }
+    },
+    {
+            "id": "burning_sentinel",
+            "name": "Burning Sentinel",
+            "rarity": "RARE",
+            "element": "Ice",
+            "role": "Chill Specialist",
+            "tags": [
+                    "Fortune"
+            ],
+            "engine": [
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1267,
+                    "atk": 156,
+                    "def": 66,
+                    "spd": 96
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply chill."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify chill and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored chill."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's chill handling."
+            },
+            "lore": "They say it fell from a table in a room that no longer exists.",
+            "voice": "\u201cThe count never lies.\u201d",
+            "params": {
+                    "basic_chill": 1,
+                    "skill_chill_all": 4
+            }
+    },
+    {
+            "id": "fated_reel",
+            "name": "Fated Reel",
+            "rarity": "RARE",
+            "element": "Electric",
+            "role": "Shield Specialist",
+            "tags": [
+                    "Summon",
+                    "Control"
+            ],
+            "engine": [
+                    "Summon",
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1143,
+                    "atk": 138,
+                    "def": 105,
+                    "spd": 115
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply shield."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify shield and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored shield."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's shield handling."
+            },
+            "lore": "Every pip is a promise, and every promise is a threat.",
+            "voice": "\u201cEvens or odds, you still lose.\u201d",
+            "params": {
+                    "skill_shield": 0.2,
+                    "shield_pct": 0.18
+            }
+    },
+    {
+            "id": "lunar_roller",
+            "name": "Lunar Roller",
+            "rarity": "RARE",
+            "element": "Physical",
+            "role": "Combo Specialist",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1360,
+                    "atk": 120,
+                    "def": 83,
+                    "spd": 104
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply combo."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify combo and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored combo."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's combo handling."
+            },
+            "lore": "Cut from cold starlight, it counts outcomes before they happen.",
+            "voice": "\u201cWatch the wheel. Watch it break.\u201d",
+            "params": {
+                    "basic_combo": 1,
+                    "skill_combo": 2,
+                    "combo_max": 6
+            }
+    },
+    {
+            "id": "pale_chance",
+            "name": "Pale Chance",
+            "rarity": "RARE",
+            "element": "Arcane",
+            "role": "Fortune Specialist",
+            "tags": [
+                    "Fracture"
+            ],
+            "engine": [
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1236,
+                    "atk": 151,
+                    "def": 122,
+                    "spd": 93
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply fortune."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify fortune and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored fortune."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's fortune handling."
+            },
+            "lore": "The house forgot it in a drawer. It has been dealing itself in ever since.",
+            "voice": "\u201cEvery face is the winning face.\u201d",
+            "params": {
+                    "give_energy": 8,
+                    "team_dmg": 0.1
+            }
+    },
+    {
+            "id": "velvet_quasar",
+            "name": "Velvet Quasar",
+            "rarity": "RARE",
+            "element": "Light",
+            "role": "Fracture Specialist",
+            "tags": [
+                    "Break",
+                    "Energy"
+            ],
+            "engine": [
+                    "Break",
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1112,
+                    "atk": 133,
+                    "def": 100,
+                    "spd": 112
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply fracture."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify fracture and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored fracture."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's fracture handling."
+            },
+            "lore": "Where it lands, probability kneels.",
+            "voice": "\u201cLuck? No. Arithmetic.\u201d",
+            "params": {
+                    "basic_fracture": 3,
+                    "skill_fracture": 4
+            }
+    },
+    {
+            "id": "fated_herald",
+            "name": "Fated Herald",
+            "rarity": "RARE",
+            "element": "Dark",
+            "role": "Bleed Specialist",
+            "tags": [
+                    "Combo"
+            ],
+            "engine": [
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1329,
+                    "atk": 115,
+                    "def": 77,
+                    "spd": 101
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply bleed."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify bleed and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored bleed."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's bleed handling."
+            },
+            "lore": "A gambler's last breath, pressed into six unforgiving faces.",
+            "voice": "\u201cDouble or nothing \u2014 it's always nothing.\u201d",
+            "params": {
+                    "basic_bleed": 2,
+                    "bleed_dmg": 0.15
+            }
+    },
+    {
+            "id": "fated_bluff",
+            "name": "Fated Bluff",
+            "rarity": "RARE",
+            "element": "Blood",
+            "role": "Gravity Specialist",
+            "tags": [
+                    "Sustain"
+            ],
+            "engine": [
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1205,
+                    "atk": 146,
+                    "def": 116,
+                    "spd": 90
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply gravity."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify gravity and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored gravity."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's gravity handling."
+            },
+            "lore": "It does not roll so much as decide.",
+            "voice": "\u201cI already know your number.\u201d",
+            "params": {
+                    "basic_gravity": 1,
+                    "spd_up": 0.1
+            }
+    },
+    {
+            "id": "molten_bluff",
+            "name": "Molten Bluff",
+            "rarity": "RARE",
+            "element": "Poison",
+            "role": "Energy Specialist",
+            "tags": [
+                    "Fortune",
+                    "Summon"
+            ],
+            "engine": [
+                    "Fortune",
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1081,
+                    "atk": 128,
+                    "def": 94,
+                    "spd": 110
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply energy."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify energy and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored energy."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's energy handling."
+            },
+            "lore": "Born in the space between a bet and its regret.",
+            "voice": "\u201cThe pot's called. Pay up.\u201d",
+            "params": {
+                    "basic_energy": 4,
+                    "skill_energy": 10,
+                    "passive_energy": 3
+            }
+    },
+    {
+            "id": "withered_reaver",
+            "name": "Withered Reaver",
+            "rarity": "RARE",
+            "element": "Nature",
+            "role": "Break Specialist",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1298,
+                    "atk": 160,
+                    "def": 72,
+                    "spd": 98
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply break."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify break and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored break."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's break handling."
+            },
+            "lore": "The odds bend around it like light around a stone.",
+            "voice": "\u201cSix ways to fall, one way to win.\u201d",
+            "params": {
+                    "basic_fracture": 2,
+                    "skill_break": 1,
+                    "break_gain": 0.2
+            }
+    },
+    {
+            "id": "lunar_bluff",
+            "name": "Lunar Bluff",
+            "rarity": "RARE",
+            "element": "Wind",
+            "role": "Omen Specialist",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1174,
+                    "atk": 142,
+                    "def": 111,
+                    "spd": 118
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply omen."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify omen and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored omen."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's omen handling."
+            },
+            "lore": "It has never lost. It simply has not finished playing.",
+            "voice": "\u201cBet against me. Please.\u201d",
+            "params": {
+                    "basic_omen": 2,
+                    "skill_omen": 6
+            }
+    },
+    {
+            "id": "hidden_broker",
+            "name": "Hidden Broker",
+            "rarity": "RARE",
+            "element": "Time",
+            "role": "Chill Specialist",
+            "tags": [
+                    "Fracture",
+                    "Break"
+            ],
+            "engine": [
+                    "Fracture",
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1050,
+                    "atk": 124,
+                    "def": 88,
+                    "spd": 107
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply chill."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify chill and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored chill."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's chill handling."
+            },
+            "lore": "A relic of a game whose rules were rewritten mid-throw.",
+            "voice": "\u201cThe dealer folds first.\u201d",
+            "params": {
+                    "basic_chill": 1,
+                    "skill_chill_all": 4
+            }
+    },
+    {
+            "id": "argent_vortex",
+            "name": "Argent Vortex",
+            "rarity": "RARE",
+            "element": "Void",
+            "role": "Shield Specialist",
+            "tags": [
+                    "Energy"
+            ],
+            "engine": [
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1267,
+                    "atk": 156,
+                    "def": 66,
+                    "spd": 96
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply shield."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify shield and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored shield."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's shield handling."
+            },
+            "lore": "Loaded not with lead, but with certainty.",
+            "voice": "\u201cCome closer. Let me read your odds.\u201d",
+            "params": {
+                    "skill_shield": 0.2,
+                    "shield_pct": 0.18
+            }
+    },
+    {
+            "id": "doomed_sentinel",
+            "name": "Doomed Sentinel",
+            "rarity": "RARE",
+            "element": "Earth",
+            "role": "Combo Specialist",
+            "tags": [
+                    "Combo"
+            ],
+            "engine": [
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1143,
+                    "atk": 138,
+                    "def": 105,
+                    "spd": 115
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply combo."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify combo and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored combo."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's combo handling."
+            },
+            "lore": "It hums with the sound of every coin that ever hit the felt.",
+            "voice": "\u201cThe wheel remembers your name.\u201d",
+            "params": {
+                    "basic_combo": 1,
+                    "skill_combo": 2,
+                    "combo_max": 6
+            }
+    },
+    {
+            "id": "silent_odds",
+            "name": "Silent Odds",
+            "rarity": "RARE",
+            "element": "Fire",
+            "role": "Fortune Specialist",
+            "tags": [
+                    "Sustain",
+                    "Fortune"
+            ],
+            "engine": [
+                    "Sustain",
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1360,
+                    "atk": 120,
+                    "def": 83,
+                    "spd": 104
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply fortune."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify fortune and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored fortune."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's fortune handling."
+            },
+            "lore": "The dealer who made it never blinked again.",
+            "voice": "\u201cAll in. There was never another option.\u201d",
+            "params": {
+                    "give_energy": 8,
+                    "team_dmg": 0.1
+            }
+    },
+    {
+            "id": "crimson_reel",
+            "name": "Crimson Reel",
+            "rarity": "RARE",
+            "element": "Ice",
+            "role": "Fracture Specialist",
+            "tags": [
+                    "Summon"
+            ],
+            "engine": [
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1236,
+                    "atk": 151,
+                    "def": 122,
+                    "spd": 93
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply fracture."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify fracture and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored fracture."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's fracture handling."
+            },
+            "lore": "It keeps a tally no ledger could hold.",
+            "voice": "\u201cMy pips are your obituary.\u201d",
+            "params": {
+                    "basic_fracture": 3,
+                    "skill_fracture": 4
+            }
+    },
+    {
+            "id": "fractal_zenith",
+            "name": "Fractal Zenith",
+            "rarity": "RARE",
+            "element": "Electric",
+            "role": "Bleed Specialist",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1112,
+                    "atk": 133,
+                    "def": 100,
+                    "spd": 112
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply bleed."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify bleed and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored bleed."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's bleed handling."
+            },
+            "lore": "Rolled once at the end of the world; it liked the result.",
+            "voice": "\u201cThe game ended when I entered it.\u201d",
+            "params": {
+                    "basic_bleed": 2,
+                    "bleed_dmg": 0.15
+            }
+    },
+    {
+            "id": "gleaming_tally",
+            "name": "Gleaming Tally",
+            "rarity": "RARE",
+            "element": "Physical",
+            "role": "Gravity Specialist",
+            "tags": [
+                    "Omen",
+                    "Fracture"
+            ],
+            "engine": [
+                    "Omen",
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1329,
+                    "atk": 115,
+                    "def": 77,
+                    "spd": 101
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply gravity."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify gravity and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored gravity."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's gravity handling."
+            },
+            "lore": "Fate whittled it down to exactly what it needed to be.",
+            "voice": "\u201cSpin. I enjoy the noise.\u201d",
+            "params": {
+                    "basic_gravity": 1,
+                    "spd_up": 0.1
+            }
+    },
+    {
+            "id": "ruby_whale",
+            "name": "Ruby Whale",
+            "rarity": "RARE",
+            "element": "Arcane",
+            "role": "Energy Specialist",
+            "tags": [
+                    "Break"
+            ],
+            "engine": [
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1205,
+                    "atk": 146,
+                    "def": 116,
+                    "spd": 90
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply energy."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify energy and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored energy."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's energy handling."
+            },
+            "lore": "Some dice remember every hand they ever lost. This one keeps the receipts.",
+            "voice": "\u201cAnte up. The table's mine.\u201d",
+            "params": {
+                    "basic_energy": 4,
+                    "skill_energy": 10,
+                    "passive_energy": 3
+            }
+    },
+    {
+            "id": "eternal_reckoner",
+            "name": "Eternal Reckoner",
+            "rarity": "RARE",
+            "element": "Light",
+            "role": "Break Specialist",
+            "tags": [
+                    "Energy"
+            ],
+            "engine": [
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1081,
+                    "atk": 128,
+                    "def": 94,
+                    "spd": 110
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply break."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify break and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored break."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's break handling."
+            },
+            "lore": "It was carved from a debt no one could pay and rolled ever since.",
+            "voice": "\u201cI don't gamble. I collect.\u201d",
+            "params": {
+                    "basic_fracture": 2,
+                    "skill_break": 1,
+                    "break_gain": 0.2
+            }
+    },
+    {
+            "id": "lunar_payout",
+            "name": "Lunar Payout",
+            "rarity": "RARE",
+            "element": "Dark",
+            "role": "Omen Specialist",
+            "tags": [
+                    "Combo",
+                    "Sustain"
+            ],
+            "engine": [
+                    "Combo",
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1298,
+                    "atk": 160,
+                    "def": 72,
+                    "spd": 98
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply omen."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify omen and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored omen."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's omen handling."
+            },
+            "lore": "Fortune is a wheel; this die is the axle it turns on.",
+            "voice": "\u201cRoll again. I dare you.\u201d",
+            "params": {
+                    "basic_omen": 2,
+                    "skill_omen": 6
+            }
+    },
+    {
+            "id": "sovereign_fortune",
+            "name": "Sovereign Fortune",
+            "rarity": "RARE",
+            "element": "Blood",
+            "role": "Chill Specialist",
+            "tags": [
+                    "Fortune"
+            ],
+            "engine": [
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1174,
+                    "atk": 142,
+                    "def": 111,
+                    "spd": 118
+            },
+            "basic": {
+                    "name": "Open",
+                    "desc": "Deal damage and apply chill."
+            },
+            "skill": {
+                    "name": "Raise",
+                    "desc": "Amplify chill and strike harder."
+            },
+            "ult": {
+                    "name": "Showdown",
+                    "desc": "A heavy blow that spends stored chill."
+            },
+            "passive": {
+                    "name": "Read",
+                    "desc": "Improves the team's chill handling."
+            },
+            "lore": "They say it fell from a table in a room that no longer exists.",
+            "voice": "\u201cThe count never lies.\u201d",
+            "params": {
+                    "basic_chill": 1,
+                    "skill_chill_all": 4
+            }
+    },
+    {
+            "id": "emerald_reaver",
+            "name": "Emerald Reaver",
+            "rarity": "LEGENDARY",
+            "element": "Poison",
+            "role": "Resonance Engine",
+            "tags": [
+                    "Summon"
+            ],
+            "engine": [
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1300,
+                    "atk": 156,
+                    "def": 108,
+                    "spd": 113
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Resonant Core",
+                    "desc": "The die builds Resonance; every 3 stacks empower the next hit."
+            },
+            "lore": "Every pip is a promise, and every promise is a threat.",
+            "voice": "\u201cEvens or odds, you still lose.\u201d",
+            "params": {
+                    "resonance_n": 3,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "voidforged_ante",
+            "name": "Voidforged Ante",
+            "rarity": "LEGENDARY",
+            "element": "Nature",
+            "role": "Overload Bruiser",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1482,
+                    "atk": 175,
+                    "def": 80,
+                    "spd": 102
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Overload",
+                    "desc": "The die surges ATK +40% at the cost of recoil HP."
+            },
+            "lore": "Cut from cold starlight, it counts outcomes before they happen.",
+            "voice": "\u201cWatch the wheel. Watch it break.\u201d",
+            "params": {
+                    "overload_pct": 0.4,
+                    "recoil": 0.1,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "pale_roulette",
+            "name": "Pale Roulette",
+            "rarity": "LEGENDARY",
+            "element": "Wind",
+            "role": "Vampiric DPS",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1378,
+                    "atk": 164,
+                    "def": 129,
+                    "spd": 121
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Bloodpact",
+                    "desc": "The die heals for 30% of all damage dealt."
+            },
+            "lore": "The house forgot it in a drawer. It has been dealing itself in ever since.",
+            "voice": "\u201cEvery face is the winning face.\u201d",
+            "params": {
+                    "lifesteal": 0.3,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "gilded_cipher",
+            "name": "Gilded Cipher",
+            "rarity": "LEGENDARY",
+            "element": "Time",
+            "role": "Thorn Guard",
+            "tags": [
+                    "Fracture"
+            ],
+            "engine": [
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1560,
+                    "atk": 153,
+                    "def": 101,
+                    "spd": 110
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Retaliation",
+                    "desc": "The die reflects 25% of damage taken."
+            },
+            "lore": "Where it lands, probability kneels.",
+            "voice": "\u201cLuck? No. Arithmetic.\u201d",
+            "params": {
+                    "reflect": 0.25,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "tidal_nadir",
+            "name": "Tidal Nadir",
+            "rarity": "LEGENDARY",
+            "element": "Void",
+            "role": "Executioner",
+            "tags": [
+                    "Break"
+            ],
+            "engine": [
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1456,
+                    "atk": 172,
+                    "def": 150,
+                    "spd": 99
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Final Cut",
+                    "desc": "The die executes foes below 30% HP for +60% damage."
+            },
+            "lore": "A gambler's last breath, pressed into six unforgiving faces.",
+            "voice": "\u201cDouble or nothing \u2014 it's always nothing.\u201d",
+            "params": {
+                    "execute_th": 0.3,
+                    "execute_pct": 0.6,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "glacial_handle",
+            "name": "Glacial Handle",
+            "rarity": "LEGENDARY",
+            "element": "Earth",
+            "role": "Ramping Carry",
+            "tags": [
+                    "Energy"
+            ],
+            "engine": [
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1352,
+                    "atk": 161,
+                    "def": 122,
+                    "spd": 118
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Snowball",
+                    "desc": "The die gains +8% ATK every round."
+            },
+            "lore": "It does not roll so much as decide.",
+            "voice": "\u201cI already know your number.\u201d",
+            "params": {
+                    "ramp_atk": 0.08,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "burning_handle",
+            "name": "Burning Handle",
+            "rarity": "LEGENDARY",
+            "element": "Fire",
+            "role": "Shield Breaker",
+            "tags": [
+                    "Combo"
+            ],
+            "engine": [
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1534,
+                    "atk": 150,
+                    "def": 94,
+                    "spd": 107
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Bulwark Bane",
+                    "desc": "The die deals +50% damage to shielded foes."
+            },
+            "lore": "Born in the space between a bet and its regret.",
+            "voice": "\u201cThe pot's called. Pay up.\u201d",
+            "params": {
+                    "shield_break": 0.5,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "pale_broker",
+            "name": "Pale Broker",
+            "rarity": "LEGENDARY",
+            "element": "Ice",
+            "role": "Twin Striker",
+            "tags": [
+                    "Sustain"
+            ],
+            "engine": [
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1430,
+                    "atk": 170,
+                    "def": 143,
+                    "spd": 96
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Double Deal",
+                    "desc": "The die basic attack strikes twice."
+            },
+            "lore": "The odds bend around it like light around a stone.",
+            "voice": "\u201cSix ways to fall, one way to win.\u201d",
+            "params": {
+                    "twin_hit": 1,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "rigged_diviner",
+            "name": "Rigged Diviner",
+            "rarity": "LEGENDARY",
+            "element": "Electric",
+            "role": "ATK Anchor",
+            "tags": [
+                    "Fortune"
+            ],
+            "engine": [
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1326,
+                    "atk": 158,
+                    "def": 115,
+                    "spd": 116
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "War Aura",
+                    "desc": "The die grants the team +15% ATK."
+            },
+            "lore": "It has never lost. It simply has not finished playing.",
+            "voice": "\u201cBet against me. Please.\u201d",
+            "params": {
+                    "aura_atk": 0.15,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "velvet_ledger",
+            "name": "Velvet Ledger",
+            "rarity": "LEGENDARY",
+            "element": "Physical",
+            "role": "DEF Anchor",
+            "tags": [
+                    "Summon"
+            ],
+            "engine": [
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1508,
+                    "atk": 178,
+                    "def": 87,
+                    "spd": 104
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Ward Aura",
+                    "desc": "The die grants the team +15% DEF."
+            },
+            "lore": "A relic of a game whose rules were rewritten mid-throw.",
+            "voice": "\u201cThe dealer folds first.\u201d",
+            "params": {
+                    "aura_def": 0.15,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "fractal_rounder",
+            "name": "Fractal Rounder",
+            "rarity": "LEGENDARY",
+            "element": "Arcane",
+            "role": "Decay Warden",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1404,
+                    "atk": 167,
+                    "def": 136,
+                    "spd": 124
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Withering",
+                    "desc": "The die cuts enemy healing by 40%."
+            },
+            "lore": "Loaded not with lead, but with certainty.",
+            "voice": "\u201cCome closer. Let me read your odds.\u201d",
+            "params": {
+                    "decay": 0.4,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "golden_dealer",
+            "name": "Golden Dealer",
+            "rarity": "LEGENDARY",
+            "element": "Light",
+            "role": "Resonance Engine",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1300,
+                    "atk": 156,
+                    "def": 108,
+                    "spd": 113
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Resonant Core",
+                    "desc": "The die builds Resonance; every 3 stacks empower the next hit."
+            },
+            "lore": "It hums with the sound of every coin that ever hit the felt.",
+            "voice": "\u201cThe wheel remembers your name.\u201d",
+            "params": {
+                    "resonance_n": 3,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "velvet_croupier",
+            "name": "Velvet Croupier",
+            "rarity": "LEGENDARY",
+            "element": "Dark",
+            "role": "Overload Bruiser",
+            "tags": [
+                    "Fracture"
+            ],
+            "engine": [
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1482,
+                    "atk": 175,
+                    "def": 80,
+                    "spd": 102
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Overload",
+                    "desc": "The die surges ATK +40% at the cost of recoil HP."
+            },
+            "lore": "The dealer who made it never blinked again.",
+            "voice": "\u201cAll in. There was never another option.\u201d",
+            "params": {
+                    "overload_pct": 0.4,
+                    "recoil": 0.1,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "obsidian_grifter",
+            "name": "Obsidian Grifter",
+            "rarity": "LEGENDARY",
+            "element": "Blood",
+            "role": "Vampiric DPS",
+            "tags": [
+                    "Break"
+            ],
+            "engine": [
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1378,
+                    "atk": 164,
+                    "def": 129,
+                    "spd": 121
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Bloodpact",
+                    "desc": "The die heals for 30% of all damage dealt."
+            },
+            "lore": "It keeps a tally no ledger could hold.",
+            "voice": "\u201cMy pips are your obituary.\u201d",
+            "params": {
+                    "lifesteal": 0.3,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "ashen_fold",
+            "name": "Ashen Fold",
+            "rarity": "LEGENDARY",
+            "element": "Poison",
+            "role": "Thorn Guard",
+            "tags": [
+                    "Energy"
+            ],
+            "engine": [
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1560,
+                    "atk": 153,
+                    "def": 101,
+                    "spd": 110
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Retaliation",
+                    "desc": "The die reflects 25% of damage taken."
+            },
+            "lore": "Rolled once at the end of the world; it liked the result.",
+            "voice": "\u201cThe game ended when I entered it.\u201d",
+            "params": {
+                    "reflect": 0.25,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "jade_quasar",
+            "name": "Jade Quasar",
+            "rarity": "LEGENDARY",
+            "element": "Nature",
+            "role": "Executioner",
+            "tags": [
+                    "Combo"
+            ],
+            "engine": [
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1456,
+                    "atk": 172,
+                    "def": 150,
+                    "spd": 99
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Final Cut",
+                    "desc": "The die executes foes below 30% HP for +60% damage."
+            },
+            "lore": "Fate whittled it down to exactly what it needed to be.",
+            "voice": "\u201cSpin. I enjoy the noise.\u201d",
+            "params": {
+                    "execute_th": 0.3,
+                    "execute_pct": 0.6,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "iron_spinner",
+            "name": "Iron Spinner",
+            "rarity": "LEGENDARY",
+            "element": "Wind",
+            "role": "Ramping Carry",
+            "tags": [
+                    "Sustain"
+            ],
+            "engine": [
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1352,
+                    "atk": 161,
+                    "def": 122,
+                    "spd": 118
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Snowball",
+                    "desc": "The die gains +8% ATK every round."
+            },
+            "lore": "Some dice remember every hand they ever lost. This one keeps the receipts.",
+            "voice": "\u201cAnte up. The table's mine.\u201d",
+            "params": {
+                    "ramp_atk": 0.08,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "marked_ante",
+            "name": "Marked Ante",
+            "rarity": "LEGENDARY",
+            "element": "Time",
+            "role": "Shield Breaker",
+            "tags": [
+                    "Fortune"
+            ],
+            "engine": [
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1534,
+                    "atk": 150,
+                    "def": 94,
+                    "spd": 107
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Bulwark Bane",
+                    "desc": "The die deals +50% damage to shielded foes."
+            },
+            "lore": "It was carved from a debt no one could pay and rolled ever since.",
+            "voice": "\u201cI don't gamble. I collect.\u201d",
+            "params": {
+                    "shield_break": 0.5,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "prime_rift",
+            "name": "Prime Rift",
+            "rarity": "LEGENDARY",
+            "element": "Void",
+            "role": "Twin Striker",
+            "tags": [
+                    "Summon"
+            ],
+            "engine": [
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1430,
+                    "atk": 170,
+                    "def": 143,
+                    "spd": 96
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Double Deal",
+                    "desc": "The die basic attack strikes twice."
+            },
+            "lore": "Fortune is a wheel; this die is the axle it turns on.",
+            "voice": "\u201cRoll again. I dare you.\u201d",
+            "params": {
+                    "twin_hit": 1,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "verdant_fold",
+            "name": "Verdant Fold",
+            "rarity": "LEGENDARY",
+            "element": "Earth",
+            "role": "ATK Anchor",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1326,
+                    "atk": 158,
+                    "def": 115,
+                    "spd": 116
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "War Aura",
+                    "desc": "The die grants the team +15% ATK."
+            },
+            "lore": "They say it fell from a table in a room that no longer exists.",
+            "voice": "\u201cThe count never lies.\u201d",
+            "params": {
+                    "aura_atk": 0.15,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "verdant_bluff",
+            "name": "Verdant Bluff",
+            "rarity": "LEGENDARY",
+            "element": "Fire",
+            "role": "DEF Anchor",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1508,
+                    "atk": 178,
+                    "def": 87,
+                    "spd": 104
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Ward Aura",
+                    "desc": "The die grants the team +15% DEF."
+            },
+            "lore": "Every pip is a promise, and every promise is a threat.",
+            "voice": "\u201cEvens or odds, you still lose.\u201d",
+            "params": {
+                    "aura_def": 0.15,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "obsidian_aeon",
+            "name": "Obsidian Aeon",
+            "rarity": "LEGENDARY",
+            "element": "Ice",
+            "role": "Decay Warden",
+            "tags": [
+                    "Fracture"
+            ],
+            "engine": [
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1404,
+                    "atk": 167,
+                    "def": 136,
+                    "spd": 124
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Withering",
+                    "desc": "The die cuts enemy healing by 40%."
+            },
+            "lore": "Cut from cold starlight, it counts outcomes before they happen.",
+            "voice": "\u201cWatch the wheel. Watch it break.\u201d",
+            "params": {
+                    "decay": 0.4,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "charged_aeon",
+            "name": "Charged Aeon",
+            "rarity": "LEGENDARY",
+            "element": "Electric",
+            "role": "Resonance Engine",
+            "tags": [
+                    "Break"
+            ],
+            "engine": [
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1300,
+                    "atk": 156,
+                    "def": 108,
+                    "spd": 113
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Resonant Core",
+                    "desc": "The die builds Resonance; every 3 stacks empower the next hit."
+            },
+            "lore": "The house forgot it in a drawer. It has been dealing itself in ever since.",
+            "voice": "\u201cEvery face is the winning face.\u201d",
+            "params": {
+                    "resonance_n": 3,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "gleaming_cascade",
+            "name": "Gleaming Cascade",
+            "rarity": "LEGENDARY",
+            "element": "Physical",
+            "role": "Overload Bruiser",
+            "tags": [
+                    "Energy"
+            ],
+            "engine": [
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1482,
+                    "atk": 175,
+                    "def": 80,
+                    "spd": 102
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Overload",
+                    "desc": "The die surges ATK +40% at the cost of recoil HP."
+            },
+            "lore": "Where it lands, probability kneels.",
+            "voice": "\u201cLuck? No. Arithmetic.\u201d",
+            "params": {
+                    "overload_pct": 0.4,
+                    "recoil": 0.1,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "prime_rake",
+            "name": "Prime Rake",
+            "rarity": "LEGENDARY",
+            "element": "Arcane",
+            "role": "Vampiric DPS",
+            "tags": [
+                    "Combo"
+            ],
+            "engine": [
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1378,
+                    "atk": 164,
+                    "def": 129,
+                    "spd": 121
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Bloodpact",
+                    "desc": "The die heals for 30% of all damage dealt."
+            },
+            "lore": "A gambler's last breath, pressed into six unforgiving faces.",
+            "voice": "\u201cDouble or nothing \u2014 it's always nothing.\u201d",
+            "params": {
+                    "lifesteal": 0.3,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "withered_nadir",
+            "name": "Withered Nadir",
+            "rarity": "LEGENDARY",
+            "element": "Light",
+            "role": "Thorn Guard",
+            "tags": [
+                    "Sustain"
+            ],
+            "engine": [
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1560,
+                    "atk": 153,
+                    "def": 101,
+                    "spd": 110
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Retaliation",
+                    "desc": "The die reflects 25% of damage taken."
+            },
+            "lore": "It does not roll so much as decide.",
+            "voice": "\u201cI already know your number.\u201d",
+            "params": {
+                    "reflect": 0.25,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "glacial_broker",
+            "name": "Glacial Broker",
+            "rarity": "LEGENDARY",
+            "element": "Dark",
+            "role": "Executioner",
+            "tags": [
+                    "Fortune"
+            ],
+            "engine": [
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1456,
+                    "atk": 172,
+                    "def": 150,
+                    "spd": 99
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Final Cut",
+                    "desc": "The die executes foes below 30% HP for +60% damage."
+            },
+            "lore": "Born in the space between a bet and its regret.",
+            "voice": "\u201cThe pot's called. Pay up.\u201d",
+            "params": {
+                    "execute_th": 0.3,
+                    "execute_pct": 0.6,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "phantom_cutter",
+            "name": "Phantom Cutter",
+            "rarity": "LEGENDARY",
+            "element": "Blood",
+            "role": "Ramping Carry",
+            "tags": [
+                    "Summon"
+            ],
+            "engine": [
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1352,
+                    "atk": 161,
+                    "def": 122,
+                    "spd": 118
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Snowball",
+                    "desc": "The die gains +8% ATK every round."
+            },
+            "lore": "The odds bend around it like light around a stone.",
+            "voice": "\u201cSix ways to fall, one way to win.\u201d",
+            "params": {
+                    "ramp_atk": 0.08,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "grave_reaver",
+            "name": "Grave Reaver",
+            "rarity": "LEGENDARY",
+            "element": "Poison",
+            "role": "Shield Breaker",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1534,
+                    "atk": 150,
+                    "def": 94,
+                    "spd": 107
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Bulwark Bane",
+                    "desc": "The die deals +50% damage to shielded foes."
+            },
+            "lore": "It has never lost. It simply has not finished playing.",
+            "voice": "\u201cBet against me. Please.\u201d",
+            "params": {
+                    "shield_break": 0.5,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "charged_broker",
+            "name": "Charged Broker",
+            "rarity": "LEGENDARY",
+            "element": "Nature",
+            "role": "Twin Striker",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1430,
+                    "atk": 170,
+                    "def": 143,
+                    "spd": 96
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Double Deal",
+                    "desc": "The die basic attack strikes twice."
+            },
+            "lore": "A relic of a game whose rules were rewritten mid-throw.",
+            "voice": "\u201cThe dealer folds first.\u201d",
+            "params": {
+                    "twin_hit": 1,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "broken_chance",
+            "name": "Broken Chance",
+            "rarity": "LEGENDARY",
+            "element": "Wind",
+            "role": "ATK Anchor",
+            "tags": [
+                    "Fracture"
+            ],
+            "engine": [
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1326,
+                    "atk": 158,
+                    "def": 115,
+                    "spd": 116
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "War Aura",
+                    "desc": "The die grants the team +15% ATK."
+            },
+            "lore": "Loaded not with lead, but with certainty.",
+            "voice": "\u201cCome closer. Let me read your odds.\u201d",
+            "params": {
+                    "aura_atk": 0.15,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "iron_grifter",
+            "name": "Iron Grifter",
+            "rarity": "LEGENDARY",
+            "element": "Time",
+            "role": "DEF Anchor",
+            "tags": [
+                    "Break"
+            ],
+            "engine": [
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1508,
+                    "atk": 178,
+                    "def": 87,
+                    "spd": 104
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Ward Aura",
+                    "desc": "The die grants the team +15% DEF."
+            },
+            "lore": "It hums with the sound of every coin that ever hit the felt.",
+            "voice": "\u201cThe wheel remembers your name.\u201d",
+            "params": {
+                    "aura_def": 0.15,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "burning_reel",
+            "name": "Burning Reel",
+            "rarity": "LEGENDARY",
+            "element": "Void",
+            "role": "Decay Warden",
+            "tags": [
+                    "Energy"
+            ],
+            "engine": [
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1404,
+                    "atk": 167,
+                    "def": 136,
+                    "spd": 124
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Withering",
+                    "desc": "The die cuts enemy healing by 40%."
+            },
+            "lore": "The dealer who made it never blinked again.",
+            "voice": "\u201cAll in. There was never another option.\u201d",
+            "params": {
+                    "decay": 0.4,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "glacial_pot",
+            "name": "Glacial Pot",
+            "rarity": "LEGENDARY",
+            "element": "Earth",
+            "role": "Resonance Engine",
+            "tags": [
+                    "Combo"
+            ],
+            "engine": [
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1300,
+                    "atk": 156,
+                    "def": 108,
+                    "spd": 113
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Resonant Core",
+                    "desc": "The die builds Resonance; every 3 stacks empower the next hit."
+            },
+            "lore": "It keeps a tally no ledger could hold.",
+            "voice": "\u201cMy pips are your obituary.\u201d",
+            "params": {
+                    "resonance_n": 3,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "wild_mark",
+            "name": "Wild Mark",
+            "rarity": "LEGENDARY",
+            "element": "Fire",
+            "role": "Overload Bruiser",
+            "tags": [
+                    "Sustain"
+            ],
+            "engine": [
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1482,
+                    "atk": 175,
+                    "def": 80,
+                    "spd": 102
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Overload",
+                    "desc": "The die surges ATK +40% at the cost of recoil HP."
+            },
+            "lore": "Rolled once at the end of the world; it liked the result.",
+            "voice": "\u201cThe game ended when I entered it.\u201d",
+            "params": {
+                    "overload_pct": 0.4,
+                    "recoil": 0.1,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "frostbound_shill",
+            "name": "Frostbound Shill",
+            "rarity": "LEGENDARY",
+            "element": "Ice",
+            "role": "Vampiric DPS",
+            "tags": [
+                    "Fortune"
+            ],
+            "engine": [
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1378,
+                    "atk": 164,
+                    "def": 129,
+                    "spd": 121
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Bloodpact",
+                    "desc": "The die heals for 30% of all damage dealt."
+            },
+            "lore": "Fate whittled it down to exactly what it needed to be.",
+            "voice": "\u201cSpin. I enjoy the noise.\u201d",
+            "params": {
+                    "lifesteal": 0.3,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "sanguine_dealer",
+            "name": "Sanguine Dealer",
+            "rarity": "LEGENDARY",
+            "element": "Electric",
+            "role": "Thorn Guard",
+            "tags": [
+                    "Summon"
+            ],
+            "engine": [
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1560,
+                    "atk": 153,
+                    "def": 101,
+                    "spd": 110
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Retaliation",
+                    "desc": "The die reflects 25% of damage taken."
+            },
+            "lore": "Some dice remember every hand they ever lost. This one keeps the receipts.",
+            "voice": "\u201cAnte up. The table's mine.\u201d",
+            "params": {
+                    "reflect": 0.25,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "solar_odds",
+            "name": "Solar Odds",
+            "rarity": "LEGENDARY",
+            "element": "Physical",
+            "role": "Executioner",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1456,
+                    "atk": 172,
+                    "def": 150,
+                    "spd": 99
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Final Cut",
+                    "desc": "The die executes foes below 30% HP for +60% damage."
+            },
+            "lore": "It was carved from a debt no one could pay and rolled ever since.",
+            "voice": "\u201cI don't gamble. I collect.\u201d",
+            "params": {
+                    "execute_th": 0.3,
+                    "execute_pct": 0.6,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "shrouded_rake",
+            "name": "Shrouded Rake",
+            "rarity": "LEGENDARY",
+            "element": "Arcane",
+            "role": "Ramping Carry",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1352,
+                    "atk": 161,
+                    "def": 122,
+                    "spd": 118
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Snowball",
+                    "desc": "The die gains +8% ATK every round."
+            },
+            "lore": "Fortune is a wheel; this die is the axle it turns on.",
+            "voice": "\u201cRoll again. I dare you.\u201d",
+            "params": {
+                    "ramp_atk": 0.08,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "grim_cutter",
+            "name": "Grim Cutter",
+            "rarity": "LEGENDARY",
+            "element": "Light",
+            "role": "Shield Breaker",
+            "tags": [
+                    "Fracture"
+            ],
+            "engine": [
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1534,
+                    "atk": 150,
+                    "def": 94,
+                    "spd": 107
+            },
+            "basic": {
+                    "name": "Ignite",
+                    "desc": "A strong strike that feeds the signature engine."
+            },
+            "skill": {
+                    "name": "Escalate",
+                    "desc": "Empower the die and unleash its mechanic."
+            },
+            "ult": {
+                    "name": "Overrule",
+                    "desc": "A devastating blow amplified by the signature effect."
+            },
+            "passive": {
+                    "name": "Bulwark Bane",
+                    "desc": "The die deals +50% damage to shielded foes."
+            },
+            "lore": "They say it fell from a table in a room that no longer exists.",
+            "voice": "\u201cThe count never lies.\u201d",
+            "params": {
+                    "shield_break": 0.5,
+                    "skill_energy": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Signature effect triggers 10% stronger."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.1
+                            },
+                            "desc": "+10% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill costs 1 less energy to fuel."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "def_pct": 0.12
+                            },
+                            "desc": "+12% DEF."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate applies the signature effect to all foes."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 12
+                            },
+                            "desc": "+12 SPD and the passive doubles at low HP."
+                    }
+            ]
+    },
+    {
+            "id": "blessed_payout",
+            "name": "Blessed Payout",
+            "rarity": "MYTHIC",
+            "element": "Dark",
+            "role": "Omen Weaver",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1415,
+                    "atk": 168,
+                    "def": 90,
+                    "spd": 95
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Omen power."
+            },
+            "passive": {
+                    "name": "Omen Weaver",
+                    "desc": "The die spreads and detonates Omen across the field."
+            },
+            "lore": "Every pip is a promise, and every promise is a threat.",
+            "voice": "\u201cEvens or odds, you still lose.\u201d",
+            "params": {
+                    "basic_omen": 2,
+                    "skill_omen_all": 8,
+                    "ult_omen_triggers": 2
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "jade_whale",
+            "name": "Jade Whale",
+            "rarity": "MYTHIC",
+            "element": "Blood",
+            "role": "Fault Master",
+            "tags": [
+                    "Fracture"
+            ],
+            "engine": [
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1275,
+                    "atk": 152,
+                    "def": 76,
+                    "spd": 107
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Fracture power."
+            },
+            "passive": {
+                    "name": "Fault Master",
+                    "desc": "The die stacks Fracture on every foe."
+            },
+            "lore": "Cut from cold starlight, it counts outcomes before they happen.",
+            "voice": "\u201cWatch the wheel. Watch it break.\u201d",
+            "params": {
+                    "basic_fracture": 3,
+                    "skill_fracture_all": 5,
+                    "ult_fracture_tick": 3
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "vivid_stake",
+            "name": "Vivid Stake",
+            "rarity": "MYTHIC",
+            "element": "Poison",
+            "role": "Siege Doctrine",
+            "tags": [
+                    "Break"
+            ],
+            "engine": [
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1520,
+                    "atk": 180,
+                    "def": 62,
+                    "spd": 100
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Break power."
+            },
+            "passive": {
+                    "name": "Siege Doctrine",
+                    "desc": "The die tears through toughness and punishes Broken foes."
+            },
+            "lore": "The house forgot it in a drawer. It has been dealing itself in ever since.",
+            "voice": "\u201cEvery face is the winning face.\u201d",
+            "params": {
+                    "skill_break": 2,
+                    "broken_bonus": 0.5,
+                    "break_gain": 0.25
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "radiant_cutter",
+            "name": "Radiant Cutter",
+            "rarity": "MYTHIC",
+            "element": "Nature",
+            "role": "Power Nexus",
+            "tags": [
+                    "Energy"
+            ],
+            "engine": [
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1380,
+                    "atk": 164,
+                    "def": 87,
+                    "spd": 112
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Energy power."
+            },
+            "passive": {
+                    "name": "Power Nexus",
+                    "desc": "The die floods the team with energy and damage."
+            },
+            "lore": "Where it lands, probability kneels.",
+            "voice": "\u201cLuck? No. Arithmetic.\u201d",
+            "params": {
+                    "skill_energy": 14,
+                    "passive_energy": 4,
+                    "team_dmg": 0.12
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "ashen_reckoner",
+            "name": "Ashen Reckoner",
+            "rarity": "MYTHIC",
+            "element": "Wind",
+            "role": "Deep Cold",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1240,
+                    "atk": 148,
+                    "def": 72,
+                    "spd": 105
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Control power."
+            },
+            "passive": {
+                    "name": "Deep Cold",
+                    "desc": "The die freezes the field solid."
+            },
+            "lore": "A gambler's last breath, pressed into six unforgiving faces.",
+            "voice": "\u201cDouble or nothing \u2014 it's always nothing.\u201d",
+            "params": {
+                    "basic_chill": 2,
+                    "skill_chill_all": 6,
+                    "freeze_at": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "glacial_reaver",
+            "name": "Glacial Reaver",
+            "rarity": "MYTHIC",
+            "element": "Time",
+            "role": "Aegis Heart",
+            "tags": [
+                    "Sustain"
+            ],
+            "engine": [
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1485,
+                    "atk": 176,
+                    "def": 58,
+                    "spd": 98
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Sustain power."
+            },
+            "passive": {
+                    "name": "Aegis Heart",
+                    "desc": "The die shields and drains life for the team."
+            },
+            "lore": "It does not roll so much as decide.",
+            "voice": "\u201cI already know your number.\u201d",
+            "params": {
+                    "skill_shield": 0.24,
+                    "shield_pct": 0.2,
+                    "lifesteal": 0.25
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "weighted_reel",
+            "name": "Weighted Reel",
+            "rarity": "MYTHIC",
+            "element": "Void",
+            "role": "Loaded Fate",
+            "tags": [
+                    "Fortune"
+            ],
+            "engine": [
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1345,
+                    "atk": 160,
+                    "def": 83,
+                    "spd": 110
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Fortune power."
+            },
+            "passive": {
+                    "name": "Loaded Fate",
+                    "desc": "The die rigs the rolls in the team's favor."
+            },
+            "lore": "Born in the space between a bet and its regret.",
+            "voice": "\u201cThe pot's called. Pay up.\u201d",
+            "params": {
+                    "team_fortune": 2,
+                    "give_energy": 10,
+                    "crit_up": 0.12
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "pale_rake",
+            "name": "Pale Rake",
+            "rarity": "MYTHIC",
+            "element": "Earth",
+            "role": "Standing Host",
+            "tags": [
+                    "Summon"
+            ],
+            "engine": [
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1590,
+                    "atk": 144,
+                    "def": 69,
+                    "spd": 104
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Summon power."
+            },
+            "passive": {
+                    "name": "Standing Host",
+                    "desc": "The die commands summoned dice."
+            },
+            "lore": "The odds bend around it like light around a stone.",
+            "voice": "\u201cSix ways to fall, one way to win.\u201d",
+            "params": {
+                    "summon_basic": 1,
+                    "summon_max": 2,
+                    "summon_pct": 0.3
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "fated_mark",
+            "name": "Fated Mark",
+            "rarity": "MYTHIC",
+            "element": "Fire",
+            "role": "Chain Reaction",
+            "tags": [
+                    "Combo"
+            ],
+            "engine": [
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1450,
+                    "atk": 172,
+                    "def": 94,
+                    "spd": 97
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Combo power."
+            },
+            "passive": {
+                    "name": "Chain Reaction",
+                    "desc": "The die builds and detonates Combo."
+            },
+            "lore": "It has never lost. It simply has not finished playing.",
+            "voice": "\u201cBet against me. Please.\u201d",
+            "params": {
+                    "basic_combo": 2,
+                    "combo_burst": 0.4,
+                    "twin_hit": 1
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "loaded_trickster",
+            "name": "Loaded Trickster",
+            "rarity": "MYTHIC",
+            "element": "Ice",
+            "role": "Heavy Verdict",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1310,
+                    "atk": 156,
+                    "def": 80,
+                    "spd": 109
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Control power."
+            },
+            "passive": {
+                    "name": "Heavy Verdict",
+                    "desc": "The die crushes foes under Gravity."
+            },
+            "lore": "A relic of a game whose rules were rewritten mid-throw.",
+            "voice": "\u201cThe dealer folds first.\u201d",
+            "params": {
+                    "basic_gravity": 2,
+                    "skill_gravity_all": 4,
+                    "weighed_at": 5
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "endless_chance",
+            "name": "Endless Chance",
+            "rarity": "MYTHIC",
+            "element": "Electric",
+            "role": "Doomcaller",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1555,
+                    "atk": 140,
+                    "def": 65,
+                    "spd": 102
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Omen power."
+            },
+            "passive": {
+                    "name": "Doomcaller",
+                    "desc": "The die marks the doomed and executes them."
+            },
+            "lore": "Loaded not with lead, but with certainty.",
+            "voice": "\u201cCome closer. Let me read your odds.\u201d",
+            "params": {
+                    "basic_omen": 3,
+                    "omen_amp": 0.25,
+                    "execute_th": 0.3,
+                    "execute_pct": 0.5
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "golden_mark",
+            "name": "Golden Mark",
+            "rarity": "MYTHIC",
+            "element": "Physical",
+            "role": "Omen Weaver",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1415,
+                    "atk": 168,
+                    "def": 90,
+                    "spd": 95
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Omen power."
+            },
+            "passive": {
+                    "name": "Omen Weaver",
+                    "desc": "The die spreads and detonates Omen across the field."
+            },
+            "lore": "It hums with the sound of every coin that ever hit the felt.",
+            "voice": "\u201cThe wheel remembers your name.\u201d",
+            "params": {
+                    "basic_omen": 2,
+                    "skill_omen_all": 8,
+                    "ult_omen_triggers": 2
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "obsidian_herald",
+            "name": "Obsidian Herald",
+            "rarity": "MYTHIC",
+            "element": "Arcane",
+            "role": "Fault Master",
+            "tags": [
+                    "Fracture"
+            ],
+            "engine": [
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1275,
+                    "atk": 152,
+                    "def": 76,
+                    "spd": 107
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Fracture power."
+            },
+            "passive": {
+                    "name": "Fault Master",
+                    "desc": "The die stacks Fracture on every foe."
+            },
+            "lore": "The dealer who made it never blinked again.",
+            "voice": "\u201cAll in. There was never another option.\u201d",
+            "params": {
+                    "basic_fracture": 3,
+                    "skill_fracture_all": 5,
+                    "ult_fracture_tick": 3
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "ivory_vortex",
+            "name": "Ivory Vortex",
+            "rarity": "MYTHIC",
+            "element": "Light",
+            "role": "Siege Doctrine",
+            "tags": [
+                    "Break"
+            ],
+            "engine": [
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1520,
+                    "atk": 180,
+                    "def": 62,
+                    "spd": 100
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Break power."
+            },
+            "passive": {
+                    "name": "Siege Doctrine",
+                    "desc": "The die tears through toughness and punishes Broken foes."
+            },
+            "lore": "It keeps a tally no ledger could hold.",
+            "voice": "\u201cMy pips are your obituary.\u201d",
+            "params": {
+                    "skill_break": 2,
+                    "broken_bonus": 0.5,
+                    "break_gain": 0.25
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "blessed_quasar",
+            "name": "Blessed Quasar",
+            "rarity": "MYTHIC",
+            "element": "Dark",
+            "role": "Power Nexus",
+            "tags": [
+                    "Energy"
+            ],
+            "engine": [
+                    "Energy"
+            ],
+            "stats": {
+                    "hp": 1380,
+                    "atk": 164,
+                    "def": 87,
+                    "spd": 112
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Energy power."
+            },
+            "passive": {
+                    "name": "Power Nexus",
+                    "desc": "The die floods the team with energy and damage."
+            },
+            "lore": "Rolled once at the end of the world; it liked the result.",
+            "voice": "\u201cThe game ended when I entered it.\u201d",
+            "params": {
+                    "skill_energy": 14,
+                    "passive_energy": 4,
+                    "team_dmg": 0.12
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "fated_quasar",
+            "name": "Fated Quasar",
+            "rarity": "MYTHIC",
+            "element": "Blood",
+            "role": "Deep Cold",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1240,
+                    "atk": 148,
+                    "def": 72,
+                    "spd": 105
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Control power."
+            },
+            "passive": {
+                    "name": "Deep Cold",
+                    "desc": "The die freezes the field solid."
+            },
+            "lore": "Fate whittled it down to exactly what it needed to be.",
+            "voice": "\u201cSpin. I enjoy the noise.\u201d",
+            "params": {
+                    "basic_chill": 2,
+                    "skill_chill_all": 6,
+                    "freeze_at": 10
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "cobalt_croupier",
+            "name": "Cobalt Croupier",
+            "rarity": "MYTHIC",
+            "element": "Poison",
+            "role": "Aegis Heart",
+            "tags": [
+                    "Sustain"
+            ],
+            "engine": [
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1485,
+                    "atk": 176,
+                    "def": 58,
+                    "spd": 98
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Sustain power."
+            },
+            "passive": {
+                    "name": "Aegis Heart",
+                    "desc": "The die shields and drains life for the team."
+            },
+            "lore": "Some dice remember every hand they ever lost. This one keeps the receipts.",
+            "voice": "\u201cAnte up. The table's mine.\u201d",
+            "params": {
+                    "skill_shield": 0.24,
+                    "shield_pct": 0.2,
+                    "lifesteal": 0.25
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "static_fold",
+            "name": "Static Fold",
+            "rarity": "MYTHIC",
+            "element": "Nature",
+            "role": "Loaded Fate",
+            "tags": [
+                    "Fortune"
+            ],
+            "engine": [
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1345,
+                    "atk": 160,
+                    "def": 83,
+                    "spd": 110
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Fortune power."
+            },
+            "passive": {
+                    "name": "Loaded Fate",
+                    "desc": "The die rigs the rolls in the team's favor."
+            },
+            "lore": "It was carved from a debt no one could pay and rolled ever since.",
+            "voice": "\u201cI don't gamble. I collect.\u201d",
+            "params": {
+                    "team_fortune": 2,
+                    "give_energy": 10,
+                    "crit_up": 0.12
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "phantom_nadir",
+            "name": "Phantom Nadir",
+            "rarity": "MYTHIC",
+            "element": "Wind",
+            "role": "Standing Host",
+            "tags": [
+                    "Summon"
+            ],
+            "engine": [
+                    "Summon"
+            ],
+            "stats": {
+                    "hp": 1590,
+                    "atk": 144,
+                    "def": 69,
+                    "spd": 104
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Summon power."
+            },
+            "passive": {
+                    "name": "Standing Host",
+                    "desc": "The die commands summoned dice."
+            },
+            "lore": "Fortune is a wheel; this die is the axle it turns on.",
+            "voice": "\u201cRoll again. I dare you.\u201d",
+            "params": {
+                    "summon_basic": 1,
+                    "summon_max": 2,
+                    "summon_pct": 0.3
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "twisted_tally",
+            "name": "Twisted Tally",
+            "rarity": "MYTHIC",
+            "element": "Time",
+            "role": "Chain Reaction",
+            "tags": [
+                    "Combo"
+            ],
+            "engine": [
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1450,
+                    "atk": 172,
+                    "def": 94,
+                    "spd": 97
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Combo power."
+            },
+            "passive": {
+                    "name": "Chain Reaction",
+                    "desc": "The die builds and detonates Combo."
+            },
+            "lore": "They say it fell from a table in a room that no longer exists.",
+            "voice": "\u201cThe count never lies.\u201d",
+            "params": {
+                    "basic_combo": 2,
+                    "combo_burst": 0.4,
+                    "twin_hit": 1
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "gleaming_eclipse",
+            "name": "Gleaming Eclipse",
+            "rarity": "MYTHIC",
+            "element": "Void",
+            "role": "Heavy Verdict",
+            "tags": [
+                    "Control"
+            ],
+            "engine": [
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1310,
+                    "atk": 156,
+                    "def": 80,
+                    "spd": 109
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Control power."
+            },
+            "passive": {
+                    "name": "Heavy Verdict",
+                    "desc": "The die crushes foes under Gravity."
+            },
+            "lore": "Every pip is a promise, and every promise is a threat.",
+            "voice": "\u201cEvens or odds, you still lose.\u201d",
+            "params": {
+                    "basic_gravity": 2,
+                    "skill_gravity_all": 4,
+                    "weighed_at": 5
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "ivory_warden",
+            "name": "Ivory Warden",
+            "rarity": "MYTHIC",
+            "element": "Earth",
+            "role": "Doomcaller",
+            "tags": [
+                    "Omen"
+            ],
+            "engine": [
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1555,
+                    "atk": 140,
+                    "def": 65,
+                    "spd": 102
+            },
+            "basic": {
+                    "name": "Prelude",
+                    "desc": "A precise strike that primes the engine."
+            },
+            "skill": {
+                    "name": "Crescendo",
+                    "desc": "Unleash the die's signature control."
+            },
+            "ult": {
+                    "name": "Finale",
+                    "desc": "A field-wide catastrophe of Omen power."
+            },
+            "passive": {
+                    "name": "Doomcaller",
+                    "desc": "The die marks the doomed and executes them."
+            },
+            "lore": "Cut from cold starlight, it counts outcomes before they happen.",
+            "voice": "\u201cWatch the wheel. Watch it break.\u201d",
+            "params": {
+                    "basic_omen": 3,
+                    "omen_amp": 0.25,
+                    "execute_th": 0.3,
+                    "execute_pct": 0.5
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "Battle-start bonus: the signature engine begins primed."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.12
+                            },
+                            "desc": "+12% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "Skill affects an additional target."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.15
+                            },
+                            "desc": "+15% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Ultimate cooldown and cost reduced."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 14
+                            },
+                            "desc": "+14 SPD; the passive gains a second trigger."
+                    }
+            ]
+    },
+    {
+            "id": "prime_tempest",
+            "name": "Prime Tempest",
+            "rarity": "ETERNAL",
+            "element": "Fire",
+            "role": "Godhand",
+            "tags": [
+                    "Fortune",
+                    "Sustain"
+            ],
+            "engine": [
+                    "Fortune",
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1750,
+                    "atk": 199,
+                    "def": 106,
+                    "spd": 109
+            },
+            "basic": {
+                    "name": "First Law",
+                    "desc": "A cosmic strike channeling every signature effect."
+            },
+            "skill": {
+                    "name": "Second Law",
+                    "desc": "Reshape the battlefield with combined mechanics."
+            },
+            "ult": {
+                    "name": "Final Law",
+                    "desc": "An extinction-level burst that fuses all signature powers."
+            },
+            "passive": {
+                    "name": "Godhand",
+                    "desc": "The die radiates an ATK aura, drains life, and executes the weak."
+            },
+            "lore": "The house forgot it in a drawer. It has been dealing itself in ever since.",
+            "voice": "\u201cEvery face is the winning face.\u201d",
+            "params": {
+                    "aura_atk": 0.2,
+                    "lifesteal": 0.35,
+                    "execute_th": 0.35,
+                    "execute_pct": 0.7
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "All signature mechanics begin the battle pre-charged."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.15
+                            },
+                            "desc": "+15% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "The ultimate hits every enemy an extra time."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.18
+                            },
+                            "desc": "+18% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Signature auras and effects are 25% stronger."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 16
+                            },
+                            "desc": "+16 SPD; the die revives once at 50% HP."
+                    }
+            ]
+    },
+    {
+            "id": "grave_reel",
+            "name": "Grave Reel",
+            "rarity": "ETERNAL",
+            "element": "Ice",
+            "role": "Ascendant Fury",
+            "tags": [
+                    "Break",
+                    "Combo"
+            ],
+            "engine": [
+                    "Break",
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1678,
+                    "atk": 192,
+                    "def": 99,
+                    "spd": 120
+            },
+            "basic": {
+                    "name": "First Law",
+                    "desc": "A cosmic strike channeling every signature effect."
+            },
+            "skill": {
+                    "name": "Second Law",
+                    "desc": "Reshape the battlefield with combined mechanics."
+            },
+            "ult": {
+                    "name": "Final Law",
+                    "desc": "An extinction-level burst that fuses all signature powers."
+            },
+            "passive": {
+                    "name": "Ascendant Fury",
+                    "desc": "The die overloads, ramps, and strikes twice."
+            },
+            "lore": "Where it lands, probability kneels.",
+            "voice": "\u201cLuck? No. Arithmetic.\u201d",
+            "params": {
+                    "overload_pct": 0.5,
+                    "ramp_atk": 0.1,
+                    "twin_hit": 1
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "All signature mechanics begin the battle pre-charged."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.15
+                            },
+                            "desc": "+15% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "The ultimate hits every enemy an extra time."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.18
+                            },
+                            "desc": "+18% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Signature auras and effects are 25% stronger."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 16
+                            },
+                            "desc": "+16 SPD; the die revives once at 50% HP."
+                    }
+            ]
+    },
+    {
+            "id": "sovereign_dealer",
+            "name": "Sovereign Dealer",
+            "rarity": "ETERNAL",
+            "element": "Electric",
+            "role": "Absolute Ward",
+            "tags": [
+                    "Control",
+                    "Sustain"
+            ],
+            "engine": [
+                    "Control",
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1804,
+                    "atk": 205,
+                    "def": 92,
+                    "spd": 114
+            },
+            "basic": {
+                    "name": "First Law",
+                    "desc": "A cosmic strike channeling every signature effect."
+            },
+            "skill": {
+                    "name": "Second Law",
+                    "desc": "Reshape the battlefield with combined mechanics."
+            },
+            "ult": {
+                    "name": "Final Law",
+                    "desc": "An extinction-level burst that fuses all signature powers."
+            },
+            "passive": {
+                    "name": "Absolute Ward",
+                    "desc": "The die reflects, shields the team, and rots enemy healing."
+            },
+            "lore": "A gambler's last breath, pressed into six unforgiving faces.",
+            "voice": "\u201cDouble or nothing \u2014 it's always nothing.\u201d",
+            "params": {
+                    "reflect": 0.35,
+                    "aura_def": 0.2,
+                    "decay": 0.5
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "All signature mechanics begin the battle pre-charged."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.15
+                            },
+                            "desc": "+15% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "The ultimate hits every enemy an extra time."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.18
+                            },
+                            "desc": "+18% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Signature auras and effects are 25% stronger."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 16
+                            },
+                            "desc": "+16 SPD; the die revives once at 50% HP."
+                    }
+            ]
+    },
+    {
+            "id": "rigged_chance",
+            "name": "Rigged Chance",
+            "rarity": "ETERNAL",
+            "element": "Physical",
+            "role": "Perfect Cadence",
+            "tags": [
+                    "Combo",
+                    "Fracture"
+            ],
+            "engine": [
+                    "Combo",
+                    "Fracture"
+            ],
+            "stats": {
+                    "hp": 1732,
+                    "atk": 197,
+                    "def": 104,
+                    "spd": 125
+            },
+            "basic": {
+                    "name": "First Law",
+                    "desc": "A cosmic strike channeling every signature effect."
+            },
+            "skill": {
+                    "name": "Second Law",
+                    "desc": "Reshape the battlefield with combined mechanics."
+            },
+            "ult": {
+                    "name": "Final Law",
+                    "desc": "An extinction-level burst that fuses all signature powers."
+            },
+            "passive": {
+                    "name": "Perfect Cadence",
+                    "desc": "The die resonates, shatters shields, and ramps endlessly."
+            },
+            "lore": "It does not roll so much as decide.",
+            "voice": "\u201cI already know your number.\u201d",
+            "params": {
+                    "resonance_n": 2,
+                    "shield_break": 0.7,
+                    "ramp_atk": 0.08
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "All signature mechanics begin the battle pre-charged."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.15
+                            },
+                            "desc": "+15% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "The ultimate hits every enemy an extra time."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.18
+                            },
+                            "desc": "+18% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Signature auras and effects are 25% stronger."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 16
+                            },
+                            "desc": "+16 SPD; the die revives once at 50% HP."
+                    }
+            ]
+    },
+    {
+            "id": "sable_trickster",
+            "name": "Sable Trickster",
+            "rarity": "ETERNAL",
+            "element": "Arcane",
+            "role": "Reaper Sovereign",
+            "tags": [
+                    "Omen",
+                    "Sustain"
+            ],
+            "engine": [
+                    "Omen",
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1660,
+                    "atk": 190,
+                    "def": 97,
+                    "spd": 119
+            },
+            "basic": {
+                    "name": "First Law",
+                    "desc": "A cosmic strike channeling every signature effect."
+            },
+            "skill": {
+                    "name": "Second Law",
+                    "desc": "Reshape the battlefield with combined mechanics."
+            },
+            "ult": {
+                    "name": "Final Law",
+                    "desc": "An extinction-level burst that fuses all signature powers."
+            },
+            "passive": {
+                    "name": "Reaper Sovereign",
+                    "desc": "The die an executing, life-draining warlord aura."
+            },
+            "lore": "Born in the space between a bet and its regret.",
+            "voice": "\u201cThe pot's called. Pay up.\u201d",
+            "params": {
+                    "execute_th": 0.4,
+                    "execute_pct": 0.8,
+                    "lifesteal": 0.4,
+                    "aura_atk": 0.18
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "All signature mechanics begin the battle pre-charged."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.15
+                            },
+                            "desc": "+15% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "The ultimate hits every enemy an extra time."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.18
+                            },
+                            "desc": "+18% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Signature auras and effects are 25% stronger."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 16
+                            },
+                            "desc": "+16 SPD; the die revives once at 50% HP."
+                    }
+            ]
+    },
+    {
+            "id": "gilded_whale",
+            "name": "Gilded Whale",
+            "rarity": "ETERNAL",
+            "element": "Light",
+            "role": "Iron Apocalypse",
+            "tags": [
+                    "Break",
+                    "Control"
+            ],
+            "engine": [
+                    "Break",
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1786,
+                    "atk": 203,
+                    "def": 90,
+                    "spd": 112
+            },
+            "basic": {
+                    "name": "First Law",
+                    "desc": "A cosmic strike channeling every signature effect."
+            },
+            "skill": {
+                    "name": "Second Law",
+                    "desc": "Reshape the battlefield with combined mechanics."
+            },
+            "ult": {
+                    "name": "Final Law",
+                    "desc": "An extinction-level burst that fuses all signature powers."
+            },
+            "passive": {
+                    "name": "Iron Apocalypse",
+                    "desc": "The die overloads while reflecting and suppressing healing."
+            },
+            "lore": "The odds bend around it like light around a stone.",
+            "voice": "\u201cSix ways to fall, one way to win.\u201d",
+            "params": {
+                    "overload_pct": 0.45,
+                    "reflect": 0.3,
+                    "aura_def": 0.18,
+                    "decay": 0.4
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "All signature mechanics begin the battle pre-charged."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.15
+                            },
+                            "desc": "+15% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "The ultimate hits every enemy an extra time."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.18
+                            },
+                            "desc": "+18% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Signature auras and effects are 25% stronger."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 16
+                            },
+                            "desc": "+16 SPD; the die revives once at 50% HP."
+                    }
+            ]
+    },
+    {
+            "id": "doomed_warden",
+            "name": "Doomed Warden",
+            "rarity": "ETERNAL",
+            "element": "Dark",
+            "role": "Cascading Star",
+            "tags": [
+                    "Combo",
+                    "Fortune"
+            ],
+            "engine": [
+                    "Combo",
+                    "Fortune"
+            ],
+            "stats": {
+                    "hp": 1714,
+                    "atk": 196,
+                    "def": 103,
+                    "spd": 123
+            },
+            "basic": {
+                    "name": "First Law",
+                    "desc": "A cosmic strike channeling every signature effect."
+            },
+            "skill": {
+                    "name": "Second Law",
+                    "desc": "Reshape the battlefield with combined mechanics."
+            },
+            "ult": {
+                    "name": "Final Law",
+                    "desc": "An extinction-level burst that fuses all signature powers."
+            },
+            "passive": {
+                    "name": "Cascading Star",
+                    "desc": "The die twin-hits and ramps behind a scaling aura."
+            },
+            "lore": "It has never lost. It simply has not finished playing.",
+            "voice": "\u201cBet against me. Please.\u201d",
+            "params": {
+                    "twin_hit": 1,
+                    "ramp_atk": 0.12,
+                    "aura_atk": 0.2
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "All signature mechanics begin the battle pre-charged."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.15
+                            },
+                            "desc": "+15% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "The ultimate hits every enemy an extra time."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.18
+                            },
+                            "desc": "+18% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Signature auras and effects are 25% stronger."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 16
+                            },
+                            "desc": "+16 SPD; the die revives once at 50% HP."
+                    }
+            ]
+    },
+    {
+            "id": "hidden_chance",
+            "name": "Hidden Chance",
+            "rarity": "ETERNAL",
+            "element": "Blood",
+            "role": "Fatebreaker",
+            "tags": [
+                    "Combo",
+                    "Omen"
+            ],
+            "engine": [
+                    "Combo",
+                    "Omen"
+            ],
+            "stats": {
+                    "hp": 1840,
+                    "atk": 188,
+                    "def": 95,
+                    "spd": 117
+            },
+            "basic": {
+                    "name": "First Law",
+                    "desc": "A cosmic strike channeling every signature effect."
+            },
+            "skill": {
+                    "name": "Second Law",
+                    "desc": "Reshape the battlefield with combined mechanics."
+            },
+            "ult": {
+                    "name": "Final Law",
+                    "desc": "An extinction-level burst that fuses all signature powers."
+            },
+            "passive": {
+                    "name": "Fatebreaker",
+                    "desc": "The die resonant executes with lifesteal."
+            },
+            "lore": "A relic of a game whose rules were rewritten mid-throw.",
+            "voice": "\u201cThe dealer folds first.\u201d",
+            "params": {
+                    "resonance_n": 3,
+                    "lifesteal": 0.35,
+                    "execute_th": 0.3,
+                    "execute_pct": 0.6
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "All signature mechanics begin the battle pre-charged."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.15
+                            },
+                            "desc": "+15% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "The ultimate hits every enemy an extra time."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.18
+                            },
+                            "desc": "+18% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Signature auras and effects are 25% stronger."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 16
+                            },
+                            "desc": "+16 SPD; the die revives once at 50% HP."
+                    }
+            ]
+    },
+    {
+            "id": "golden_shill",
+            "name": "Golden Shill",
+            "rarity": "ETERNAL",
+            "element": "Poison",
+            "role": "Voidrender",
+            "tags": [
+                    "Fracture",
+                    "Sustain"
+            ],
+            "engine": [
+                    "Fracture",
+                    "Sustain"
+            ],
+            "stats": {
+                    "hp": 1768,
+                    "atk": 201,
+                    "def": 108,
+                    "spd": 111
+            },
+            "basic": {
+                    "name": "First Law",
+                    "desc": "A cosmic strike channeling every signature effect."
+            },
+            "skill": {
+                    "name": "Second Law",
+                    "desc": "Reshape the battlefield with combined mechanics."
+            },
+            "ult": {
+                    "name": "Final Law",
+                    "desc": "An extinction-level burst that fuses all signature powers."
+            },
+            "passive": {
+                    "name": "Voidrender",
+                    "desc": "The die overloads through shields, healing on the wreckage."
+            },
+            "lore": "Loaded not with lead, but with certainty.",
+            "voice": "\u201cCome closer. Let me read your odds.\u201d",
+            "params": {
+                    "shield_break": 0.8,
+                    "overload_pct": 0.5,
+                    "lifesteal": 0.3
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "All signature mechanics begin the battle pre-charged."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.15
+                            },
+                            "desc": "+15% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "The ultimate hits every enemy an extra time."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.18
+                            },
+                            "desc": "+18% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Signature auras and effects are 25% stronger."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 16
+                            },
+                            "desc": "+16 SPD; the die revives once at 50% HP."
+                    }
+            ]
+    },
+    {
+            "id": "astral_marker",
+            "name": "Astral Marker",
+            "rarity": "ETERNAL",
+            "element": "Nature",
+            "role": "Cosmic Warden",
+            "tags": [
+                    "Fortune",
+                    "Control"
+            ],
+            "engine": [
+                    "Fortune",
+                    "Control"
+            ],
+            "stats": {
+                    "hp": 1696,
+                    "atk": 194,
+                    "def": 101,
+                    "spd": 122
+            },
+            "basic": {
+                    "name": "First Law",
+                    "desc": "A cosmic strike channeling every signature effect."
+            },
+            "skill": {
+                    "name": "Second Law",
+                    "desc": "Reshape the battlefield with combined mechanics."
+            },
+            "ult": {
+                    "name": "Final Law",
+                    "desc": "An extinction-level burst that fuses all signature powers."
+            },
+            "passive": {
+                    "name": "Cosmic Warden",
+                    "desc": "The die the ultimate team aura and enemy suppressor."
+            },
+            "lore": "It hums with the sound of every coin that ever hit the felt.",
+            "voice": "\u201cThe wheel remembers your name.\u201d",
+            "params": {
+                    "aura_atk": 0.2,
+                    "aura_def": 0.2,
+                    "decay": 0.5,
+                    "reflect": 0.3
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "All signature mechanics begin the battle pre-charged."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.15
+                            },
+                            "desc": "+15% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "The ultimate hits every enemy an extra time."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.18
+                            },
+                            "desc": "+18% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Signature auras and effects are 25% stronger."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 16
+                            },
+                            "desc": "+16 SPD; the die revives once at 50% HP."
+                    }
+            ]
+    },
+    {
+            "id": "gilded_tempest",
+            "name": "Gilded Tempest",
+            "rarity": "ETERNAL",
+            "element": "Wind",
+            "role": "Endless Verdict",
+            "tags": [
+                    "Break",
+                    "Combo"
+            ],
+            "engine": [
+                    "Break",
+                    "Combo"
+            ],
+            "stats": {
+                    "hp": 1822,
+                    "atk": 186,
+                    "def": 94,
+                    "spd": 115
+            },
+            "basic": {
+                    "name": "First Law",
+                    "desc": "A cosmic strike channeling every signature effect."
+            },
+            "skill": {
+                    "name": "Second Law",
+                    "desc": "Reshape the battlefield with combined mechanics."
+            },
+            "ult": {
+                    "name": "Final Law",
+                    "desc": "An extinction-level burst that fuses all signature powers."
+            },
+            "passive": {
+                    "name": "Endless Verdict",
+                    "desc": "The die a ramping twin-strike executioner."
+            },
+            "lore": "The dealer who made it never blinked again.",
+            "voice": "\u201cAll in. There was never another option.\u201d",
+            "params": {
+                    "ramp_atk": 0.1,
+                    "execute_th": 0.35,
+                    "execute_pct": 0.7,
+                    "twin_hit": 1
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "All signature mechanics begin the battle pre-charged."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.15
+                            },
+                            "desc": "+15% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "The ultimate hits every enemy an extra time."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.18
+                            },
+                            "desc": "+18% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Signature auras and effects are 25% stronger."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 16
+                            },
+                            "desc": "+16 SPD; the die revives once at 50% HP."
+                    }
+            ]
+    },
+    {
+            "id": "verdant_rake",
+            "name": "Verdant Rake",
+            "rarity": "ETERNAL",
+            "element": "Time",
+            "role": "Zenith Engine",
+            "tags": [
+                    "Combo",
+                    "Break"
+            ],
+            "engine": [
+                    "Combo",
+                    "Break"
+            ],
+            "stats": {
+                    "hp": 1750,
+                    "atk": 199,
+                    "def": 106,
+                    "spd": 109
+            },
+            "basic": {
+                    "name": "First Law",
+                    "desc": "A cosmic strike channeling every signature effect."
+            },
+            "skill": {
+                    "name": "Second Law",
+                    "desc": "Reshape the battlefield with combined mechanics."
+            },
+            "ult": {
+                    "name": "Final Law",
+                    "desc": "An extinction-level burst that fuses all signature powers."
+            },
+            "passive": {
+                    "name": "Zenith Engine",
+                    "desc": "The die resonant overload with reflect and lifesteal."
+            },
+            "lore": "It keeps a tally no ledger could hold.",
+            "voice": "\u201cMy pips are your obituary.\u201d",
+            "params": {
+                    "resonance_n": 2,
+                    "overload_pct": 0.5,
+                    "reflect": 0.3,
+                    "lifesteal": 0.35
+            },
+            "cons": [
+                    {
+                            "level": 1,
+                            "desc": "All signature mechanics begin the battle pre-charged."
+                    },
+                    {
+                            "level": 2,
+                            "stat": {
+                                    "atk_pct": 0.15
+                            },
+                            "desc": "+15% ATK."
+                    },
+                    {
+                            "level": 3,
+                            "desc": "The ultimate hits every enemy an extra time."
+                    },
+                    {
+                            "level": 4,
+                            "stat": {
+                                    "hp_pct": 0.18
+                            },
+                            "desc": "+18% Max HP."
+                    },
+                    {
+                            "level": 5,
+                            "desc": "Signature auras and effects are 25% stronger."
+                    },
+                    {
+                            "level": 6,
+                            "stat": {
+                                    "spd_flat": 16
+                            },
+                            "desc": "+16 SPD; the die revives once at 50% HP."
+                    }
+            ]
+    },
 ]
 
 # ─── Banner config ───────────────────────────────────────────────────────────
@@ -1617,26 +10002,643 @@ BANNERS = {
         "type": "beginner", "cost": BEGINNER_PULL_COST,
         "featured": [],
     },
-    "cosmic": {
-        "id": "cosmic", "name": "Cosmic Convergence",
-        "subtitle": "The expanded table \u2014 nine new elements, fifty-three new dice. The universe is rigged.",
-        "type": "standard", "cost": PULL_COST, "featured": [],
-    },
-    "endless_winter": {
-        "id": "endless_winter", "name": "Endless Winter",
-        "subtitle": "Featured: Absolute Zero. When you win the 50/50, the world stops moving.",
+    "eternal_convergence": {
+        "id": "eternal_convergence", "name": "Eternal Convergence",
+        "subtitle": "Featured: Prime Tempest. The rarest die in creation descends \u2014 all outcomes converge on one.",
         "type": "limited", "cost": PULL_COST,
-        "featured_mythic": "absolute_zero",
-        "featured_rares": ["rift_tracker", "structural_analyst", "bastion_guard"],
+        "featured_eternal": "prime_tempest",
+        "featured_rares": ["eternal_reckoner", "lunar_payout", "sovereign_fortune"],
     },
-    "house_of_fortune": {
-        "id": "house_of_fortune", "name": "House of Fortune",
-        "subtitle": "Featured: Jackpot Die. Double or nothing \u2014 and the House is feeling generous.",
+    "legends_rising": {
+        "id": "legends_rising", "name": "Legends Rising",
+        "subtitle": "Featured: Ivory Warden. New legends take the table, one strong hand at a time.",
         "type": "limited", "cost": PULL_COST,
-        "featured_mythic": "jackpot_die",
-        "featured_rares": ["fate_anchor", "resonance_thief", "omen_catalyst"],
+        "featured_mythic": "ivory_warden",
+        "featured_rares": ["emerald_reaver", "voidforged_ante", "pale_roulette"],
+    },
+    "shadow_court": {
+        "id": "shadow_court", "name": "Shadow Court",
+        "subtitle": "Featured: Gleaming Eclipse. The court of umbral dealers convenes \u2014 place your bet in the dark.",
+        "type": "limited", "cost": PULL_COST,
+        "featured_mythic": "gleaming_eclipse",
+        "featured_rares": ["gilded_cipher", "ruby_whale", "fractal_zenith"],
     },
 }
+
+# ─── v4.1 Endgame: Astral Abyss ─────────────────────────────────────────────
+# Deep 12-floor endless dungeon. Enemy dicts copy the CAMPAIGN stage enemy
+# shape exactly {name, element, hp, atk, def, spd, pow, ai}.
+ABYSS_MODIFIERS = {
+    "hp_up": {
+        "name": "Bloated",
+        "desc": "Enemies have +50% Max HP.",
+        "hp": 0.5
+    },
+    "atk_up": {
+        "name": "Vicious",
+        "desc": "Enemies deal +40% damage.",
+        "atk": 0.4
+    },
+    "fast": {
+        "name": "Frenzied",
+        "desc": "Enemies have +30% SPD.",
+        "spd": 0.3
+    },
+    "thorns": {
+        "name": "Thorned",
+        "desc": "Enemies reflect 15% of damage taken.",
+        "reflect": 0.15
+    },
+    "regen": {
+        "name": "Regenerating",
+        "desc": "Enemies heal 5% of Max HP each round.",
+        "heal": 0.05
+    },
+    "shielded": {
+        "name": "Shielded",
+        "desc": "Enemies start with a shield worth 20% of Max HP.",
+        "shield": 0.2
+    },
+    "resist_all": {
+        "name": "Warded",
+        "desc": "Enemies take 20% less damage from all sources.",
+        "dr": 0.2
+    },
+    "enrage": {
+        "name": "Enraged",
+        "desc": "Enemies gain +5% ATK every round.",
+        "atk_per_round": 0.05
+    },
+    "vampiric": {
+        "name": "Vampiric",
+        "desc": "Enemies heal for 30% of the damage they deal.",
+        "lifesteal": 0.3
+    },
+    "unstoppable": {
+        "name": "Unstoppable",
+        "desc": "Bosses are immune to stun and freeze.",
+        "cc_immune": 1
+    }
+}
+
+ABYSS_FLOORS = [
+    {
+        "id": "a1",
+        "name": "The First Descent",
+        "lore": "The first step down. The air already tastes like a losing hand.",
+        "tier": "NORMAL",
+        "modifiers": [
+            "hp_up"
+        ],
+        "enemies": [
+            {
+                "name": "Abyss Warden",
+                "element": "Fire",
+                "hp": 1800,
+                "atk": 120,
+                "def": 60,
+                "spd": 96,
+                "pow": 1.1,
+                "ai": "basic"
+            },
+            {
+                "name": "Abyss Warden",
+                "element": "Light",
+                "hp": 1800,
+                "atk": 120,
+                "def": 60,
+                "spd": 93,
+                "pow": 1.1,
+                "ai": "debuff"
+            },
+            {
+                "name": "Abyss Stalker",
+                "element": "Nature",
+                "hp": 1980,
+                "atk": 126,
+                "def": 60,
+                "spd": 104,
+                "pow": 1.05,
+                "ai": "basic"
+            }
+        ],
+        "reward": {
+            "gems": 150,
+            "shards": 10
+        }
+    },
+    {
+        "id": "a2",
+        "name": "Whispering Dark",
+        "lore": "Voices count your chips in a language you almost recognize.",
+        "tier": "ELITE",
+        "modifiers": [
+            "atk_up"
+        ],
+        "enemies": [
+            {
+                "name": "Abyss Warden",
+                "element": "Physical",
+                "hp": 2700,
+                "atk": 131,
+                "def": 67,
+                "spd": 98,
+                "pow": 1.1,
+                "ai": "basic"
+            },
+            {
+                "name": "Abyss Warden",
+                "element": "Poison",
+                "hp": 2700,
+                "atk": 131,
+                "def": 67,
+                "spd": 95,
+                "pow": 1.1,
+                "ai": "debuff"
+            },
+            {
+                "name": "Abyss Reaver",
+                "element": "Void",
+                "hp": 4320,
+                "atk": 150,
+                "def": 73,
+                "spd": 104,
+                "pow": 1.2,
+                "ai": "aoe"
+            }
+        ],
+        "reward": {
+            "gems": 200,
+            "shards": 18
+        }
+    },
+    {
+        "id": "a3",
+        "name": "Gravity Well",
+        "lore": "Everything here falls faster, including your odds.",
+        "tier": "NORMAL",
+        "modifiers": [
+            "fast",
+            "regen"
+        ],
+        "enemies": [
+            {
+                "name": "Abyss Warden",
+                "element": "Dark",
+                "hp": 3600,
+                "atk": 142,
+                "def": 74,
+                "spd": 100,
+                "pow": 1.1,
+                "ai": "basic"
+            },
+            {
+                "name": "Abyss Warden",
+                "element": "Time",
+                "hp": 3600,
+                "atk": 142,
+                "def": 74,
+                "spd": 97,
+                "pow": 1.1,
+                "ai": "debuff"
+            },
+            {
+                "name": "Abyss Stalker",
+                "element": "Ice",
+                "hp": 3960,
+                "atk": 148,
+                "def": 74,
+                "spd": 108,
+                "pow": 1.05,
+                "ai": "basic"
+            }
+        ],
+        "reward": {
+            "gems": 250,
+            "shards": 26
+        }
+    },
+    {
+        "id": "a4",
+        "name": "Mirror Vault",
+        "lore": "You face reflections that have already beaten you.",
+        "tier": "BOSS",
+        "modifiers": [
+            "shielded"
+        ],
+        "enemies": [
+            {
+                "name": "Abyss Warden",
+                "element": "Nature",
+                "hp": 4500,
+                "atk": 153,
+                "def": 81,
+                "spd": 102,
+                "pow": 1.1,
+                "ai": "basic"
+            },
+            {
+                "name": "Abyss Warden",
+                "element": "Fire",
+                "hp": 4500,
+                "atk": 153,
+                "def": 81,
+                "spd": 99,
+                "pow": 1.1,
+                "ai": "debuff"
+            },
+            {
+                "name": "Abyssal Sovereign",
+                "element": "Arcane",
+                "hp": 14400,
+                "atk": 198,
+                "def": 101,
+                "spd": 106,
+                "pow": 1.4,
+                "ai": "boss"
+            }
+        ],
+        "reward": {
+            "gems": 300,
+            "shards": 34
+        }
+    },
+    {
+        "id": "a5",
+        "name": "Bleeding Edge",
+        "lore": "Cut the dark and it bleeds back at you.",
+        "tier": "NORMAL",
+        "modifiers": [
+            "thorns",
+            "atk_up"
+        ],
+        "enemies": [
+            {
+                "name": "Abyss Warden",
+                "element": "Void",
+                "hp": 5400,
+                "atk": 164,
+                "def": 88,
+                "spd": 104,
+                "pow": 1.1,
+                "ai": "basic"
+            },
+            {
+                "name": "Abyss Warden",
+                "element": "Physical",
+                "hp": 5400,
+                "atk": 164,
+                "def": 88,
+                "spd": 101,
+                "pow": 1.1,
+                "ai": "debuff"
+            },
+            {
+                "name": "Abyss Stalker",
+                "element": "Blood",
+                "hp": 5940,
+                "atk": 170,
+                "def": 88,
+                "spd": 112,
+                "pow": 1.05,
+                "ai": "basic"
+            }
+        ],
+        "reward": {
+            "gems": 350,
+            "shards": 42
+        }
+    },
+    {
+        "id": "a6",
+        "name": "Warded Sanctum",
+        "lore": "A sanctum that refuses damage and mercy alike.",
+        "tier": "ELITE",
+        "modifiers": [
+            "resist_all",
+            "hp_up"
+        ],
+        "enemies": [
+            {
+                "name": "Abyss Warden",
+                "element": "Ice",
+                "hp": 6300,
+                "atk": 175,
+                "def": 95,
+                "spd": 106,
+                "pow": 1.1,
+                "ai": "basic"
+            },
+            {
+                "name": "Abyss Warden",
+                "element": "Dark",
+                "hp": 6300,
+                "atk": 175,
+                "def": 95,
+                "spd": 103,
+                "pow": 1.1,
+                "ai": "debuff"
+            },
+            {
+                "name": "Abyss Reaver",
+                "element": "Wind",
+                "hp": 10080,
+                "atk": 201,
+                "def": 104,
+                "spd": 112,
+                "pow": 1.2,
+                "ai": "aoe"
+            }
+        ],
+        "reward": {
+            "gems": 400,
+            "shards": 50
+        }
+    },
+    {
+        "id": "a7",
+        "name": "Hunger Below",
+        "lore": "Something below has learned to eat the light.",
+        "tier": "NORMAL",
+        "modifiers": [
+            "vampiric",
+            "fast"
+        ],
+        "enemies": [
+            {
+                "name": "Abyss Warden",
+                "element": "Arcane",
+                "hp": 7200,
+                "atk": 186,
+                "def": 102,
+                "spd": 108,
+                "pow": 1.1,
+                "ai": "basic"
+            },
+            {
+                "name": "Abyss Warden",
+                "element": "Nature",
+                "hp": 7200,
+                "atk": 186,
+                "def": 102,
+                "spd": 105,
+                "pow": 1.1,
+                "ai": "debuff"
+            },
+            {
+                "name": "Abyss Stalker",
+                "element": "Earth",
+                "hp": 7920,
+                "atk": 192,
+                "def": 102,
+                "spd": 116,
+                "pow": 1.05,
+                "ai": "basic"
+            }
+        ],
+        "reward": {
+            "gems": 450,
+            "shards": 58
+        }
+    },
+    {
+        "id": "a8",
+        "name": "Rising Fury",
+        "lore": "The deeper you go, the angrier the house becomes.",
+        "tier": "BOSS",
+        "modifiers": [
+            "enrage",
+            "shielded"
+        ],
+        "enemies": [
+            {
+                "name": "Abyss Warden",
+                "element": "Blood",
+                "hp": 8100,
+                "atk": 197,
+                "def": 109,
+                "spd": 110,
+                "pow": 1.1,
+                "ai": "basic"
+            },
+            {
+                "name": "Abyss Warden",
+                "element": "Void",
+                "hp": 8100,
+                "atk": 197,
+                "def": 109,
+                "spd": 107,
+                "pow": 1.1,
+                "ai": "debuff"
+            },
+            {
+                "name": "Abyssal Sovereign",
+                "element": "Electric",
+                "hp": 25920,
+                "atk": 256,
+                "def": 136,
+                "spd": 114,
+                "pow": 1.4,
+                "ai": "boss"
+            }
+        ],
+        "reward": {
+            "gems": 500,
+            "shards": 66
+        }
+    },
+    {
+        "id": "a9",
+        "name": "The Broken Ladder",
+        "lore": "The rungs are missing. So is your margin for error.",
+        "tier": "NORMAL",
+        "modifiers": [
+            "resist_all",
+            "thorns",
+            "atk_up"
+        ],
+        "enemies": [
+            {
+                "name": "Abyss Warden",
+                "element": "Wind",
+                "hp": 9000,
+                "atk": 208,
+                "def": 116,
+                "spd": 112,
+                "pow": 1.1,
+                "ai": "basic"
+            },
+            {
+                "name": "Abyss Warden",
+                "element": "Ice",
+                "hp": 9000,
+                "atk": 208,
+                "def": 116,
+                "spd": 109,
+                "pow": 1.1,
+                "ai": "debuff"
+            },
+            {
+                "name": "Abyss Stalker",
+                "element": "Light",
+                "hp": 9900,
+                "atk": 214,
+                "def": 116,
+                "spd": 120,
+                "pow": 1.05,
+                "ai": "basic"
+            }
+        ],
+        "reward": {
+            "gems": 550,
+            "shards": 74
+        }
+    },
+    {
+        "id": "a10",
+        "name": "Feast of Ruin",
+        "lore": "The abyss sets a table and you are the meal.",
+        "tier": "ELITE",
+        "modifiers": [
+            "vampiric",
+            "regen",
+            "hp_up"
+        ],
+        "enemies": [
+            {
+                "name": "Abyss Warden",
+                "element": "Earth",
+                "hp": 9900,
+                "atk": 219,
+                "def": 123,
+                "spd": 114,
+                "pow": 1.1,
+                "ai": "basic"
+            },
+            {
+                "name": "Abyss Warden",
+                "element": "Arcane",
+                "hp": 9900,
+                "atk": 219,
+                "def": 123,
+                "spd": 111,
+                "pow": 1.1,
+                "ai": "debuff"
+            },
+            {
+                "name": "Abyss Reaver",
+                "element": "Poison",
+                "hp": 15840,
+                "atk": 251,
+                "def": 135,
+                "spd": 120,
+                "pow": 1.2,
+                "ai": "aoe"
+            }
+        ],
+        "reward": {
+            "gems": 600,
+            "shards": 82
+        }
+    },
+    {
+        "id": "a11",
+        "name": "Wrath Ascendant",
+        "lore": "Rage made architecture; every wall wants you dead.",
+        "tier": "NORMAL",
+        "modifiers": [
+            "enrage",
+            "resist_all",
+            "fast"
+        ],
+        "enemies": [
+            {
+                "name": "Abyss Warden",
+                "element": "Electric",
+                "hp": 10800,
+                "atk": 230,
+                "def": 130,
+                "spd": 116,
+                "pow": 1.1,
+                "ai": "basic"
+            },
+            {
+                "name": "Abyss Warden",
+                "element": "Blood",
+                "hp": 10800,
+                "atk": 230,
+                "def": 130,
+                "spd": 113,
+                "pow": 1.1,
+                "ai": "debuff"
+            },
+            {
+                "name": "Abyss Stalker",
+                "element": "Time",
+                "hp": 11880,
+                "atk": 236,
+                "def": 130,
+                "spd": 124,
+                "pow": 1.05,
+                "ai": "basic"
+            }
+        ],
+        "reward": {
+            "gems": 650,
+            "shards": 90
+        }
+    },
+    {
+        "id": "a12",
+        "name": "The Astral Throne",
+        "lore": "The seat of the abyss. Here the House stops pretending to be fair.",
+        "tier": "BOSS",
+        "modifiers": [
+            "unstoppable",
+            "enrage",
+            "vampiric",
+            "resist_all"
+        ],
+        "enemies": [
+            {
+                "name": "Abyss Warden",
+                "element": "Light",
+                "hp": 11700,
+                "atk": 241,
+                "def": 137,
+                "spd": 118,
+                "pow": 1.1,
+                "ai": "basic"
+            },
+            {
+                "name": "Abyss Warden",
+                "element": "Wind",
+                "hp": 11700,
+                "atk": 241,
+                "def": 137,
+                "spd": 115,
+                "pow": 1.1,
+                "ai": "debuff"
+            },
+            {
+                "name": "Abyssal Sovereign",
+                "element": "Fire",
+                "hp": 37440,
+                "atk": 313,
+                "def": 171,
+                "spd": 122,
+                "pow": 1.4,
+                "ai": "boss"
+            }
+        ],
+        "reward": {
+            "gems": 700,
+            "shards": 98
+        }
+    }
+]
+
+ABYSS_FLOOR_IDS = ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10", "a11", "a12"]
 
 # ─── Lookups ─────────────────────────────────────────────────────────────────
 DICE_BY_ID = {d["id"]: d for d in DICE_CATALOG}
@@ -1676,5 +10678,10 @@ def public_catalog():
             "SPEED_OPTIONS": SPEED_OPTIONS,
             "TEAM_PRESET_SLOTS": TEAM_PRESET_SLOTS,
             "TEAM_COMPS": TEAM_COMPS,
+            # v4.1 rarities + endgame
+            "RARITIES": RARITIES, "BASE_RATES": BASE_RATES,
+            "UNIVERSAL_SHARD_YIELD": UNIVERSAL_SHARD_YIELD,
+            "ABYSS_FLOORS": ABYSS_FLOORS, "ABYSS_MODIFIERS": ABYSS_MODIFIERS,
+            "ABYSS_FLOOR_IDS": ABYSS_FLOOR_IDS,
         },
     }

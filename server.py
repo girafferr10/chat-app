@@ -25,6 +25,8 @@ connected = {}       # ws -> {"username": str, "ws": ws}
 banned_users = set() # set of banned usernames
 admin_ws = None      # owner websocket connection
 msg_reactions = {}   # msg_id -> {emoji: set(usernames)}
+pinned_messages = [] # [{"msg_id","sender","display_name","text","pinned_by"}] (max 20, in-memory)
+msg_authors = {}     # msg_id -> {"username","display_name","text"} (edit auth + server-side pin lookup, capped)
 staff_connected = {} # staff ws -> {"username": str, "admin_key": str}
 admin_connections = {}  # ws -> {"name": str, "key": str}
 dm_store = {}        # (sorted_user_a, sorted_user_b) -> [{"sender":..., "recipient":..., "text":..., "ts":...}]
@@ -102,8 +104,10 @@ def delete_log(log_id):
 def dm_key(a, b):
     return tuple(sorted([a, b]))
 
-_raw_secret = os.environ.get("SESSION_SECRET", secrets.token_urlsafe(16))
-OWNER_TOKEN = hashlib.sha256(_raw_secret.encode()).hexdigest()[:24]
+# Owner credentials: freshly randomised on EVERY server boot and printed to the console.
+OWNER_USERNAME = "owner_" + secrets.token_hex(3)
+OWNER_PASSWORD = secrets.token_urlsafe(10)
+OWNER_TOKEN = secrets.token_hex(16)  # internal session token handed out after owner login
 
 db_pool = None
 CURRENT_VERSION = "3.0"
@@ -339,9 +343,25 @@ async def init_db():
                 ("display_name",  "VARCHAR(30) NOT NULL DEFAULT ''"),
                 ("bio",           "TEXT DEFAULT ''"),
                 ("pfp_data",      "TEXT DEFAULT ''"),
+                ("role",          "VARCHAR(10) NOT NULL DEFAULT 'user'"),
+                ("email",         "VARCHAR(120) DEFAULT ''"),
+                ("email_verified", "BOOLEAN NOT NULL DEFAULT FALSE"),
+                ("twofa_enabled", "BOOLEAN NOT NULL DEFAULT FALSE"),
             ]:
                 try:
                     await conn.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {defn}")
+                except Exception:
+                    pass
+            # Widen legacy columns: usernames may now be up to 30 chars and
+            # password hashes are PBKDF2 strings (longer than 64 chars).
+            try:
+                await conn.execute("ALTER TABLE users ALTER COLUMN password_hash TYPE VARCHAR(256)")
+            except Exception:
+                pass
+            for tbl in ("users", "sessions", "changelog_seen", "user_economy",
+                        "savings_plans", "transactions", "dice_game"):
+                try:
+                    await conn.execute(f"ALTER TABLE {tbl} ALTER COLUMN username TYPE VARCHAR(30)")
                 except Exception:
                     pass
             await conn.execute("""
@@ -367,6 +387,13 @@ async def init_db():
                     idle_money NUMERIC NOT NULL DEFAULT 0,
                     idle_upgrades JSONB NOT NULL DEFAULT '{}',
                     idle_last_collect TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS daily_rewards (
+                    username VARCHAR(20) PRIMARY KEY,
+                    last_claim DATE,
+                    streak INTEGER NOT NULL DEFAULT 0
                 )
             """)
             await conn.execute("""
@@ -404,10 +431,36 @@ async def init_db():
         print(f"[DB] Error: {e}")
 
 
+PBKDF2_ITERATIONS = 200_000
+
+
+def hash_password(password, salt=None):
+    """PBKDF2-HMAC-SHA256 salted hash, stored as pbkdf2$<iters>$<salt>$<hex>."""
+    if salt is None:
+        salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), PBKDF2_ITERATIONS)
+    return f"pbkdf2${PBKDF2_ITERATIONS}${salt}${digest.hex()}"
+
+
+def verify_password(password, stored):
+    """Verify against PBKDF2 hashes; also accepts legacy unsalted SHA-256 hashes."""
+    if not stored:
+        return False
+    if stored.startswith("pbkdf2$"):
+        try:
+            _, iters, salt, hexdigest = stored.split("$", 3)
+            digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), int(iters))
+            return secrets.compare_digest(digest.hex(), hexdigest)
+        except Exception:
+            return False
+    # Legacy: plain sha256 hex
+    return secrets.compare_digest(hashlib.sha256(password.encode()).hexdigest(), stored)
+
+
 async def db_register(username, password, display_name):
     if not db_pool:
         return {"error": "Database not available"}
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    pw_hash = hash_password(password)
     try:
         async with db_pool.acquire() as conn:
             await conn.execute(
@@ -420,7 +473,8 @@ async def db_register(username, password, display_name):
                 token, username
             )
             return {"session_token": token, "username": username, "display_name": display_name,
-                    "bio": "", "pfp_data": "", "show_changelog": True}
+                    "bio": "", "pfp_data": "", "role": "user", "email": "",
+                    "email_verified": False, "twofa_enabled": False, "show_changelog": True}
     except Exception as e:
         if "unique" in str(e).lower():
             return {"error": "Username already taken"}
@@ -430,28 +484,44 @@ async def db_register(username, password, display_name):
 async def db_login(username, password):
     if not db_pool:
         return {"error": "Database not available"}
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
     async with db_pool.acquire() as conn:
-        user = await conn.fetchrow(
-            "SELECT * FROM users WHERE username=$1 AND password_hash=$2",
-            username, pw_hash
-        )
-        if not user:
+        user = await conn.fetchrow("SELECT * FROM users WHERE username=$1", username)
+        if not user or not verify_password(password, user["password_hash"]):
             return {"error": "Invalid username or password"}
-        token = secrets.token_hex(32)
-        await conn.execute("INSERT INTO sessions (token, username) VALUES ($1, $2)", token, username)
-        seen = await conn.fetchrow(
-            "SELECT 1 FROM changelog_seen WHERE username=$1 AND version=$2",
-            username, CURRENT_VERSION
-        )
-        return {
-            "session_token": token,
-            "username": username,
-            "display_name": user["display_name"],
-            "bio": user["bio"] or "",
-            "pfp_data": user["pfp_data"] or "",
-            "show_changelog": not seen
-        }
+        # Transparently migrate legacy SHA-256 hashes to salted PBKDF2.
+        if not user["password_hash"].startswith("pbkdf2$"):
+            try:
+                await conn.execute("UPDATE users SET password_hash=$1 WHERE username=$2",
+                                   hash_password(password), username)
+            except Exception:
+                pass
+        # 2FA: if the account has a verified email and 2FA on, don't hand out a
+        # session yet — caller must complete the emailed-code step first.
+        if user.get("twofa_enabled") and user.get("email_verified"):
+            return {"twofa_required": True, "username": username}
+        return await db_issue_session(conn, user)
+
+
+async def db_issue_session(conn, user):
+    username = user["username"]
+    token = secrets.token_hex(32)
+    await conn.execute("INSERT INTO sessions (token, username) VALUES ($1, $2)", token, username)
+    seen = await conn.fetchrow(
+        "SELECT 1 FROM changelog_seen WHERE username=$1 AND version=$2",
+        username, CURRENT_VERSION
+    )
+    return {
+        "session_token": token,
+        "username": username,
+        "display_name": user["display_name"],
+        "bio": user["bio"] or "",
+        "pfp_data": user["pfp_data"] or "",
+        "role": user.get("role", "user") or "user",
+        "email": user.get("email", "") or "",
+        "email_verified": bool(user.get("email_verified")),
+        "twofa_enabled": bool(user.get("twofa_enabled")),
+        "show_changelog": not seen
+    }
 
 
 async def db_username_registered(username):
@@ -477,7 +547,8 @@ async def db_validate_session(token):
         return None
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT s.username, u.display_name, u.bio, u.pfp_data "
+            "SELECT s.username, u.display_name, u.bio, u.pfp_data, u.role, "
+            "u.email, u.email_verified, u.twofa_enabled "
             "FROM sessions s JOIN users u ON s.username=u.username WHERE s.token=$1",
             token
         )
@@ -513,6 +584,97 @@ async def db_update_profile(token, display_name=None, bio=None, pfp_data=None):
         **({"bio": bio} if bio is not None else {}),
         **({"pfp_data": pfp_data} if pfp_data is not None else {}),
     }
+
+
+# ---------------------------------------------------------------------------
+# Email verification / 2FA / password-reset codes.
+# Codes are delivered via Resend if RESEND_API_KEY is configured; otherwise
+# they are printed to the SERVER CONSOLE (fallback documented in the UI).
+# ---------------------------------------------------------------------------
+pending_codes = {}   # (purpose, username) -> {code, expires, attempts, last_sent}
+CODE_TTL = 600       # 10 minutes
+CODE_RESEND_COOLDOWN = 30
+
+
+def make_code(purpose, username):
+    now = _time.time()
+    key = (purpose, username)
+    ent = pending_codes.get(key)
+    if ent and now - ent.get("last_sent", 0) < CODE_RESEND_COOLDOWN:
+        return None  # rate-limited
+    code = f"{secrets.randbelow(1000000):06d}"
+    pending_codes[key] = {"code": code, "expires": now + CODE_TTL, "attempts": 0, "last_sent": now}
+    return code
+
+
+def check_code(purpose, username, code):
+    key = (purpose, username)
+    ent = pending_codes.get(key)
+    if not ent:
+        return False
+    if _time.time() > ent["expires"]:
+        pending_codes.pop(key, None)
+        return False
+    ent["attempts"] += 1
+    if ent["attempts"] > 6:
+        pending_codes.pop(key, None)
+        return False
+    if secrets.compare_digest(str(code).strip(), ent["code"]):
+        pending_codes.pop(key, None)
+        return True
+    return False
+
+
+async def deliver_code(email, purpose, code, username):
+    labels = {"verify": "Email verification", "login": "Login (2FA)", "reset": "Password reset"}
+    label = labels.get(purpose, purpose)
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    if api_key and email:
+        try:
+            async with aiohttp.ClientSession() as sess:
+                resp = await sess.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={
+                        "from": os.environ.get("RESEND_FROM", "onboarding@resend.dev"),
+                        "to": [email],
+                        "subject": f"Your chat {label.lower()} code: {code}",
+                        "text": f"Hi {username},\n\nYour {label.lower()} code is: {code}\n\nIt expires in 10 minutes.",
+                    },
+                    timeout=aiohttp.ClientTimeout(total=10),
+                )
+                if resp.status < 300:
+                    print(f"[MAIL] Sent {purpose} code to {email} for {username}")
+                    return True
+                body = await resp.text()
+                print(f"[MAIL] Resend error {resp.status}: {body[:200]} — falling back to console")
+        except Exception as e:
+            print(f"[MAIL] Resend failed ({e}) — falling back to console")
+    # Console fallback (no email provider configured)
+    print("=" * 46)
+    print(f"  {label.upper()} CODE for {username}: {code}")
+    print(f"  (would email {email or 'no email on file'} — valid 10 min)")
+    print("=" * 46)
+    return True
+
+
+async def _send_code_task(purpose, username):
+    email = ""
+    if db_pool:
+        try:
+            async with db_pool.acquire() as conn:
+                row = await conn.fetchrow("SELECT email FROM users WHERE username=$1", username)
+                email = (row["email"] or "") if row else ""
+        except Exception:
+            pass
+    code = make_code(purpose, username)
+    if code is None:
+        return
+    await deliver_code(email, purpose, code, username)
+
+
+def send_login_code(username):
+    asyncio.create_task(_send_code_task("login", username))
 
 
 async def db_mark_changelog_seen(token, check_only=False):
@@ -589,6 +751,35 @@ async def db_add_transaction(username, amount, reason):
                            username, int(amount), reason[:200])
 
 
+async def grant_daily_reward(username):
+    """Grants a once-per-day (Mountain Time) login reward with a streak bonus.
+    Returns (amount, streak, new_balance) or None if already claimed today."""
+    if not db_pool:
+        return None
+    today = datetime.now(MTN_TZ).date()
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                "SELECT last_claim, streak FROM daily_rewards WHERE username=$1 FOR UPDATE", username)
+            last = row["last_claim"] if row else None
+            streak = row["streak"] if row else 0
+            if last == today:
+                return None
+            streak = streak + 1 if last == today - timedelta(days=1) else 1
+            amount = 100 + min(streak, 7) * 50   # day 1 = 150, caps at 450/day from day 7
+            await conn.execute("""
+                INSERT INTO daily_rewards (username, last_claim, streak) VALUES ($1,$2,$3)
+                ON CONFLICT (username) DO UPDATE SET last_claim=EXCLUDED.last_claim, streak=EXCLUDED.streak
+            """, username, today, streak)
+            await conn.execute(
+                "INSERT INTO user_economy (username) VALUES ($1) ON CONFLICT DO NOTHING", username)
+            new_bal = await conn.fetchval(
+                "UPDATE user_economy SET balance = balance + $2 WHERE username=$1 RETURNING balance",
+                username, amount)
+    await db_add_transaction(username, amount, f"Daily login reward (day {streak})")
+    return (amount, streak, new_bal)
+
+
 # ─── Dice RPG DB helpers ─────────────────────────────────────────────────────
 _DICEGAME_MEM = {}
 
@@ -657,17 +848,24 @@ async def db_save_dicegame(username, data):
 
 # ─── Dice RPG gacha engine (server is the RNG + economy authority) ────────────
 def _dice_roll_rarity_pity(gacha):
-    """Rarity for a standard/limited pull, honoring mythic soft pity and the
-    'every 10th pull is at least Rare' guarantee. Mutates nothing."""
+    """Rarity for a standard/limited pull across all 5 tiers, honoring mythic
+    soft pity and the 'every 10th pull is at least Rare' guarantee.
+    ETERNAL sits above the pity engine as a tiny flat chance. Mutates nothing."""
     pity_m = gacha.get("pity_mythic", 0)
     m_rate = dice_data.mythic_rate_at(pity_m)
+    e_rate = dice_data.BASE_RATES.get("ETERNAL", 0.0)
+    l_rate = dice_data.BASE_RATES.get("LEGENDARY", 0.0)
     r = random.random()
-    if r < m_rate:
+    if r < e_rate:
+        return "ETERNAL"
+    if r < e_rate + m_rate:
         return "MYTHIC"
     # 10-pull rare guarantee: pity_rare counts pulls since last Rare-or-better
     if gacha.get("pity_rare", 0) + 1 >= 10:
         return "RARE"
-    if r < m_rate + dice_data.BASE_RATES["RARE"]:
+    if r < e_rate + m_rate + l_rate:
+        return "LEGENDARY"
+    if r < e_rate + m_rate + l_rate + dice_data.BASE_RATES["RARE"]:
         return "RARE"
     return "COMMON"
 
@@ -676,10 +874,11 @@ def _dice_roll_rarity_flat(gacha):
     """Rarity using flat base rates (used by the Beginner banner, which relies
     on its own by-10 / by-40 guarantees instead of soft pity)."""
     r = random.random()
-    if r < dice_data.BASE_RATES["MYTHIC"]:
-        return "MYTHIC"
-    if r < dice_data.BASE_RATES["MYTHIC"] + dice_data.BASE_RATES["RARE"]:
-        return "RARE"
+    acc = 0.0
+    for tier in ("ETERNAL", "MYTHIC", "LEGENDARY", "RARE"):
+        acc += dice_data.BASE_RATES.get(tier, 0.0)
+        if r < acc:
+            return tier
     return "COMMON"
 
 
@@ -690,7 +889,21 @@ def _dice_pick_id(rarity, banner_id, gacha):
     keeps its own pity. Plain banners (standard/cosmic) fall back to full pool."""
     bdef = dice_data.BANNERS.get(banner_id, {})
     featured_mythic = bdef.get("featured_mythic")
+    featured_eternal = bdef.get("featured_eternal")
     featured_rares = bdef.get("featured_rares") or []
+    if rarity == "ETERNAL":
+        pool = dice_data.IDS_BY_RARITY.get("ETERNAL") or dice_data.IDS_BY_RARITY["MYTHIC"]
+        if featured_eternal:
+            others = [i for i in pool if i != featured_eternal]
+            gkey = "guarantee_e_" + banner_id
+            if gacha.get(gkey):
+                gacha[gkey] = False
+                return featured_eternal
+            if random.random() < 0.5:
+                return featured_eternal
+            gacha[gkey] = True
+            return random.choice(others) if others else featured_eternal
+        return random.choice(pool)
     if rarity == "MYTHIC":
         if featured_mythic:
             others = [i for i in dice_data.IDS_BY_RARITY["MYTHIC"] if i != featured_mythic]
@@ -703,6 +916,9 @@ def _dice_pick_id(rarity, banner_id, gacha):
             gacha[gkey] = True
             return random.choice(others) if others else featured_mythic
         return random.choice(dice_data.IDS_BY_RARITY["MYTHIC"])
+    if rarity == "LEGENDARY":
+        pool = dice_data.IDS_BY_RARITY.get("LEGENDARY") or dice_data.IDS_BY_RARITY["RARE"]
+        return random.choice(pool)
     if rarity == "RARE":
         if featured_rares and random.random() < 0.5:
             return random.choice(featured_rares)
@@ -723,22 +939,22 @@ def _dice_do_pulls(banner_id, count, dg):
             rarity = _dice_roll_rarity_flat(gacha)
             if pull_no == 10 and not gacha.get("beg_rare_secured") and rarity == "COMMON":
                 rarity = "RARE"
-            if pull_no == 40 and not gacha.get("beg_mythic_secured") and rarity != "MYTHIC":
+            if pull_no == 40 and not gacha.get("beg_mythic_secured") and rarity not in ("MYTHIC", "ETERNAL"):
                 rarity = "MYTHIC"
             gacha["beginner_pulls"] = pull_no
-            if rarity in ("RARE", "MYTHIC"):
+            if rarity in ("RARE", "LEGENDARY", "MYTHIC", "ETERNAL"):
                 gacha["beg_rare_secured"] = True
-            if rarity == "MYTHIC":
+            if rarity in ("MYTHIC", "ETERNAL"):
                 gacha["beg_mythic_secured"] = True
             if pull_no >= dice_data.BEGINNER_MAX_PULLS:
                 gacha["beginner_done"] = True
         else:
             rarity = _dice_roll_rarity_pity(gacha)
-            if rarity == "MYTHIC":
+            if rarity in ("MYTHIC", "ETERNAL"):
                 gacha["pity_mythic"] = 0
             else:
                 gacha["pity_mythic"] = gacha.get("pity_mythic", 0) + 1
-            if rarity in ("RARE", "MYTHIC"):
+            if rarity in ("RARE", "LEGENDARY", "MYTHIC", "ETERNAL"):
                 gacha["pity_rare"] = 0
             else:
                 gacha["pity_rare"] = gacha.get("pity_rare", 0) + 1
@@ -897,6 +1113,33 @@ async def dice_claim_first_clear_txn(username, ws, stage):
             cleared.append(stage)
         dg["gacha"]["gems"] = int(dg["gacha"].get("gems", 0)) + reward
         return None, {"ok": True, "reward": reward, "currency": "gems"}
+    return await _dg_mutate(username, ws, _do)
+
+
+async def dice_claim_abyss_txn(username, ws, floor):
+    """One-time Astral Abyss floor-clear reward (Gems + Universal Shards).
+    Idempotent on campaign.abyss_clears and sequential (previous floor cleared).
+    Rewards come from dice_data.ABYSS_FLOORS."""
+    floor_ids = list(dice_data.ABYSS_FLOOR_IDS)
+    if floor not in floor_ids:
+        return {"ok": False, "error": "Unknown floor.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    floor_idx = floor_ids.index(floor)
+    fdef = next((f for f in dice_data.ABYSS_FLOORS if f["id"] == floor), None)
+    reward = (fdef or {}).get("reward", {}) or {}
+    gems = int(reward.get("gems", 0))
+    shards = int(reward.get("shards", 0))
+    def _do(bal, dg):
+        camp = dg["campaign"]
+        cleared = camp.setdefault("abyss_clears", [])
+        if floor in cleared:
+            return None, {"ok": True, "gems": 0, "shards": 0, "already": True}
+        if floor_idx > 0 and floor_ids[floor_idx - 1] not in cleared:
+            return None, {"ok": False, "error": "Floor locked."}
+        cleared.append(floor)
+        dg["gacha"]["gems"] = int(dg["gacha"].get("gems", 0)) + gems
+        dg["gacha"]["universal_shards"] = int(dg["gacha"].get("universal_shards", 0)) + shards
+        return None, {"ok": True, "gems": gems, "shards": shards}
     return await _dg_mutate(username, ws, _do)
 
 
@@ -1098,7 +1341,8 @@ async def db_delete_savings(plan_id, username):
         await conn.execute("DELETE FROM savings_plans WHERE id=$1 AND username=$2", plan_id, username)
 
 
-USERNAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,20}$')
+USERNAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,30}$')   # legacy accounts (short names) still allowed
+SIGNUP_RE = re.compile(r'^[a-zA-Z0-9_-]{8,30}$')      # new signups must be 8-30 chars
 RESERVED_RE = re.compile(r'admin|mod|owner', re.IGNORECASE)
 
 
@@ -2037,6 +2281,14 @@ header h1 { font-size: 16px; font-weight: 600; }
 .msg-grouped-row:hover { background: var(--bg-message-hover); }
 .msg-mention { background: rgba(250,168,26,0.08) !important; border-left: 3px solid #faa81a; padding-left: 5px !important; }
 .msg-mention:hover { background: rgba(250,168,26,0.14) !important; }
+#pinnedBar { background: var(--bg-tertiary); border-bottom: 1px solid var(--border); padding: 6px 16px; font-size: 12px; }
+.pin-head { display:flex; align-items:center; gap:6px; cursor:pointer; color:var(--text-secondary); font-weight:700; user-select:none; }
+.pin-list { margin-top:6px; display:flex; flex-direction:column; gap:4px; max-height:130px; overflow-y:auto; }
+.pin-item { display:flex; align-items:center; gap:8px; background:var(--bg-primary); border:1px solid var(--border); border-radius:6px; padding:4px 8px; }
+.pin-item .pin-txt { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-primary); }
+.pin-item .pin-x { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:13px; padding:0 4px; }
+.pin-item .pin-x:hover { color:var(--red,#f04747); }
+.msg-edited-tag { font-size:10px; color:var(--text-muted); margin-left:5px; font-style:italic; }
 #msgContextMenu { display:none;position:fixed;z-index:9999;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:6px 0;min-width:160px;box-shadow:0 4px 20px rgba(0,0,0,0.4);font-size:13px; }
 #msgContextMenu .ctx-item { padding:8px 16px;cursor:pointer;color:var(--text-primary);display:flex;align-items:center;gap:8px;transition:background 0.1s; }
 #msgContextMenu .ctx-item:hover { background:var(--bg-tertiary); }
@@ -2282,67 +2534,70 @@ body.theme-rose {
 </head>
 <body>
 <div class="join-screen" id="joinScreen">
-  <div class="join-box" id="roleBox">
+  <div class="join-box" id="guestBox" style="max-width:420px;">
     <h2 style="text-align:center;">&#x1F4AC; Chat</h2>
-    <p>How would you like to join?</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button id="guestBtn" data-testid="button-guest" style="flex:1;">Account / Guest</button>
-      <button id="staffAdminBtn" data-testid="button-staff-admin" style="flex:1;background:var(--accent);">Admin</button>
-      <button id="ownerBtn" data-testid="button-owner" style="flex:1;background:var(--admin-color);">Owner</button>
-    </div>
-  </div>
-  <div class="join-box" id="guestBox" style="display:none;max-width:420px;">
     <div class="join-tabs" id="joinTabBar">
-      <button class="join-tab active" id="tabLoginBtn" data-testid="tab-login">Log In</button>
+      <button class="join-tab active" id="tabLoginBtn" data-testid="tab-login">Sign In</button>
       <button class="join-tab" id="tabRegisterBtn" data-testid="tab-register">Sign Up</button>
-      <button class="join-tab" id="tabGuestBtn" data-testid="tab-guest">Guest</button>
     </div>
     <!-- Login Panel -->
     <div id="loginPanel">
       <div class="join-error" id="loginError"></div>
       <label for="loginUsername">Username</label>
-      <input type="text" id="loginUsername" data-testid="input-login-username" placeholder="Username..." maxlength="20" autocomplete="username" />
+      <input type="text" id="loginUsername" data-testid="input-login-username" placeholder="Username..." maxlength="30" autocomplete="username" />
       <label for="loginPassword">Password</label>
       <input type="password" id="loginPassword" data-testid="input-login-password" placeholder="Password..." autocomplete="current-password" />
-      <button id="loginBtn" data-testid="button-login">Log In</button>
+      <button id="loginBtn" data-testid="button-login">Sign In</button>
+      <div style="text-align:right;margin-top:8px;"><a href="#" id="forgotPwLink" data-testid="link-forgot-password" style="font-size:12px;color:var(--accent);text-decoration:none;">Forgot password?</a></div>
     </div>
     <!-- Register Panel -->
     <div id="registerPanel" style="display:none;">
       <div class="join-error" id="registerError"></div>
-      <label for="registerUsername">Username</label>
-      <input type="text" id="registerUsername" data-testid="input-register-username" placeholder="Username (letters, numbers, _-)..." maxlength="20" autocomplete="username" />
+      <label for="registerUsername">Username <span style="font-weight:400;text-transform:none;">(8-30 characters)</span></label>
+      <input type="text" id="registerUsername" data-testid="input-register-username" placeholder="Username (8-30 chars, letters, numbers, _-)..." maxlength="30" autocomplete="username" />
       <label for="registerDisplayName">Display Name <span style="font-weight:400;text-transform:none;">(shown in chat)</span></label>
       <input type="text" id="registerDisplayName" data-testid="input-register-displayname" placeholder="Your display name..." maxlength="30" />
       <label for="registerPassword">Password</label>
       <input type="password" id="registerPassword" data-testid="input-register-password" placeholder="At least 6 characters..." autocomplete="new-password" />
       <button id="registerBtn" data-testid="button-register">Create Account</button>
     </div>
-    <!-- Guest Panel -->
-    <div id="guestPanel" style="display:none;">
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px;">Guest mode — no account needed, but your data won’t be saved.</p>
-      <div class="join-error" id="joinError"></div>
-      <label for="usernameInput">Username</label>
-      <input type="text" id="usernameInput" data-testid="input-username" placeholder="Enter username..." maxlength="20" />
-      <button id="joinBtn" data-testid="button-join">Join as Guest</button>
+    <!-- 2FA Code Panel -->
+    <div id="twofaPanel" style="display:none;">
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px;">Two-factor authentication is on. Enter the 6-digit code sent to your email (or check the server console).</p>
+      <div class="join-error" id="twofaError"></div>
+      <label for="twofaCodeInput">Verification Code</label>
+      <input type="text" id="twofaCodeInput" data-testid="input-2fa-code" placeholder="6-digit code..." maxlength="6" inputmode="numeric" autocomplete="one-time-code" />
+      <button id="twofaVerifyBtn" data-testid="button-2fa-verify">Verify</button>
+      <button id="twofaBackBtn" data-testid="button-2fa-back" style="margin-top:8px;background:var(--input-bg);color:var(--text-secondary);">Back</button>
     </div>
-    <button id="backBtn1" data-testid="button-back-guest" style="margin-top:12px;background:var(--input-bg);color:var(--text-secondary);">Back</button>
-  </div>
-  <div class="join-box" id="staffAdminBox" style="display:none;">
-    <h2>Join as Admin</h2>
-    <p>Enter your admin key to continue.</p>
-    <div class="join-error" id="staffAdminError"></div>
-    <label for="staffAdminKeyInput">Admin Key</label>
-    <input type="password" id="staffAdminKeyInput" data-testid="input-admin-key" placeholder="Paste admin key here..." />
-    <button id="staffAdminLoginBtn" data-testid="button-staff-admin-login">Login</button>
-    <button id="backBtn3" data-testid="button-back-staff-admin" style="margin-top:8px;background:var(--input-bg);color:var(--text-secondary);">Back</button>
+    <!-- Password Reset Panel -->
+    <div id="resetPanel" style="display:none;">
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px;">Enter your username. A reset code will be sent to your verified email (or printed to the server console).</p>
+      <div class="join-error" id="resetError"></div>
+      <div class="join-error" id="resetOk" style="background:rgba(35,165,90,0.15);color:var(--green,#23a55a);"></div>
+      <label for="resetUsername">Username</label>
+      <input type="text" id="resetUsername" data-testid="input-reset-username" placeholder="Your username..." maxlength="30" />
+      <button id="resetSendBtn" data-testid="button-reset-send">Send Reset Code</button>
+      <div id="resetStep2" style="display:none;margin-top:12px;">
+        <label for="resetCodeInput">Reset Code</label>
+        <input type="text" id="resetCodeInput" data-testid="input-reset-code" placeholder="6-digit code..." maxlength="6" inputmode="numeric" />
+        <label for="resetNewPw">New Password</label>
+        <input type="password" id="resetNewPw" data-testid="input-reset-password" placeholder="New password (6+ chars)..." autocomplete="new-password" />
+        <button id="resetApplyBtn" data-testid="button-reset-apply">Reset Password</button>
+      </div>
+      <button id="resetBackBtn" data-testid="button-reset-back" style="margin-top:8px;background:var(--input-bg);color:var(--text-secondary);">Back to Sign In</button>
+    </div>
+    <div style="text-align:center;margin-top:14px;"><a href="#" id="ownerLink" data-testid="link-owner-login" style="font-size:11px;color:var(--text-muted);text-decoration:none;">Server owner? Sign in here</a></div>
   </div>
   <div class="join-box" id="adminBox" style="display:none;">
-    <h2>Join as Owner</h2>
-    <p>Enter the owner key to continue.</p>
+    <h2>Owner Sign In</h2>
+    <p>Enter the owner credentials printed in the server console (new each boot).</p>
     <div class="join-error" id="adminError"></div>
-    <label for="adminTokenInput">Owner Key</label>
-    <input type="password" id="adminTokenInput" data-testid="input-token" placeholder="Paste owner key here..." />
-    <button id="adminLoginBtn" data-testid="button-admin-login">Login</button>
+    <label for="ownerUserInput">Owner Username</label>
+    <input type="text" id="ownerUserInput" data-testid="input-owner-username" placeholder="Owner username..." autocomplete="off" />
+    <label for="ownerPassInput">Owner Password</label>
+    <input type="password" id="ownerPassInput" data-testid="input-owner-password" placeholder="Owner password..." autocomplete="off" />
+    <button id="adminLoginBtn" data-testid="button-admin-login">Sign In</button>
     <button id="backBtn2" data-testid="button-back-admin" style="margin-top:8px;background:var(--input-bg);color:var(--text-secondary);">Back</button>
   </div>
 </div>
@@ -2371,6 +2626,25 @@ body.theme-rose {
     <label style="display:block;font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Bio</label>
     <textarea id="profileBio" maxlength="300" placeholder="Say something about yourself..." rows="3" style="width:100%;padding:10px 12px;border:none;border-radius:4px;font-size:14px;margin-bottom:16px;background:var(--bg-tertiary);color:var(--text-primary);outline:none;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
     <button id="saveProfileBtn" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;">Save Changes</button>
+    <div id="securitySection" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+      <label style="display:block;font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Account Security</label>
+      <div class="join-error" id="securityError" style="display:none;"></div>
+      <div id="securityOk" style="display:none;font-size:12px;color:var(--green);margin-bottom:8px;"></div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <input type="email" id="securityEmail" maxlength="120" placeholder="you@example.com" data-testid="input-security-email" style="flex:1;padding:9px 12px;border:none;border-radius:4px;font-size:13px;background:var(--bg-tertiary);color:var(--text-primary);outline:none;box-sizing:border-box;" />
+        <button id="securityEmailBtn" data-testid="button-save-email" style="padding:9px 12px;background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border);border-radius:4px;font-size:12px;cursor:pointer;white-space:nowrap;">Save Email</button>
+      </div>
+      <div id="emailStatusLine" style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">No email on file.</div>
+      <div id="verifyEmailRow" style="display:none;gap:6px;margin-bottom:8px;">
+        <input type="text" id="verifyCodeInput" maxlength="6" placeholder="6-digit code" data-testid="input-verify-code" style="flex:1;padding:9px 12px;border:none;border-radius:4px;font-size:13px;background:var(--bg-tertiary);color:var(--text-primary);outline:none;box-sizing:border-box;letter-spacing:3px;" />
+        <button id="verifyEmailBtn" data-testid="button-verify-email" style="padding:9px 12px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;white-space:nowrap;">Verify</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);cursor:pointer;user-select:none;">
+        <input type="checkbox" id="twofaToggle" data-testid="checkbox-twofa" style="width:16px;height:16px;cursor:pointer;" />
+        Require a code at sign-in (2FA)
+      </label>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Codes go to your email — or the server console if email isn't set up.</div>
+    </div>
     <button id="logoutBtn" style="width:100%;padding:10px;background:transparent;color:var(--red);border:1px solid var(--red);border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">Log Out</button>
   </div>
 </div>
@@ -2441,6 +2715,7 @@ body.theme-rose {
       <button class="theme-btn" id="updatesBtn" data-testid="button-updates" title="What's New" style="font-size:13px;padding:4px 9px;font-weight:600;position:relative;">&#x1F195;<span id="changelogBadge" style="display:none;position:absolute;top:-4px;right:-4px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid var(--bg-secondary);"></span></button>
       <button class="theme-btn" id="helpBtn" title="Keyboard Shortcuts (?)" style="font-size:13px;padding:4px 8px;font-weight:600;">?</button>
       <button class="theme-btn" id="searchBtn" title="Search Messages (Ctrl+F)" style="font-size:14px;padding:4px 8px;">&#x1F50D;</button>
+      <button class="theme-btn" id="starBtn" title="Starred Messages" style="font-size:14px;padding:4px 8px;">&#x2B50;</button>
       <button class="theme-btn" id="profileBtn" data-testid="button-profile" title="Your Profile" style="padding:2px;width:30px;height:30px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">&#x1F464;</button>
       <button class="theme-btn" id="settingsBtn" data-testid="button-settings" title="Settings" style="font-size:16px;padding:4px 8px;">&#x2699;</button>
       <button class="theme-btn" id="themeBtn" data-testid="button-theme">Dark</button>
@@ -2520,6 +2795,7 @@ body.theme-rose {
               <span class="srch-count" id="msgSearchCount"></span>
               <button onclick="closeSearch()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:2px 6px;">✕</button>
             </div>
+            <div id="pinnedBar" style="display:none;"></div>
             <div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0;">
               <div id="messages" data-testid="list-messages">
                 <div class="empty" id="emptyState">No messages yet</div>
@@ -2631,30 +2907,34 @@ document.getElementById('themeBtn').addEventListener('click', function() {
   applyTheme();
 });
 
-document.getElementById('guestBtn').addEventListener('click', function() {
-  localStorage.setItem('chat-last-role', 'guest');
-  document.getElementById('roleBox').style.display = 'none';
-  document.getElementById('guestBox').style.display = 'block';
-  document.getElementById('loginUsername').focus();
-});
-// Auto-highlight last used role
-(function() {
-  var lastRole = localStorage.getItem('chat-last-role');
-  if (!lastRole) return;
-  var map = {guest: 'guestBtn', owner: 'ownerBtn', staff: 'staffAdminBtn'};
-  var btn = document.getElementById(map[lastRole]);
-  if (btn) { btn.style.boxShadow = '0 0 0 2px var(--accent)'; btn.title = 'Last used'; }
-})();
-
 function setJoinTab(tab) {
-  ['login','register','guest'].forEach(function(t) {
+  ['login','register'].forEach(function(t) {
     document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)+'Btn').classList.toggle('active', t===tab);
     document.getElementById(t+'Panel').style.display = t===tab ? 'block' : 'none';
   });
+  document.getElementById('joinTabBar').style.display = (tab==='twofa'||tab==='reset') ? 'none' : 'flex';
+  document.getElementById('twofaPanel').style.display = tab==='twofa' ? 'block' : 'none';
+  document.getElementById('resetPanel').style.display = tab==='reset' ? 'block' : 'none';
 }
 document.getElementById('tabLoginBtn').addEventListener('click', function() { setJoinTab('login'); });
 document.getElementById('tabRegisterBtn').addEventListener('click', function() { setJoinTab('register'); });
-document.getElementById('tabGuestBtn').addEventListener('click', function() { setJoinTab('guest'); });
+
+function finishAuth(d) {
+  localStorage.setItem('chat_session_token', d.session_token);
+  mySessionToken = d.session_token;
+  myUsername = d.username;
+  myDisplayName = d.display_name || d.username;
+  myPfpData = d.pfp_data || '';
+  myBio = d.bio || '';
+  myRole = d.role || 'user';
+  myIsGuest = false;
+  document.getElementById('joinScreen').style.display = 'none';
+  document.getElementById('chatScreen').style.display = 'flex';
+  connectGuest(d.username);
+  document.getElementById('msgInput').focus();
+}
+
+var _pendingTwofaUser = '';
 
 function doLogin() {
   var un = document.getElementById('loginUsername').value.trim();
@@ -2666,19 +2946,64 @@ function doLogin() {
     .then(function(r){return r.json();})
     .then(function(d){
       if (d.error) { err.textContent=d.error; err.style.display='block'; return; }
-      localStorage.setItem('chat_session_token', d.session_token);
-      mySessionToken = d.session_token;
-      myUsername = d.username;
-      myDisplayName = d.display_name || d.username;
-      myPfpData = d.pfp_data || '';
-      myBio = d.bio || '';
-      myIsGuest = false;
-      document.getElementById('joinScreen').style.display = 'none';
-      document.getElementById('chatScreen').style.display = 'flex';
-      connectGuest(d.username);
-      document.getElementById('msgInput').focus();
+      if (d.twofa_required) {
+        _pendingTwofaUser = d.username || un;
+        setJoinTab('twofa');
+        document.getElementById('twofaCodeInput').value = '';
+        document.getElementById('twofaCodeInput').focus();
+        return;
+      }
+      finishAuth(d);
     }).catch(function(){err.textContent='Connection error.'; err.style.display='block';});
 }
+
+function doTwofaVerify() {
+  var code = document.getElementById('twofaCodeInput').value.trim();
+  var err = document.getElementById('twofaError');
+  err.style.display='none';
+  if (!/^[0-9]{6}$/.test(code)) { err.textContent='Enter the 6-digit code.'; err.style.display='block'; return; }
+  fetch('/api/login-2fa', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:_pendingTwofaUser,code:code})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (d.error) { err.textContent=d.error; err.style.display='block'; return; }
+      finishAuth(d);
+    }).catch(function(){err.textContent='Connection error.'; err.style.display='block';});
+}
+document.getElementById('twofaVerifyBtn').addEventListener('click', doTwofaVerify);
+document.getElementById('twofaCodeInput').addEventListener('keydown', function(e){if(e.key==='Enter')doTwofaVerify();});
+document.getElementById('twofaBackBtn').addEventListener('click', function(){ setJoinTab('login'); });
+
+document.getElementById('forgotPwLink').addEventListener('click', function(e){ e.preventDefault(); setJoinTab('reset'); });
+document.getElementById('resetBackBtn').addEventListener('click', function(){ setJoinTab('login'); });
+document.getElementById('resetSendBtn').addEventListener('click', function() {
+  var un = document.getElementById('resetUsername').value.trim();
+  var err = document.getElementById('resetError'); var ok = document.getElementById('resetOk');
+  err.style.display='none'; ok.style.display='none';
+  if (!un) { err.textContent='Enter your username.'; err.style.display='block'; return; }
+  fetch('/api/request-reset', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:un})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (d.error) { err.textContent=d.error; err.style.display='block'; return; }
+      ok.textContent='Code sent! Check your email (or the server console).'; ok.style.display='block';
+      document.getElementById('resetStep2').style.display='block';
+    }).catch(function(){err.textContent='Connection error.'; err.style.display='block';});
+});
+document.getElementById('resetApplyBtn').addEventListener('click', function() {
+  var un = document.getElementById('resetUsername').value.trim();
+  var code = document.getElementById('resetCodeInput').value.trim();
+  var pw = document.getElementById('resetNewPw').value;
+  var err = document.getElementById('resetError'); var ok = document.getElementById('resetOk');
+  err.style.display='none'; ok.style.display='none';
+  if (!/^[0-9]{6}$/.test(code)) { err.textContent='Enter the 6-digit code.'; err.style.display='block'; return; }
+  if (pw.length < 6) { err.textContent='New password must be at least 6 characters.'; err.style.display='block'; return; }
+  fetch('/api/reset-password', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:un,code:code,password:pw})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (d.error) { err.textContent=d.error; err.style.display='block'; return; }
+      ok.textContent='Password reset! You can sign in now.'; ok.style.display='block';
+      setTimeout(function(){ setJoinTab('login'); }, 1200);
+    }).catch(function(){err.textContent='Connection error.'; err.style.display='block';});
+});
 
 function doRegister() {
   var un = document.getElementById('registerUsername').value.trim();
@@ -2687,7 +3012,7 @@ function doRegister() {
   var err = document.getElementById('registerError');
   err.style.display='none';
   if (!un || !pw) { err.textContent='Please fill in username and password.'; err.style.display='block'; return; }
-  if (!/^[a-zA-Z0-9_-]{1,20}$/.test(un)) { err.textContent='Username: letters, numbers, _ or - only (1-20 chars).'; err.style.display='block'; return; }
+  if (!/^[a-zA-Z0-9_-]{8,30}$/.test(un)) { err.textContent='Username: letters, numbers, _ or - only (8-30 chars).'; err.style.display='block'; return; }
   if (pw.length < 6) { err.textContent='Password must be at least 6 characters.'; err.style.display='block'; return; }
   if (RESERVED.test(un)) { err.textContent='Username cannot contain "admin", "mod", or "owner".'; err.style.display='block'; return; }
   fetch('/api/register', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:un,display_name:dn,password:pw})})
@@ -2731,29 +3056,15 @@ if (mySessionToken) {
       }
     }).catch(function(){});
 }
-document.getElementById('ownerBtn').addEventListener('click', function() {
-  localStorage.setItem('chat-last-role', 'owner');
-  document.getElementById('roleBox').style.display = 'none';
-  document.getElementById('adminBox').style.display = 'block';
-  document.getElementById('adminTokenInput').focus();
-});
-document.getElementById('staffAdminBtn').addEventListener('click', function() {
-  localStorage.setItem('chat-last-role', 'staff');
-  document.getElementById('roleBox').style.display = 'none';
-  document.getElementById('staffAdminBox').style.display = 'block';
-  document.getElementById('staffAdminKeyInput').focus();
-});
-document.getElementById('backBtn1').addEventListener('click', function() {
+document.getElementById('ownerLink').addEventListener('click', function(e) {
+  e.preventDefault();
   document.getElementById('guestBox').style.display = 'none';
-  document.getElementById('roleBox').style.display = 'block';
+  document.getElementById('adminBox').style.display = 'block';
+  document.getElementById('ownerUserInput').focus();
 });
 document.getElementById('backBtn2').addEventListener('click', function() {
   document.getElementById('adminBox').style.display = 'none';
-  document.getElementById('roleBox').style.display = 'block';
-});
-document.getElementById('backBtn3').addEventListener('click', function() {
-  document.getElementById('staffAdminBox').style.display = 'none';
-  document.getElementById('roleBox').style.display = 'block';
+  document.getElementById('guestBox').style.display = 'block';
 });
 
 function switchChannel(channel) {
@@ -2766,6 +3077,7 @@ function switchChannel(channel) {
   currentChannel = channel;
   renderMessages();
   renderSidebar();
+  if (typeof renderPinsBar === 'function') renderPinsBar();
   var headerBar = document.getElementById('channelHeaderBar');
   var dmSidebar = document.getElementById('dmProfileSidebar');
   if (channel === 'general') {
@@ -3275,6 +3587,7 @@ function makeFullMessageDiv(m) {
     content.appendChild(replyCtxEl);
   }
   var body = renderRichText(m.text || '');
+  if (m.edited) { var _et = document.createElement('span'); _et.className = 'msg-edited-tag'; _et.textContent = '(edited)'; body.appendChild(_et); }
   content.appendChild(body);
   var pills = buildReactionPills(msgKey);
   if (pills) content.appendChild(pills);
@@ -3295,6 +3608,7 @@ function makeGroupedMessageDiv(m) {
   row.style.position = 'relative';
   row.addEventListener('contextmenu', function(e) { showContextMenu(e, m); });
   var body = renderRichText(m.text || '');
+  if (m.edited) { var _et2 = document.createElement('span'); _et2.className = 'msg-edited-tag'; _et2.textContent = '(edited)'; body.appendChild(_et2); }
   row.appendChild(body);
   var pills = buildReactionPills(msgKey);
   if (pills) { pills.style.paddingLeft = '52px'; row.appendChild(pills); }
@@ -4015,15 +4329,15 @@ function showAdminCreatorModal() {
   modal.className = 'gc-modal';
   var title = document.createElement('div');
   title.className = 'gc-modal-title';
-  title.textContent = 'Create Admin Account';
+  title.textContent = 'Promote User to Admin';
   modal.appendChild(title);
   var nameLabel = document.createElement('div');
   nameLabel.style.cssText = 'font-size:12px;color:var(--text-muted);margin-bottom:4px;';
-  nameLabel.textContent = 'Admin display name (permanent):';
+  nameLabel.textContent = 'Username of an existing account to promote:';
   modal.appendChild(nameLabel);
   var nameInput = document.createElement('input');
   nameInput.className = 'gc-modal-input';
-  nameInput.placeholder = 'Admin name...';
+  nameInput.placeholder = 'Username...';
   nameInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
   modal.appendChild(nameInput);
   var resultDiv = document.createElement('div');
@@ -4038,11 +4352,11 @@ function showAdminCreatorModal() {
   btns.appendChild(cancelBtn);
   var createBtn = document.createElement('button');
   createBtn.className = 'gc-confirm';
-  createBtn.textContent = 'Create';
+  createBtn.textContent = 'Promote';
   createBtn.addEventListener('click', function() {
     var n = nameInput.value.trim();
     if (!n) return;
-    ws.send(JSON.stringify({type: 'create_admin', name: n}));
+    ws.send(JSON.stringify({type: 'promote_admin', username: n}));
     createBtn.disabled = true;
   });
   btns.appendChild(createBtn);
@@ -4052,7 +4366,7 @@ function showAdminCreatorModal() {
   document.body.appendChild(overlay);
   window._adminCreatorResult = function(data) {
     resultDiv.style.display = 'block';
-    resultDiv.textContent = 'Admin key for "' + data.name + '": ' + data.key + ' (save this!)';
+    resultDiv.textContent = '"' + data.name + '" is now an admin. They get admin powers on their next sign-in (or instantly if online).';
     createBtn.disabled = false;
     nameInput.value = '';
   };
@@ -4079,13 +4393,13 @@ function showManageAdminsModal(admins) {
       row.style.cssText = 'padding:6px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;';
       var info = document.createElement('div');
       info.style.cssText = 'font-size:13px;color:var(--text-secondary);';
-      info.textContent = a.name + ' (created: ' + a.created + ')';
+      info.textContent = (a.display_name && a.display_name !== a.name ? a.display_name + ' (@' + a.name + ')' : a.name) + (a.created ? ' · since ' + a.created : '');
       row.appendChild(info);
       var delBtn = document.createElement('button');
       delBtn.style.cssText = 'background:var(--bg-tertiary);border:none;color:var(--red);cursor:pointer;font-size:11px;padding:3px 8px;border-radius:4px;';
-      delBtn.textContent = 'Remove';
+      delBtn.textContent = 'Demote';
       delBtn.addEventListener('click', function() {
-        ws.send(JSON.stringify({type: 'remove_admin', key: a.key}));
+        ws.send(JSON.stringify({type: 'remove_admin', username: a.name}));
         row.remove();
       });
       row.appendChild(delBtn);
@@ -4204,6 +4518,7 @@ function renderUsers(list) {
     statusDot.style.cssText = 'position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg-secondary);background:' + (statusColors[status] || statusColors.online) + ';';
     avatarWrap.appendChild(avatar);
     avatarWrap.appendChild(statusDot);
+    applyEffectTo(avatarWrap, eqp);
     div.appendChild(avatarWrap);
     var nameEl = document.createElement('span');
     nameEl.className = 'user-name';
@@ -4381,6 +4696,16 @@ function handleMessage(data) {
     myDisplayName = data.display_name || data.username || myUsername;
     myPfpData = data.pfp_data || '';
     myBio = data.bio || '';
+    myRole = data.role || myRole || 'user';
+    if (myRole === 'admin') {
+      isStaffAdmin = true;
+      var _ls = document.getElementById('logsSection'); if (_ls) _ls.style.display = 'block';
+      var _sb = document.getElementById('suggestBoxSection'); if (_sb) _sb.style.display = 'block';
+    }
+    var _savedSt = localStorage.getItem('chat-my-status');
+    if (_savedSt && _savedSt !== 'online' && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({type:'set_status', status:_savedSt}));
+    }
     updateProfileBtn();
     if (!myIsGuest && mySessionToken) {
       fetch('/api/changelog-seen', {headers:{'X-Session-Token':mySessionToken}})
@@ -4406,6 +4731,27 @@ function handleMessage(data) {
       msgReactions[mid] = {counts: newCounts, mine: newMine};
       renderMessages();
     }
+  } else if (data.type === 'pins_update') {
+    pinnedMsgs = data.pins || [];
+    renderPinsBar();
+  } else if (data.type === 'daily_reward') {
+    showToast('\\uD83C\\uDF81 Daily reward: +$' + data.amount + ' (day ' + data.streak + ' streak!)', 'success');
+    if (data.balance !== undefined) {
+      if (window._GECO) { window._GECO.bal = data.balance; if (window._GECO.recalc) window._GECO.recalc(); }
+      var _dbc = document.getElementById('headerBalChip');
+      if (_dbc) { _dbc.style.display = 'inline-flex'; _dbc.textContent = '💰 $' + Math.floor(data.balance).toLocaleString(); }
+    }
+    if (typeof triggerConfetti === 'function' && data.streak >= 3) setTimeout(triggerConfetti, 400);
+  } else if (data.type === 'edit') {
+    for (var _ei = 0; _ei < generalMessages.length; _ei++) {
+      if (generalMessages[_ei].msg_id === data.msg_id) {
+        generalMessages[_ei].text = data.text;
+        generalMessages[_ei].edited = true;
+        break;
+      }
+    }
+    if (currentChannel === 'general') renderMessages();
+    renderPinsBar();
   } else if (data.type === 'chat') {
     var time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     generalMessages.push({sender: data.sender, display_name: data.display_name || data.sender, pfp: data.pfp || '', text: data.text, admin: data.admin || false, time: time, msg_id: data.msg_id||'', reply_sender: data.reply_sender||'', reply_text: data.reply_text||''});
@@ -4549,11 +4895,25 @@ function handleMessage(data) {
       gcMessages[gcId].push({sender: m.sender, display_name: m.display_name||m.sender, pfp: m.pfp||'', text: m.text, admin: m.admin || false, time: m.time || '', msg_id: m.msg_id||'', reply_sender: m.reply_sender||'', reply_text: m.reply_text||''});
     });
     if (currentChannel === 'gc:' + gcId) renderMessages();
+  } else if (data.type === 'role_update') {
+    myRole = data.role || 'user';
+    isStaffAdmin = (myRole === 'admin');
+    var _ls2 = document.getElementById('logsSection'); if (_ls2) _ls2.style.display = isStaffAdmin ? 'block' : 'none';
+    var _sb2 = document.getElementById('suggestBoxSection'); if (_sb2) _sb2.style.display = isStaffAdmin ? 'block' : 'none';
+    if (data.text) showToast(data.text, isStaffAdmin ? 'success' : 'error');
   } else if (data.type === 'error') {
     if (!myUsername && !isAdmin) {
-      var err = document.getElementById('joinError');
-      err.textContent = data.text;
-      err.style.display = 'block';
+      var err = document.getElementById('loginError');
+      if (err) {
+        err.textContent = data.text;
+        err.style.display = 'block';
+      }
+      if (data.code === 'auth_required') {
+        localStorage.removeItem('chat_session_token');
+        mySessionToken = '';
+        document.getElementById('chatScreen').style.display = 'none';
+        document.getElementById('joinScreen').style.display = 'flex';
+      }
     }
   } else if (data.type === 'bj_room_created' || data.type === 'bj_joined' || data.type === 'bj_state' || data.type === 'bj_error') {
     if (window._bjMultiHandler) window._bjMultiHandler(data);
@@ -4653,51 +5013,6 @@ function connectOwner(token) {
       _ownerReconnectDelay = Math.min(_ownerReconnectDelay * 1.5, 30000);
       connectOwner(token);
     }, _ownerReconnectDelay);
-  };
-  ws.onerror = function() {};
-  ws.onmessage = function(event) { handleMessage(JSON.parse(event.data)); };
-}
-
-function connectStaffAdmin(key) {
-  var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  var staffConnected = false;
-  ws = new WebSocket(protocol + '//' + location.host + '/staff-ws?key=' + encodeURIComponent(key));
-  ws.onopen = function() {
-    staffConnected = true;
-    isAdmin = true;
-    isStaffAdmin = true;
-    myRole = 'admin';
-    var savedAdmin = JSON.parse(localStorage.getItem('admin_profile') || 'null');
-    if (savedAdmin) {
-      myDisplayName = savedAdmin.display_name || myDisplayName || 'Admin';
-      myBio = savedAdmin.bio || '';
-      myPfpData = savedAdmin.pfp_data || '';
-      updateProfileBtn();
-    }
-    document.getElementById('joinScreen').style.display = 'none';
-    document.getElementById('chatScreen').style.display = 'flex';
-    document.getElementById('logsSection').style.display = 'block';
-    document.getElementById('suggestBoxSection').style.display = 'block';
-    document.getElementById('msgInput').focus();
-    setTimeout(function() { showToast('Welcome, ' + (myDisplayName || 'Admin') + '! 🛡️', 'success'); }, 600);
-  };
-  var _staffReconnectDelay = 2000;
-  ws.onclose = function() {
-    if (!staffConnected) {
-      var err = document.getElementById('staffAdminError');
-      err.textContent = 'Invalid admin key or connection failed.';
-      err.style.display = 'block';
-      ws = null;
-      return;
-    }
-    document.getElementById('sendBtn').disabled = true;
-    document.getElementById('msgInput').disabled = true;
-    setConnectionStatus('reconnecting');
-    showToast('Connection lost. Reconnecting in ' + (_staffReconnectDelay/1000) + 's…', 'error');
-    setTimeout(function() {
-      _staffReconnectDelay = Math.min(_staffReconnectDelay * 1.5, 30000);
-      connectStaffAdmin(key);
-    }, _staffReconnectDelay);
   };
   ws.onerror = function() {};
   ws.onmessage = function(event) { handleMessage(JSON.parse(event.data)); };
@@ -4829,6 +5144,26 @@ function applyFontTo(el, equipped){
   var st=getFontStyle(equipped.font);
   if(st) el.style.cssText += ';'+st;
 }
+window.GECO_FX_EMOJI={fx_sparkles:'\u2728',fx_snow:'\u2744\uFE0F',fx_stars:'\U0001F31F',fx_flames:'\U0001F525',fx_lightning:'\u26A1',fx_bubbles:'\U0001FAE7',fx_matrix:'\U0001F4BB',fx_aurora:'\U0001F30C',fx_confetti:'\U0001F389',fx_hearts:'\U0001F495',fx_rain:'\U0001F327\uFE0F',fx_fireworks:'\U0001F386'};
+(function(){
+  var st=document.createElement('style');
+  st.textContent='@keyframes gecoFxFloat{0%{transform:translateY(3px) scale(.6);opacity:0}30%{opacity:1}100%{transform:translateY(-13px) scale(1.1);opacity:0}}'+
+    '.geco-fx-particle{position:absolute;font-size:9px;line-height:1;pointer-events:none;animation:gecoFxFloat 2.4s ease-in-out infinite;z-index:2;}';
+  document.head.appendChild(st);
+})();
+function applyEffectTo(wrap, equipped){
+  if(!wrap||!equipped||!equipped.effect) return;
+  var em=window.GECO_FX_EMOJI[equipped.effect];
+  if(!em) return;
+  for(var i=0;i<2;i++){
+    var p=document.createElement('span');
+    p.className='geco-fx-particle';
+    p.textContent=em;
+    if(i===0){p.style.left='-5px';p.style.top='-3px';}
+    else{p.style.right='-5px';p.style.top='7px';p.style.animationDelay='1.2s';}
+    wrap.appendChild(p);
+  }
+}
 (function(){
   // Display-only tick. The SERVER is the source of truth for balance & idle money
   // (it accrues idle on every action and on reconnect). We never persist to
@@ -4884,7 +5219,93 @@ function showProfileModal() {
   }
   var errEl = document.getElementById('profileError');
   errEl.style.display = 'none';
+  loadSecuritySection();
 }
+
+function _secMsg(ok, msg) {
+  var errEl = document.getElementById('securityError');
+  var okEl = document.getElementById('securityOk');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  if (!msg) return;
+  var el = ok ? okEl : errEl;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function loadSecuritySection() {
+  var sec = document.getElementById('securitySection');
+  if (!mySessionToken) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  _secMsg(true, '');
+  fetch('/api/profile', {headers:{'X-Session-Token':mySessionToken}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (d.error) return;
+      document.getElementById('securityEmail').value = d.email || '';
+      var line = document.getElementById('emailStatusLine');
+      var vrow = document.getElementById('verifyEmailRow');
+      if (!d.email) {
+        line.textContent = 'No email on file. Add one to enable password reset by email and 2FA.';
+        vrow.style.display = 'none';
+      } else if (d.email_verified) {
+        line.textContent = '✓ Email verified';
+        line.style.color = 'var(--green)';
+        vrow.style.display = 'none';
+      } else {
+        line.textContent = 'Email not verified yet — enter the code we sent you.';
+        line.style.color = 'var(--text-muted)';
+        vrow.style.display = 'flex';
+      }
+      document.getElementById('twofaToggle').checked = !!d.twofa_enabled;
+    }).catch(function(){});
+}
+
+document.getElementById('securityEmailBtn').addEventListener('click', function() {
+  var email = document.getElementById('securityEmail').value.trim();
+  if (!email) { _secMsg(false, 'Enter an email address.'); return; }
+  var btn = this; btn.disabled = true;
+  fetch('/api/set-email', {method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':mySessionToken},body:JSON.stringify({email:email})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      btn.disabled = false;
+      if (d.error) { _secMsg(false, d.error); return; }
+      _secMsg(true, 'Verification code sent! Check your email (or the server console).');
+      var vrow = document.getElementById('verifyEmailRow');
+      vrow.style.display = 'flex';
+      document.getElementById('emailStatusLine').textContent = 'Email not verified yet — enter the code we sent you.';
+      document.getElementById('emailStatusLine').style.color = 'var(--text-muted)';
+      document.getElementById('twofaToggle').checked = false;
+      document.getElementById('verifyCodeInput').focus();
+    }).catch(function(){ btn.disabled = false; _secMsg(false, 'Connection error.'); });
+});
+
+document.getElementById('verifyEmailBtn').addEventListener('click', function() {
+  var code = document.getElementById('verifyCodeInput').value.trim();
+  if (!/^[0-9]{6}$/.test(code)) { _secMsg(false, 'Enter the 6-digit code.'); return; }
+  var btn = this; btn.disabled = true;
+  fetch('/api/verify-email', {method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':mySessionToken},body:JSON.stringify({code:code})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      btn.disabled = false;
+      if (d.error) { _secMsg(false, d.error); return; }
+      _secMsg(true, 'Email verified!');
+      document.getElementById('verifyEmailRow').style.display = 'none';
+      var line = document.getElementById('emailStatusLine');
+      line.textContent = '✓ Email verified';
+      line.style.color = 'var(--green)';
+    }).catch(function(){ btn.disabled = false; _secMsg(false, 'Connection error.'); });
+});
+
+document.getElementById('twofaToggle').addEventListener('change', function() {
+  var cb = this;
+  var want = cb.checked;
+  fetch('/api/toggle-2fa', {method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':mySessionToken},body:JSON.stringify({enabled:want})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (d.error) { cb.checked = !want; _secMsg(false, d.error); return; }
+      _secMsg(true, want ? '2FA enabled — a code will be required at sign-in.' : '2FA disabled.');
+    }).catch(function(){ cb.checked = !want; _secMsg(false, 'Connection error.'); });
+});
 
 document.getElementById('profileModalClose').addEventListener('click', function() {
   document.getElementById('profileModal').style.display = 'none';
@@ -5065,8 +5486,9 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
   document.getElementById('profileModal').style.display = 'none';
   document.getElementById('chatScreen').style.display = 'none';
   document.getElementById('joinScreen').style.display = 'flex';
-  document.getElementById('roleBox').style.display = 'block';
-  document.getElementById('guestBox').style.display = 'none';
+  document.getElementById('guestBox').style.display = 'block';
+  document.getElementById('adminBox').style.display = 'none';
+  setJoinTab('login');
 });
 
 function showChangelog() {
@@ -5371,44 +5793,22 @@ document.getElementById('suggestInput').addEventListener('keydown', function(e) 
 
 loadUserSettings();
 
-document.getElementById('joinBtn').addEventListener('click', function() {
-  var name = document.getElementById('usernameInput').value.trim();
-  var err = document.getElementById('joinError');
-  if (!name) { err.textContent = 'Please enter a username.'; err.style.display = 'block'; return; }
-  if (!/^[a-zA-Z0-9_-]{1,20}$/.test(name)) { err.textContent = 'Letters, numbers, _ and - only (1-20 chars).'; err.style.display = 'block'; return; }
-  if (RESERVED.test(name)) { err.textContent = 'Username cannot contain "admin" or "mod".'; err.style.display = 'block'; return; }
-  myUsername = name;
-  myIsGuest = true;
-  document.getElementById('joinScreen').style.display = 'none';
-  document.getElementById('chatScreen').style.display = 'flex';
-  connectGuest(name);
-  document.getElementById('msgInput').focus();
-});
-
-document.getElementById('usernameInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') document.getElementById('joinBtn').click();
-});
-
 document.getElementById('adminLoginBtn').addEventListener('click', function() {
-  var token = document.getElementById('adminTokenInput').value.trim();
+  var u = document.getElementById('ownerUserInput').value.trim();
+  var p = document.getElementById('ownerPassInput').value;
   var err = document.getElementById('adminError');
-  if (!token) { err.textContent = 'Please enter the owner key.'; err.style.display = 'block'; return; }
-  connectOwner(token);
+  err.style.display = 'none';
+  if (!u || !p) { err.textContent = 'Enter the owner username and password.'; err.style.display = 'block'; return; }
+  fetch('/api/owner-login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (d.error || !d.token) { err.textContent = d.error || 'Login failed.'; err.style.display = 'block'; return; }
+      connectOwner(d.token);
+    }).catch(function(){err.textContent = 'Connection error.'; err.style.display = 'block';});
 });
 
-document.getElementById('adminTokenInput').addEventListener('keydown', function(e) {
+document.getElementById('ownerPassInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') document.getElementById('adminLoginBtn').click();
-});
-
-document.getElementById('staffAdminLoginBtn').addEventListener('click', function() {
-  var key = document.getElementById('staffAdminKeyInput').value.trim();
-  var err = document.getElementById('staffAdminError');
-  if (!key) { err.textContent = 'Please enter your admin key.'; err.style.display = 'block'; return; }
-  connectStaffAdmin(key);
-});
-
-document.getElementById('staffAdminKeyInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') document.getElementById('staffAdminLoginBtn').click();
 });
 
 // ── Reply state ──────────────────────────────────────────────────────
@@ -8060,6 +8460,17 @@ function convertTabToBalance(tabId) {
       ringDemo.style.cssText+=(ringStyles[item.id]||'box-shadow:0 0 0 3px var(--accent)');
       prevWrap.appendChild(prevLbl);prevWrap.appendChild(ringDemo);
       popup.appendChild(prevWrap);
+    } else if(item.cat==='effect'&&window.GECO_FX_EMOJI&&window.GECO_FX_EMOJI[item.id]){
+      var prevWrap=document.createElement('div');
+      prevWrap.style.cssText='background:var(--bg-tertiary);border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid rgba(255,255,255,.07);text-align:center;';
+      var prevLbl=document.createElement('div');prevLbl.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:700;margin-bottom:8px;';prevLbl.textContent='Preview';
+      var fxWrap=document.createElement('div');fxWrap.style.cssText='position:relative;display:inline-block;';
+      var fxDemo=document.createElement('div');fxDemo.style.cssText='width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;';
+      fxDemo.textContent=(myDisplayName||myUsername||'U')[0].toUpperCase();
+      fxWrap.appendChild(fxDemo);
+      applyEffectTo(fxWrap,{effect:item.id});
+      prevWrap.appendChild(prevLbl);prevWrap.appendChild(fxWrap);
+      popup.appendChild(prevWrap);
     }
     var priceRow=document.createElement('div');priceRow.className='sp-price-row';
     var pLbl=document.createElement('div');pLbl.className='sp-price-lbl';pLbl.textContent=owned?'You own this':'Price';
@@ -9288,6 +9699,19 @@ function showContextMenu(e, m) {
   addItem('↩', 'Reply', function() { setReplyTo(m); document.getElementById('msgInput').focus(); });
   addItem('👍', 'React 👍', function() { addReaction(getMsgKey(m), '👍'); });
   addItem('❤️', 'React ❤️', function() { addReaction(getMsgKey(m), '❤️'); });
+  if (m && m.text) {
+    var _sk = getMsgKey(m);
+    if (isStarred(_sk)) addItem('☆', 'Unstar', function() { toggleStar(m); });
+    else addItem('⭐', 'Star Message', function() { toggleStar(m); });
+  }
+  if (m && m.msg_id && m.sender === myUsername) {
+    addItem('✏️', 'Edit Message', function() { openEditModal(m); });
+  }
+  if (isStaffAdmin && m && m.msg_id && m.text) {
+    var _pinned = pinnedMsgs.some(function(p) { return p.msg_id === m.msg_id; });
+    if (_pinned) addItem('📌', 'Unpin', function() { ws.send(JSON.stringify({type:'unpin_message', msg_id:m.msg_id})); });
+    else addItem('📌', 'Pin Message', function() { ws.send(JSON.stringify({type:'pin_message', msg:{msg_id:m.msg_id, sender:m.sender, display_name:m.display_name||m.sender, text:m.text}})); });
+  }
   if (m && m.sender && m.sender !== myUsername) { addSep(); addItem('💬', 'DM ' + (m.display_name || m.sender), function() { openDm(m.sender); }); }
   if (isOwner && m && m.msg_id) { addSep(); addItem('🗑️', 'Delete Message', function() { ws.send(JSON.stringify({type:'delete_log',id:m.msg_id})); }, 'danger'); }
   _ctxMenu.style.display = 'block';
@@ -9297,9 +9721,150 @@ function showContextMenu(e, m) {
   _ctxMenu.style.left = x + 'px';
   _ctxMenu.style.top = y + 'px';
 }
-function hideCtxMenu() { _ctxMenu.style.display = 'none'; _ctxMsg = null; }
+function hideCtxMenu() { if (_ctxMenu) _ctxMenu.style.display = 'none'; _ctxMsg = null; }
 document.addEventListener('click', hideCtxMenu);
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hideCtxMenu(); });
+
+// ── Pinned messages ───────────────────────────────────────────────────────
+var pinnedMsgs = [];
+var _pinsCollapsed = localStorage.getItem('pins-collapsed') === '1';
+function renderPinsBar() {
+  var bar = document.getElementById('pinnedBar');
+  if (!bar) return;
+  if (!pinnedMsgs.length || currentChannel !== 'general') { bar.style.display = 'none'; return; }
+  bar.style.display = 'block';
+  bar.innerHTML = '';
+  var head = document.createElement('div');
+  head.className = 'pin-head';
+  head.innerHTML = '<span>📌</span><span>' + pinnedMsgs.length + ' pinned message' + (pinnedMsgs.length === 1 ? '' : 's') + '</span><span style="margin-left:auto;font-weight:400;">' + (_pinsCollapsed ? '▸' : '▾') + '</span>';
+  head.addEventListener('click', function() { _pinsCollapsed = !_pinsCollapsed; localStorage.setItem('pins-collapsed', _pinsCollapsed ? '1' : '0'); renderPinsBar(); });
+  bar.appendChild(head);
+  if (_pinsCollapsed) return;
+  var list = document.createElement('div');
+  list.className = 'pin-list';
+  pinnedMsgs.slice().reverse().forEach(function(p) {
+    var it = document.createElement('div');
+    it.className = 'pin-item';
+    var txt = document.createElement('div');
+    txt.className = 'pin-txt';
+    txt.innerHTML = '<strong>' + escapeHtml(p.display_name || p.sender || '?') + ':</strong> ' + escapeHtml(p.text || '');
+    txt.title = (p.text || '') + (p.pinned_by ? '\n(pinned by ' + p.pinned_by + ')' : '');
+    it.appendChild(txt);
+    if (isStaffAdmin) {
+      var x = document.createElement('button');
+      x.className = 'pin-x'; x.textContent = '✕'; x.title = 'Unpin';
+      x.addEventListener('click', function() { ws.send(JSON.stringify({type:'unpin_message', msg_id:p.msg_id})); });
+      it.appendChild(x);
+    }
+    list.appendChild(it);
+  });
+  bar.appendChild(list);
+}
+
+// ── Starred messages (local bookmarks) ────────────────────────────────────
+var starredMsgs = [];
+try { starredMsgs = JSON.parse(localStorage.getItem('starred-msgs') || '[]'); } catch(e) { starredMsgs = []; }
+function isStarred(key) { return starredMsgs.some(function(s) { return s.key === key; }); }
+function toggleStar(m) {
+  var key = getMsgKey(m);
+  if (isStarred(key)) {
+    starredMsgs = starredMsgs.filter(function(s) { return s.key !== key; });
+    showToast('Removed from starred.', 'info');
+  } else {
+    starredMsgs.push({ key: key, sender: m.display_name || m.sender || '?', text: m.text || '', time: m.time || '', when: new Date().toLocaleDateString() });
+    if (starredMsgs.length > 100) starredMsgs.shift();
+    showToast('⭐ Message starred!', 'success');
+  }
+  localStorage.setItem('starred-msgs', JSON.stringify(starredMsgs));
+}
+function openStarredModal() {
+  var existing = document.getElementById('starredModal');
+  if (existing) { existing.remove(); return; }
+  var modal = document.createElement('div');
+  modal.id = 'starredModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;display:flex;align-items:center;justify-content:center;';
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(480px,92vw);max-height:70vh;display:flex;flex-direction:column;';
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:17px;font-weight:700;color:var(--text-primary);margin-bottom:12px;';
+  title.textContent = '⭐ Starred Messages (' + starredMsgs.length + ')';
+  box.appendChild(title);
+  var listWrap = document.createElement('div');
+  listWrap.style.cssText = 'overflow-y:auto;display:flex;flex-direction:column;gap:8px;';
+  if (!starredMsgs.length) {
+    var empty = document.createElement('div');
+    empty.style.cssText = 'color:var(--text-muted);font-size:13px;padding:16px;text-align:center;';
+    empty.textContent = 'No starred messages yet. Right-click any message and pick "Star Message".';
+    listWrap.appendChild(empty);
+  }
+  starredMsgs.slice().reverse().forEach(function(s) {
+    var it = document.createElement('div');
+    it.style.cssText = 'background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;gap:8px;align-items:flex-start;';
+    var body = document.createElement('div');
+    body.style.cssText = 'flex:1;min-width:0;';
+    body.innerHTML = '<div style="font-size:12px;font-weight:700;color:var(--text-secondary);">' + escapeHtml(s.sender) + ' <span style="font-weight:400;color:var(--text-muted);">' + escapeHtml(s.when || '') + '</span></div><div style="font-size:13px;color:var(--text-primary);word-break:break-word;">' + escapeHtml(s.text) + '</div>';
+    it.appendChild(body);
+    var rm = document.createElement('button');
+    rm.style.cssText = 'background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px;';
+    rm.textContent = '✕'; rm.title = 'Remove';
+    rm.addEventListener('click', function() {
+      starredMsgs = starredMsgs.filter(function(x) { return x.key !== s.key; });
+      localStorage.setItem('starred-msgs', JSON.stringify(starredMsgs));
+      modal.remove(); openStarredModal();
+    });
+    it.appendChild(rm);
+    listWrap.appendChild(it);
+  });
+  box.appendChild(listWrap);
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+}
+var _starBtnEl = document.getElementById('starBtn');
+if (_starBtnEl) _starBtnEl.addEventListener('click', openStarredModal);
+
+// ── Edit own message ──────────────────────────────────────────────────────
+function openEditModal(m) {
+  var existing = document.getElementById('editMsgModal');
+  if (existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.id = 'editMsgModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;display:flex;align-items:center;justify-content:center;';
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(440px,92vw);';
+  box.innerHTML = '<div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">✏️ Edit Message</div>';
+  var ta = document.createElement('textarea');
+  ta.style.cssText = 'width:100%;min-height:70px;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);padding:8px 10px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box;';
+  ta.value = m.text || '';
+  box.appendChild(ta);
+  var btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:12px;';
+  var cancel = document.createElement('button');
+  cancel.className = 'theme-btn'; cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', function() { modal.remove(); });
+  var save = document.createElement('button');
+  save.className = 'theme-btn'; save.textContent = 'Save';
+  save.style.cssText = 'background:var(--accent);color:#fff;';
+  function doSave() {
+    var nt = ta.value.trim();
+    if (!nt) { showToast('Message cannot be empty.', 'info'); return; }
+    if (nt !== m.text && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({type:'edit_message', msg_id:m.msg_id, text:nt}));
+    }
+    modal.remove();
+  }
+  save.addEventListener('click', doSave);
+  ta.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSave(); }
+    if (e.key === 'Escape') modal.remove();
+  });
+  btns.appendChild(cancel); btns.appendChild(save);
+  box.appendChild(btns);
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+  setTimeout(function() { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 50);
+}
 
 // ── Confetti easter eggs ──────────────────────────────────────────────────
 function triggerConfetti() {
@@ -9344,10 +9909,16 @@ function showUserCard(e, senderUsername, displayName, pfpData, bio, status) {
   _hoverCard.innerHTML = '';
   var top = document.createElement('div');
   top.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:10px;';
+  var avWrap = document.createElement('div');
+  avWrap.style.cssText = 'position:relative;flex-shrink:0;';
   var av = document.createElement('div');
   av.style.cssText = 'width:44px;height:44px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;background:'+avatarColor(displayName||senderUsername)+';background-size:cover;background-position:center;';
   if (pfpData) { av.style.backgroundImage = 'url('+pfpData+')'; av.textContent=''; } else { av.textContent = (displayName||senderUsername||'?').substring(0,2).toUpperCase(); }
-  top.appendChild(av);
+  var _eqHover = getUserEquipped(senderUsername);
+  applyRingTo(av, _eqHover);
+  avWrap.appendChild(av);
+  applyEffectTo(avWrap, _eqHover);
+  top.appendChild(avWrap);
   var nameCol = document.createElement('div');
   var nm = document.createElement('div');
   nm.style.cssText = 'font-weight:700;font-size:15px;color:var(--text-primary);';
@@ -9421,36 +9992,40 @@ async def broadcast_all(message):
     await broadcast_to_staff(message)
 
 
-def user_list():
+def user_list(viewer=None, is_owner=False):
+    """Build the online-user list for one viewer.
+
+    Invisible users are hidden from everyone except themselves and the owner
+    (the owner sees them with their real 'invisible' status)."""
     users = []
     for info in connected.values():
+        status = info.get("status", "online")
+        if status == "invisible" and not is_owner and info["username"] != viewer:
+            continue
         users.append({
             "name": info["username"],
             "display_name": info.get("display_name", info["username"]),
             "pfp": info.get("pfp_data", ""),
             "bio": info.get("bio", ""),
-            "status": info.get("status", "online"),
-            "equipped": info.get("equipped", {})
+            "status": status,
+            "equipped": info.get("equipped", {}),
+            "role": info.get("role", "user")
         })
-    for sinfo in staff_connected.values():
-        if sinfo["username"] not in [u["name"] for u in users]:
-            users.append({
-                "name": sinfo["username"],
-                "display_name": sinfo.get("display_name", sinfo["username"]),
-                "pfp": "",
-                "bio": sinfo.get("bio", ""),
-                "status": sinfo.get("status", "online"),
-                "equipped": sinfo.get("equipped", {})
-            })
     return users
 
 
 async def send_user_list():
-    users = user_list()
-    msg = {"type": "users", "list": users}
-    await broadcast_to_clients(msg)
-    await send_to_admin(msg)
-    await broadcast_to_staff(msg)
+    tasks = []
+    for c_ws, info in list(connected.items()):
+        msg = json.dumps({"type": "users", "list": user_list(viewer=info["username"])})
+        try:
+            tasks.append(c_ws.send_str(msg))
+        except Exception:
+            pass
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+    owner_msg = {"type": "users", "list": user_list(is_owner=True)}
+    await send_to_admin(owner_msg)
     await send_to_admin({"type": "banned_list", "list": list(banned_users)})
 
 
@@ -9463,6 +10038,12 @@ async def handle_admin_page(request):
     if request.method == "POST":
         data = await request.post()
         token = data.get("token", "")
+        # Username/password owner login (credentials printed to server console each boot)
+        if not token:
+            u = data.get("username", "").strip()
+            p = data.get("password", "")
+            if secrets.compare_digest(u, OWNER_USERNAME) and secrets.compare_digest(p, OWNER_PASSWORD):
+                token = OWNER_TOKEN
     else:
         token = request.query.get("token", "")
     if token == OWNER_TOKEN:
@@ -9495,32 +10076,17 @@ button:hover { background: #4752c4; }
 </head>
 <body>
 <div class="login-box">
-  <h2>Admin Login</h2>
-  <p>Enter the admin token from the server console.</p>
-  <div class="error" id="errorMsg">Invalid token. Please try again.</div>
-  <label for="tokenInput">Admin Token</label>
-  <input type="password" id="tokenInput" data-testid="input-token" placeholder="Paste token here..." autofocus />
-  <button id="loginBtn" data-testid="button-login">Login</button>
+  <h2>Owner Login</h2>
+  <p>Enter the owner username and password printed in the server console (new each boot).</p>
+  <div class="error" id="errorMsg">Invalid credentials. Please try again.</div>
+  <form method="POST" action="/admin">
+    <label for="userInput">Owner Username</label>
+    <input type="text" id="userInput" name="username" data-testid="input-owner-username" autocomplete="off" autofocus />
+    <label for="passInput">Owner Password</label>
+    <input type="password" id="passInput" name="password" data-testid="input-owner-password" autocomplete="off" />
+    <button type="submit" id="loginBtn" data-testid="button-login">Login</button>
+  </form>
 </div>
-<script>
-document.getElementById('loginBtn').addEventListener('click', function() {
-  var token = document.getElementById('tokenInput').value.trim();
-  if (!token) { var e = document.getElementById('errorMsg'); e.textContent = 'Please enter a token.'; e.style.display = 'block'; return; }
-  var form = document.createElement('form');
-  form.method = 'POST';
-  form.action = '/admin';
-  var inp = document.createElement('input');
-  inp.type = 'hidden';
-  inp.name = 'token';
-  inp.value = token;
-  form.appendChild(inp);
-  document.body.appendChild(form);
-  form.submit();
-});
-document.getElementById('tokenInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') { document.getElementById('loginBtn').click(); }
-});
-</script>
 </body>
 </html>"""
     return web.Response(text=login_html, content_type="text/html")
@@ -9602,7 +10168,7 @@ async def handle_owner_ws(request):
     admin_ws = ws
     print("[OWNER] Owner connected")
 
-    await send_to_admin({"type": "users", "list": user_list()})
+    await send_to_admin({"type": "users", "list": user_list(is_owner=True)})
     await send_to_admin({"type": "banned_list", "list": list(banned_users)})
     await send_dm_pairs_to_admin()
 
@@ -9749,37 +10315,60 @@ async def handle_owner_ws(request):
                     if log_id is not None:
                         delete_log(log_id)
 
-                elif data.get("type") == "create_admin":
-                    admin_name = data.get("name", "").strip()
-                    if admin_name:
-                        new_key = hashlib.sha256((admin_name + str(_time.time())).encode()).hexdigest()[:16]
-                        admin_accounts[new_key] = {
-                            "name": admin_name,
-                            "created": mtn_now().strftime("%Y-%m-%d %H:%M"),
-                            "key": new_key
-                        }
-                        await ws.send_str(json.dumps({
-                            "type": "admin_created",
-                            "name": admin_name,
-                            "key": new_key
-                        }))
-                        print(f"[OWNER] Created admin account: {admin_name}")
+                elif data.get("type") == "promote_admin":
+                    target_name = data.get("username", "").strip()
+                    if target_name and db_pool:
+                        async with db_pool.acquire() as conn:
+                            res = await conn.execute(
+                                "UPDATE users SET role='admin' WHERE username=$1", target_name)
+                        if res.endswith("1"):
+                            # Live-update if they're online
+                            for cws, cinfo in connected.items():
+                                if cinfo["username"] == target_name:
+                                    cinfo["role"] = "admin"
+                                    try:
+                                        await cws.send_str(json.dumps({
+                                            "type": "role_update", "role": "admin",
+                                            "text": "You have been promoted to Admin!"}))
+                                    except Exception:
+                                        pass
+                            await ws.send_str(json.dumps({"type": "admin_created", "name": target_name}))
+                            await send_user_list()
+                            print(f"[OWNER] Promoted to admin: {target_name}")
+                        else:
+                            await ws.send_str(json.dumps({
+                                "type": "error", "text": f"No account named '{target_name}' found."}))
 
                 elif data.get("type") == "get_admins":
                     admins_list = []
-                    for k, v in admin_accounts.items():
-                        admins_list.append({"name": v["name"], "created": v["created"], "key": k})
+                    if db_pool:
+                        async with db_pool.acquire() as conn:
+                            rows = await conn.fetch(
+                                "SELECT username, display_name, created_at FROM users WHERE role='admin' ORDER BY username")
+                        for r in rows:
+                            admins_list.append({
+                                "name": r["username"],
+                                "display_name": r["display_name"] or r["username"],
+                                "created": r["created_at"].strftime("%Y-%m-%d") if r["created_at"] else ""})
                     await ws.send_str(json.dumps({"type": "admins_data", "admins": admins_list}))
 
                 elif data.get("type") == "remove_admin":
-                    key_to_remove = data.get("key", "")
-                    if key_to_remove in admin_accounts:
-                        removed_name = admin_accounts[key_to_remove]["name"]
-                        del admin_accounts[key_to_remove]
-                        for sws, sinfo in list(staff_connected.items()):
-                            if sinfo.get("admin_key") == key_to_remove:
-                                await sws.close()
-                        print(f"[OWNER] Removed admin: {removed_name}")
+                    target_name = data.get("username", "").strip()
+                    if target_name and db_pool:
+                        async with db_pool.acquire() as conn:
+                            await conn.execute(
+                                "UPDATE users SET role='user' WHERE username=$1", target_name)
+                        for cws, cinfo in connected.items():
+                            if cinfo["username"] == target_name:
+                                cinfo["role"] = "user"
+                                try:
+                                    await cws.send_str(json.dumps({
+                                        "type": "role_update", "role": "user",
+                                        "text": "Your admin role was removed."}))
+                                except Exception:
+                                    pass
+                        await send_user_list()
+                        print(f"[OWNER] Demoted admin: {target_name}")
 
                 elif data.get("type") == "get_suggestions":
                     await ws.send_str(json.dumps({"type": "suggestions_data", "suggestions": suggestions}))
@@ -9816,156 +10405,6 @@ async def handle_owner_ws(request):
 
     admin_ws = None
     print("[OWNER] Owner disconnected")
-    return ws
-
-
-async def handle_staff_ws(request):
-    key = request.query.get("key", "")
-    if key not in admin_accounts:
-        return web.Response(text="Unauthorized", status=403)
-
-    account = admin_accounts[key]
-    staff_name = account["name"]
-
-    ws = web.WebSocketResponse()
-    await ws.prepare(request)
-
-    staff_connected[ws] = {"username": staff_name, "admin_key": key, "role": "admin"}
-    print(f"[STAFF] Admin '{staff_name}' connected")
-
-    await ws.send_str(json.dumps({"type": "welcome", "username": staff_name, "role": "admin"}))
-    await broadcast_all({"type": "users", "list": user_list()})
-
-    async for msg in ws:
-        if msg.type == aiohttp.WSMsgType.TEXT:
-            try:
-                data = json.loads(msg.data)
-
-                if data["type"] == "kick":
-                    target = data["username"]
-                    for client_ws, info in list(connected.items()):
-                        if info["username"] == target:
-                            await client_ws.send_str(json.dumps({
-                                "type": "error",
-                                "text": "You have been kicked by an admin."
-                            }))
-                            await client_ws.close()
-                            break
-                    print(f"[STAFF:{staff_name}] Kicked: {target}")
-
-                elif data["type"] == "react":
-                    mid = data.get("msg_id", "")
-                    emoji = data.get("emoji", "")
-                    if mid and emoji and len(emoji) <= 8:
-                        if mid not in msg_reactions:
-                            msg_reactions[mid] = {}
-                        reactors = msg_reactions[mid].setdefault(emoji, set())
-                        if staff_name in reactors:
-                            reactors.discard(staff_name)
-                        else:
-                            reactors.add(staff_name)
-                        react_state = {e: list(u) for e, u in msg_reactions[mid].items() if u}
-                        await broadcast_all({"type": "react", "msg_id": mid, "reactions": react_state})
-
-                elif data["type"] == "chat":
-                    text = data.get("text", "").strip()
-                    if text:
-                        reply_sender = data.get("reply_sender", "")
-                        reply_text = data.get("reply_text", "")
-                        mid = str(uuid.uuid4())[:12]
-                        msg = {"type": "chat", "sender": staff_name, "text": text, "admin": True, "msg_id": mid}
-                        if reply_sender: msg["reply_sender"] = reply_sender[:80]
-                        if reply_text: msg["reply_text"] = reply_text[:80]
-                        await broadcast_all(msg)
-                        add_log("chat", sender=staff_name, text=text, admin=True)
-                        print(f"[{staff_name} (Admin)] {text}")
-
-                elif data["type"] == "dm_message":
-                    target = data.get("target", "").strip()
-                    text = data.get("text", "").strip()
-                    if target and text:
-                        identity = "~staff:" + key + "~"
-                        k = dm_key(identity, target)
-                        if k not in dm_store:
-                            dm_store[k] = []
-                        ts = _time.strftime("%H:%M")
-                        dm_store[k].append({"sender": staff_name, "recipient": target, "text": text, "time": ts, "admin": True})
-                        dm_msg = {"type": "dm", "sender": staff_name, "recipient": target, "text": text, "admin": True, "admin_dm": True}
-                        for client_ws, info in connected.items():
-                            if info["username"] == target:
-                                try:
-                                    await client_ws.send_str(json.dumps(dm_msg))
-                                except Exception:
-                                    pass
-                                break
-                        await ws.send_str(json.dumps({"type": "dm", "sender": staff_name, "recipient": target, "text": text, "admin": True}))
-                        add_log("dm", sender=staff_name, recipient=target, text=text, admin=True)
-
-                elif data["type"] == "dm_open":
-                    target = data.get("target", "")
-                    identity = "~staff:" + key + "~"
-                    k = dm_key(identity, target)
-                    history = dm_store.get(k, [])
-                    await ws.send_str(json.dumps({
-                        "type": "dm_history",
-                        "target": target,
-                        "messages": history
-                    }))
-
-                elif data.get("type") == "get_logs":
-                    await ws.send_str(json.dumps({"type": "logs_data", "logs": chat_logs}))
-
-                elif data.get("type") == "send_suggestion":
-                    text = data.get("text", "").strip()
-                    if text:
-                        sid = len(suggestions) + 1
-                        suggestions.append({
-                            "id": sid,
-                            "from": staff_name,
-                            "text": text,
-                            "timestamp": mtn_now().strftime("%Y-%m-%d %H:%M")
-                        })
-                        suggestion_counter[0] += 1
-                        await ws.send_str(json.dumps({"type": "suggestion_sent"}))
-                        if admin_ws:
-                            try:
-                                await admin_ws.send_str(json.dumps({"type": "new_suggestion"}))
-                            except Exception:
-                                pass
-                        print(f"[STAFF:{staff_name}] Suggestion: {text}")
-
-                elif data.get("type") == "gc_create":
-                    identity = "~staff:" + key + "~"
-                    await handle_gc_create(ws, identity, data)
-
-                elif data.get("type") == "gc_message":
-                    identity = "~staff:" + key + "~"
-                    await handle_gc_message(ws, identity, data)
-
-                elif data.get("type") == "gc_open":
-                    gc_id = data.get("gc_id", "")
-                    identity = "~staff:" + key + "~"
-                    gc = gc_store.get(gc_id)
-                    if gc and identity in gc["members"]:
-                        await ws.send_str(json.dumps({
-                            "type": "gc_history",
-                            "gc_id": gc_id,
-                            "messages": gc["messages"]
-                        }))
-
-                elif data.get("type") == "bj_action":
-                    await handle_bj_action(ws, staff_name, data)
-
-            except Exception as e:
-                print(f"[STAFF:{staff_name}] Error: {e}")
-
-        elif msg.type == aiohttp.WSMsgType.ERROR:
-            break
-
-    if ws in staff_connected:
-        del staff_connected[ws]
-    await broadcast_all({"type": "users", "list": user_list()})
-    print(f"[STAFF] Admin '{staff_name}' disconnected")
     return ws
 
 
@@ -10235,6 +10674,7 @@ async def handle_client_ws(request):
                     display_name = name
                     pfp_data = ""
                     bio = ""
+                    role = "user"
                     show_changelog = False
 
                     authed = False
@@ -10246,18 +10686,21 @@ async def handle_client_ws(request):
                             display_name = profile["display_name"]
                             pfp_data = profile.get("pfp_data", "")
                             bio = profile.get("bio", "")
+                            role = profile.get("role", "user") or "user"
+
+                    # Accounts are now required — no anonymous guests.
+                    if not authed:
+                        await ws.send_str(json.dumps({
+                            "type": "error",
+                            "code": "auth_required",
+                            "text": "Please sign in or create an account to join the chat."
+                        }))
+                        continue
 
                     if not USERNAME_RE.match(name):
                         await ws.send_str(json.dumps({
                             "type": "error",
-                            "text": "Username must be 1-20 characters: letters, numbers, _ or - only."
-                        }))
-                        continue
-
-                    if RESERVED_RE.search(name):
-                        await ws.send_str(json.dumps({
-                            "type": "error",
-                            "text": "Username cannot contain 'admin', 'mod', or 'owner'."
+                            "text": "Invalid username on this account."
                         }))
                         continue
 
@@ -10276,21 +10719,13 @@ async def handle_client_ws(request):
                         }))
                         continue
 
-                    # Guests may not borrow a registered account's name, otherwise
-                    # they could load and overwrite that account's saved economy.
-                    if not authed and await db_username_registered(name):
-                        await ws.send_str(json.dumps({
-                            "type": "error",
-                            "text": f"'{name}' belongs to a registered account. Please log in or pick another name."
-                        }))
-                        continue
-
                     username = name
                     connected[ws] = {
                         "username": username, "ws": ws,
                         "display_name": display_name,
                         "pfp_data": pfp_data, "bio": bio,
-                        "is_guest": not authed
+                        "is_guest": False,
+                        "role": role
                     }
                     # Load or initialise economy (persists by username for everyone)
                     if db_pool:
@@ -10315,7 +10750,8 @@ async def handle_client_ws(request):
                         "username": username,
                         "display_name": display_name,
                         "pfp_data": pfp_data,
-                        "bio": bio
+                        "bio": bio,
+                        "role": role
                     }))
                     # Auto-send balance data immediately so client has fresh data on reconnect
                     _guest = not authed
@@ -10334,6 +10770,19 @@ async def handle_client_ws(request):
                         "idle_upgrades_def": IDLE_UPGRADES,
                         "shop_catalog":  list({"id": k, **v} for k, v in SHOP_CATALOG.items()),
                     }))
+                    if pinned_messages:
+                        await ws.send_str(json.dumps({"type": "pins_update", "pins": pinned_messages}))
+                    try:
+                        _daily = await grant_daily_reward(username)
+                        if _daily:
+                            _amt, _stk, _nb = _daily
+                            connected[ws]["balance"] = _nb
+                            await ws.send_str(json.dumps({
+                                "type": "daily_reward", "amount": _amt,
+                                "streak": _stk, "balance": _nb
+                            }))
+                    except Exception as _e:
+                        print(f"[daily-reward] error for {username}: {_e}")
                     await broadcast_all({"type": "system", "text": f"{display_name} joined the chat"})
                     await send_user_list()
 
@@ -10357,15 +10806,72 @@ async def handle_client_ws(request):
                     if text:
                         disp = connected[ws].get("display_name", username)
                         pfp = connected[ws].get("pfp_data", "")
+                        is_admin_user = connected[ws].get("role") == "admin"
                         reply_sender = data.get("reply_sender", "")
                         reply_text = data.get("reply_text", "")
                         mid = str(uuid.uuid4())[:12]
                         msg = {"type": "chat", "sender": username, "display_name": disp, "pfp": pfp, "text": text, "msg_id": mid}
+                        if is_admin_user: msg["admin"] = True
                         if reply_sender: msg["reply_sender"] = reply_sender[:80]
                         if reply_text: msg["reply_text"] = reply_text[:80]
+                        msg_authors[mid] = {"username": username, "display_name": disp, "text": text}
+                        if len(msg_authors) > 600:
+                            for _k in list(msg_authors)[:200]:
+                                msg_authors.pop(_k, None)
                         await broadcast_all(msg)
-                        add_log("chat", sender=disp, text=text)
+                        add_log("chat", sender=disp, text=text, admin=is_admin_user)
                         print(f"[{disp}] {text}")
+
+                elif data.get("type") == "edit_message":
+                    mid = data.get("msg_id", "")
+                    new_text = (data.get("text") or "").strip()[:2000]
+                    _author = msg_authors.get(mid)
+                    if mid and new_text and _author and _author["username"] == username:
+                        _author["text"] = new_text
+                        for _p in pinned_messages:
+                            if _p.get("msg_id") == mid:
+                                _p["text"] = new_text[:300]
+                        await broadcast_all({"type": "edit", "msg_id": mid, "text": new_text})
+                        if any(p.get("msg_id") == mid for p in pinned_messages):
+                            await broadcast_all({"type": "pins_update", "pins": pinned_messages})
+
+                elif data.get("type") == "pin_message" and connected[ws].get("role") == "admin":
+                    _pm = data.get("msg", {}) or {}
+                    _pid = str(_pm.get("msg_id") or "")[:40]
+                    _rec = msg_authors.get(_pid)  # server-authoritative message lookup
+                    if _rec and not any(p["msg_id"] == _pid for p in pinned_messages):
+                        pinned_messages.append({
+                            "msg_id": _pid,
+                            "sender": _rec["username"][:40],
+                            "display_name": (_rec.get("display_name") or _rec["username"])[:40],
+                            "text": _rec["text"][:300],
+                            "pinned_by": connected[ws].get("display_name", username),
+                        })
+                        if len(pinned_messages) > 20:
+                            pinned_messages.pop(0)
+                        await broadcast_all({"type": "pins_update", "pins": pinned_messages})
+
+                elif data.get("type") == "unpin_message" and connected[ws].get("role") == "admin":
+                    _uid = str(data.get("msg_id") or "")
+                    _before = len(pinned_messages)
+                    pinned_messages[:] = [p for p in pinned_messages if p["msg_id"] != _uid]
+                    if len(pinned_messages) != _before:
+                        await broadcast_all({"type": "pins_update", "pins": pinned_messages})
+
+                elif data.get("type") == "kick" and connected[ws].get("role") == "admin":
+                    target = data.get("username", "")
+                    for client_ws, info in list(connected.items()):
+                        if info["username"] == target and info.get("role") != "admin":
+                            await client_ws.send_str(json.dumps({
+                                "type": "error",
+                                "text": "You have been kicked by an admin."
+                            }))
+                            await client_ws.close()
+                            break
+                    print(f"[ADMIN:{username}] Kicked: {target}")
+
+                elif data.get("type") == "get_logs" and connected[ws].get("role") == "admin":
+                    await ws.send_str(json.dumps({"type": "logs_data", "logs": chat_logs}))
 
                 elif data.get("type") == "dm_message":
                     target = data.get("target", "").strip()
@@ -10565,6 +11071,18 @@ async def handle_client_ws(request):
                         print(f"[dice_reward] error: {_e}")
                         await ws.send_str(json.dumps({"type": "dg_reward_result", "ok": False, "error": "Reward failed."})); continue
                     await ws.send_str(json.dumps({"type": "dg_reward_result", "stage": stage, **result}))
+
+                elif data.get("type") == "dg_claim_abyss":
+                    if ws not in connected: continue
+                    floor = data.get("floor", "")
+                    if floor not in dice_data.ABYSS_FLOOR_IDS:
+                        await ws.send_str(json.dumps({"type": "dg_abyss_result", "ok": False, "error": "Unknown floor."})); continue
+                    try:
+                        result = await dice_claim_abyss_txn(username, ws, floor)
+                    except Exception as _e:
+                        print(f"[dice_abyss] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_abyss_result", "ok": False, "error": "Reward failed."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_abyss_result", "floor": floor, **result}))
 
                 elif data.get("type") == "dg_set_best_wave":
                     if ws not in connected: continue
@@ -11200,8 +11718,8 @@ async def handle_api_register(request):
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
     display_name = (data.get("display_name", "").strip() or username)[:30]
-    if not USERNAME_RE.match(username):
-        return web.Response(text=json.dumps({"error": "Username: 1-20 chars, letters/numbers/_/- only"}), content_type="application/json", status=400)
+    if not SIGNUP_RE.match(username):
+        return web.Response(text=json.dumps({"error": "Username: 8-30 chars, letters/numbers/_/- only"}), content_type="application/json", status=400)
     if RESERVED_RE.search(username):
         return web.Response(text=json.dumps({"error": "Username cannot contain admin/mod/owner"}), content_type="application/json", status=400)
     if len(password) < 6:
@@ -11222,7 +11740,157 @@ async def handle_api_login(request):
     result = await db_login(username, password)
     if "error" in result:
         return web.Response(text=json.dumps(result), content_type="application/json", status=401)
+    if result.get("twofa_required"):
+        send_login_code(username)
     return web.Response(text=json.dumps(result), content_type="application/json")
+
+
+_owner_login_fails = []
+
+async def handle_api_owner_login(request):
+    """Owner sign-in with the per-boot random credentials printed to the console."""
+    try:
+        data = await request.json()
+    except Exception:
+        return web.Response(text=json.dumps({"error": "Invalid JSON"}), content_type="application/json", status=400)
+    # Simple brute-force damper: max 10 failures/minute across the board.
+    now = _time.time()
+    while _owner_login_fails and now - _owner_login_fails[0] > 60:
+        _owner_login_fails.pop(0)
+    if len(_owner_login_fails) >= 10:
+        return web.Response(text=json.dumps({"error": "Too many attempts. Wait a minute."}), content_type="application/json", status=429)
+    u = data.get("username", "").strip()
+    p = data.get("password", "")
+    if secrets.compare_digest(u, OWNER_USERNAME) and secrets.compare_digest(p, OWNER_PASSWORD):
+        return web.Response(text=json.dumps({"token": OWNER_TOKEN}), content_type="application/json")
+    _owner_login_fails.append(now)
+    await asyncio.sleep(0.5)
+    return web.Response(text=json.dumps({"error": "Invalid owner credentials"}), content_type="application/json", status=401)
+
+
+def _json(data, status=200):
+    return web.Response(text=json.dumps(data), content_type="application/json", status=status)
+
+
+async def handle_api_login_2fa(request):
+    """Complete a 2FA login: verify the emailed/console code, then issue a session."""
+    try:
+        data = await request.json()
+    except Exception:
+        return _json({"error": "Invalid JSON"}, 400)
+    username = data.get("username", "").strip()
+    code = str(data.get("code", "")).strip()
+    if not username or not code or not db_pool:
+        return _json({"error": "Missing username or code"}, 400)
+    if not check_code("login", username, code):
+        return _json({"error": "Invalid or expired code"}, 401)
+    async with db_pool.acquire() as conn:
+        user = await conn.fetchrow("SELECT * FROM users WHERE username=$1", username)
+        if not user:
+            return _json({"error": "Account not found"}, 404)
+        result = await db_issue_session(conn, user)
+    return _json(result)
+
+
+async def handle_api_request_reset(request):
+    """Send a password-reset code (email if configured, else server console)."""
+    try:
+        data = await request.json()
+    except Exception:
+        return _json({"error": "Invalid JSON"}, 400)
+    username = data.get("username", "").strip()
+    if not username or not db_pool:
+        return _json({"error": "Missing username"}, 400)
+    async with db_pool.acquire() as conn:
+        user = await conn.fetchrow("SELECT username FROM users WHERE username=$1", username)
+    if not user:
+        # Don't leak which accounts exist — respond ok either way.
+        return _json({"ok": True})
+    asyncio.create_task(_send_code_task("reset", username))
+    return _json({"ok": True})
+
+
+async def handle_api_reset_password(request):
+    try:
+        data = await request.json()
+    except Exception:
+        return _json({"error": "Invalid JSON"}, 400)
+    username = data.get("username", "").strip()
+    code = str(data.get("code", "")).strip()
+    password = data.get("password", "")
+    if not username or not code or not db_pool:
+        return _json({"error": "Missing fields"}, 400)
+    if len(password) < 6:
+        return _json({"error": "Password must be at least 6 characters"}, 400)
+    if not check_code("reset", username, code):
+        return _json({"error": "Invalid or expired code"}, 401)
+    async with db_pool.acquire() as conn:
+        await conn.execute("UPDATE users SET password_hash=$1 WHERE username=$2",
+                           hash_password(password), username)
+        # Invalidate all existing sessions for safety
+        await conn.execute("DELETE FROM sessions WHERE username=$1", username)
+    print(f"[AUTH] Password reset completed for {username}")
+    return _json({"ok": True})
+
+
+async def handle_api_set_email(request):
+    """Save an email address and send a verification code."""
+    token = request.headers.get("X-Session-Token", "")
+    user = await db_validate_session(token)
+    if not user:
+        return _json({"error": "Not signed in"}, 401)
+    try:
+        data = await request.json()
+    except Exception:
+        return _json({"error": "Invalid JSON"}, 400)
+    email = data.get("email", "").strip()[:120]
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        return _json({"error": "Enter a valid email address"}, 400)
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE users SET email=$1, email_verified=FALSE, twofa_enabled=FALSE WHERE username=$2",
+            email, user["username"])
+    code = make_code("verify", user["username"])
+    if code is None:
+        return _json({"error": "Please wait 30s before requesting another code"}, 429)
+    asyncio.create_task(deliver_code(email, "verify", code, user["username"]))
+    return _json({"ok": True, "email": email})
+
+
+async def handle_api_verify_email(request):
+    token = request.headers.get("X-Session-Token", "")
+    user = await db_validate_session(token)
+    if not user:
+        return _json({"error": "Not signed in"}, 401)
+    try:
+        data = await request.json()
+    except Exception:
+        return _json({"error": "Invalid JSON"}, 400)
+    code = str(data.get("code", "")).strip()
+    if not check_code("verify", user["username"], code):
+        return _json({"error": "Invalid or expired code"}, 401)
+    async with db_pool.acquire() as conn:
+        await conn.execute("UPDATE users SET email_verified=TRUE WHERE username=$1", user["username"])
+    print(f"[AUTH] Email verified for {user['username']}")
+    return _json({"ok": True})
+
+
+async def handle_api_toggle_2fa(request):
+    token = request.headers.get("X-Session-Token", "")
+    user = await db_validate_session(token)
+    if not user:
+        return _json({"error": "Not signed in"}, 401)
+    try:
+        data = await request.json()
+    except Exception:
+        return _json({"error": "Invalid JSON"}, 400)
+    enable = bool(data.get("enabled"))
+    if enable and not user.get("email_verified"):
+        return _json({"error": "Verify your email first to enable 2FA"}, 400)
+    async with db_pool.acquire() as conn:
+        await conn.execute("UPDATE users SET twofa_enabled=$1 WHERE username=$2",
+                           enable, user["username"])
+    return _json({"ok": True, "twofa_enabled": enable})
 
 
 async def handle_api_profile_get(request):
@@ -11453,10 +12121,16 @@ async def main():
     app.router.add_get("/admin", handle_admin_page)
     app.router.add_post("/admin", handle_admin_page)
     app.router.add_get("/owner-ws", handle_owner_ws)
-    app.router.add_get("/staff-ws", handle_staff_ws)
     app.router.add_get("/ws", handle_client_ws)
     app.router.add_post("/api/register", handle_api_register)
     app.router.add_post("/api/login", handle_api_login)
+    app.router.add_post("/api/owner-login", handle_api_owner_login)
+    app.router.add_post("/api/login-2fa", handle_api_login_2fa)
+    app.router.add_post("/api/request-reset", handle_api_request_reset)
+    app.router.add_post("/api/reset-password", handle_api_reset_password)
+    app.router.add_post("/api/set-email", handle_api_set_email)
+    app.router.add_post("/api/verify-email", handle_api_verify_email)
+    app.router.add_post("/api/toggle-2fa", handle_api_toggle_2fa)
     app.router.add_get("/api/profile", handle_api_profile_get)
     app.router.add_post("/api/profile", handle_api_profile_update)
     app.router.add_get("/api/changelog-seen", handle_api_changelog_seen)
@@ -11476,11 +12150,12 @@ async def main():
     print()
     print("  Server running on port 5000")
     print()
-    print("  OWNER URL (keep this secret!):")
-    print(f"  /admin?token={OWNER_TOKEN}")
+    print("  OWNER LOGIN (new credentials every boot - keep secret!):")
+    print(f"    Username: {OWNER_USERNAME}")
+    print(f"    Password: {OWNER_PASSWORD}")
+    print("  Sign in via the 'Owner' link on the main page, or /admin")
     print()
-    print("  Friends open your Replit URL to chat.")
-    print("  No token needed - just pick a username.")
+    print("  Friends open your Replit URL and Sign In / Sign Up to chat.")
     print()
     print("  Waiting for connections...")
     print("=" * 50)

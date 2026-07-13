@@ -158,10 +158,14 @@ def get_css():
 .dg-card .dg-rl{font-size:11px;color:var(--text-tertiary);}
 .dg-card.r-COMMON{box-shadow:inset 0 0 0 1px rgba(91,143,214,.4),0 6px 16px rgba(91,143,214,.12);}
 .dg-card.r-RARE{box-shadow:inset 0 0 0 1px rgba(167,123,255,.5),0 6px 18px rgba(167,123,255,.18);}
+.dg-card.r-LEGENDARY{box-shadow:inset 0 0 0 1px rgba(255,157,92,.55),0 7px 20px rgba(255,157,92,.2);}
 .dg-card.r-MYTHIC{box-shadow:inset 0 0 0 1px rgba(255,206,90,.6),0 8px 22px rgba(255,206,90,.22);}
+.dg-card.r-ETERNAL{box-shadow:inset 0 0 0 1px rgba(126,240,255,.7),0 8px 26px rgba(126,240,255,.28);}
 .dg-card.r-COMMON .dg-face{background:radial-gradient(circle at 50% 35%,rgba(91,143,214,.3),transparent 65%);}
 .dg-card.r-RARE .dg-face{background:radial-gradient(circle at 50% 35%,rgba(167,123,255,.32),transparent 65%);}
+.dg-card.r-LEGENDARY .dg-face{background:radial-gradient(circle at 50% 35%,rgba(255,157,92,.32),transparent 65%);}
 .dg-card.r-MYTHIC .dg-face{background:radial-gradient(circle at 50% 35%,rgba(255,206,90,.34),transparent 65%);}
+.dg-card.r-ETERNAL .dg-face{background:radial-gradient(circle at 50% 35%,rgba(126,240,255,.36),transparent 65%);}
 .dg-cons{position:absolute;top:8px;right:8px;font-size:10px;font-weight:900;padding:3px 7px;border-radius:8px;
   background:rgba(0,0,0,.55);color:#ffce5a;border:1px solid rgba(255,206,90,.4);}
 .dg-elem{position:absolute;top:8px;left:8px;width:22px;height:22px;border-radius:50%;display:flex;
@@ -251,7 +255,9 @@ def get_css():
 .dg-pull-overlay{position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;
   align-items:center;justify-content:center;background:radial-gradient(circle at 50% 45%,rgba(123,97,255,.18),rgba(4,4,10,.92));}
 .dg-pull-overlay.r-RARE{background:radial-gradient(circle at 50% 45%,rgba(167,123,255,.3),rgba(4,4,10,.93));}
+.dg-pull-overlay.r-LEGENDARY{background:radial-gradient(circle at 50% 45%,rgba(255,157,92,.3),rgba(4,4,10,.94));}
 .dg-pull-overlay.r-MYTHIC{background:radial-gradient(circle at 50% 45%,rgba(255,206,90,.32),rgba(4,4,10,.94));}
+.dg-pull-overlay.r-ETERNAL{background:radial-gradient(circle at 50% 45%,rgba(126,240,255,.34),rgba(4,4,10,.95));}
 .dg-pull-suspense{display:flex;flex-direction:column;align-items:center;gap:20px;}
 .dg-roller{font-size:120px;color:#cfd2ff;text-shadow:0 0 36px rgba(167,123,255,.7);animation:dgRoll 1s linear infinite;}
 @keyframes dgRoll{0%{transform:rotate(0) scale(1);}50%{transform:rotate(180deg) scale(1.12);}100%{transform:rotate(360deg) scale(1);}}
@@ -263,8 +269,11 @@ def get_css():
   border:1px solid rgba(255,255,255,.1);}
 @keyframes dgFlip{to{opacity:1;transform:perspective(700px) rotateY(0);}}
 .dg-reveal-card.r-RARE{box-shadow:0 0 0 1px rgba(167,123,255,.6),0 0 20px rgba(167,123,255,.35);}
+.dg-reveal-card.r-LEGENDARY{box-shadow:0 0 0 1px rgba(255,157,92,.7),0 0 24px rgba(255,157,92,.45);}
 .dg-reveal-card.r-MYTHIC{box-shadow:0 0 0 1px rgba(255,206,90,.75),0 0 28px rgba(255,206,90,.5);animation:dgFlip .5s cubic-bezier(.2,.9,.3,1) forwards,dgMythicPulse 1.6s ease-in-out .5s infinite;}
 @keyframes dgMythicPulse{0%,100%{box-shadow:0 0 0 1px rgba(255,206,90,.75),0 0 22px rgba(255,206,90,.4);}50%{box-shadow:0 0 0 1px rgba(255,206,90,.9),0 0 36px rgba(255,206,90,.7);}}
+.dg-reveal-card.r-ETERNAL{box-shadow:0 0 0 1px rgba(126,240,255,.85),0 0 34px rgba(126,240,255,.6);animation:dgFlip .5s cubic-bezier(.2,.9,.3,1) forwards,dgEternalPulse 1.4s ease-in-out .5s infinite;}
+@keyframes dgEternalPulse{0%,100%{box-shadow:0 0 0 1px rgba(126,240,255,.8),0 0 26px rgba(126,240,255,.5);}50%{box-shadow:0 0 0 2px rgba(126,240,255,1),0 0 46px rgba(126,240,255,.85);}}
 .dg-reveal-card .rc-face{font-size:46px;position:relative;display:inline-block;}
 .dg-reveal-grid.single .dg-reveal-card{width:240px;padding:30px;}
 .dg-reveal-grid.single .rc-face{font-size:96px;}
@@ -273,6 +282,36 @@ def get_css():
 .rc-sub.isnew{color:#ff7a90;font-weight:900;letter-spacing:1px;}
 .dg-reveal-foot{margin-top:26px;display:flex;gap:12px;}
 
+/* ---- gacha cinematic ---- */
+.dg-cine{position:relative;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;}
+.dg-cine-rays{position:absolute;left:50%;top:44%;width:1200px;height:1200px;margin:-600px 0 0 -600px;pointer-events:none;opacity:.55;
+  background:conic-gradient(from 0deg,transparent 0 14deg,rgba(255,255,255,.07) 14deg 18deg,transparent 18deg 40deg,rgba(255,255,255,.07) 40deg 44deg,transparent 44deg 72deg,rgba(255,255,255,.07) 72deg 76deg,transparent 76deg 104deg,rgba(255,255,255,.07) 104deg 108deg,transparent 108deg 140deg,rgba(255,255,255,.07) 140deg 144deg,transparent 144deg 176deg,rgba(255,255,255,.07) 176deg 180deg,transparent 180deg 214deg,rgba(255,255,255,.07) 214deg 218deg,transparent 218deg 248deg,rgba(255,255,255,.07) 248deg 252deg,transparent 252deg 284deg,rgba(255,255,255,.07) 284deg 288deg,transparent 288deg 320deg,rgba(255,255,255,.07) 320deg 324deg,transparent 324deg 360deg);
+  animation:dgRaySpin 14s linear infinite;}
+@keyframes dgRaySpin{to{transform:rotate(360deg);}}
+.dg-cine.r-LEGENDARY .dg-cine-rays{opacity:.8;animation-duration:9s;}
+.dg-cine.r-MYTHIC .dg-cine-rays{opacity:.95;animation-duration:6.5s;}
+.dg-cine.r-ETERNAL .dg-cine-rays{opacity:1;animation-duration:4.5s;}
+.dg-cine-glyph{position:relative;font-size:150px;line-height:1;z-index:2;
+  animation:dgCineIn .55s cubic-bezier(.18,.9,.28,1.15) both;filter:drop-shadow(0 0 34px currentColor);}
+@keyframes dgCineIn{0%{opacity:0;transform:scale(.25) rotate(-25deg);}60%{opacity:1;transform:scale(1.12) rotate(4deg);}100%{opacity:1;transform:scale(1) rotate(0);}}
+.dg-cine-glyph .dg-elem{position:absolute;right:-16px;bottom:2px;font-size:26px;font-weight:900;
+  background:rgba(0,0,0,.55);border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;}
+.dg-cine-rar{z-index:2;margin-top:18px;font-size:13px;font-weight:900;letter-spacing:6px;text-transform:uppercase;
+  animation:dgCineTx .5s ease .18s both;}
+.dg-cine-nm{z-index:2;margin-top:8px;font-size:30px;font-weight:900;text-align:center;animation:dgCineTx .5s ease .3s both;}
+.dg-cine-sub{z-index:2;margin-top:6px;font-size:14px;color:var(--text-tertiary);animation:dgCineTx .5s ease .42s both;}
+.dg-cine-sub.isnew{color:#ff7a90;font-weight:900;letter-spacing:2px;}
+@keyframes dgCineTx{0%{opacity:0;transform:translateY(14px);}100%{opacity:1;transform:translateY(0);}}
+.dg-cine-count{position:absolute;top:16px;left:50%;transform:translateX(-50%);font-size:12px;letter-spacing:3px;color:#9a9ac0;z-index:3;}
+.dg-cine-hint{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8888aa;z-index:3;animation:dgHintPulse 1.6s ease-in-out infinite;}
+@keyframes dgHintPulse{0%,100%{opacity:.45;}50%{opacity:1;}}
+.dg-cine-skip{position:absolute;top:14px;right:16px;z-index:4;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);
+  color:#cfd2ff;border-radius:10px;padding:7px 16px;font-size:12px;font-weight:800;letter-spacing:1px;cursor:pointer;}
+.dg-cine-skip:hover{background:rgba(255,255,255,.16);}
+.dg-cine-flash{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0;}
+.dg-cine-flash.go{animation:dgCineFlash .7s ease-out both;}
+@keyframes dgCineFlash{0%{opacity:0;}18%{opacity:1;}100%{opacity:0;}}
+
 /* ---- team builder ---- */
 .dg-team-slots{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;}
 .dg-slot{position:relative;aspect-ratio:3/4;border-radius:16px;display:flex;flex-direction:column;
@@ -280,7 +319,9 @@ def get_css():
   border:1px dashed rgba(255,255,255,.18);background:rgba(255,255,255,.025);}
 .dg-slot.filled{border-style:solid;background:linear-gradient(180deg,#1a1b2e,#101019);}
 .dg-slot.filled.r-RARE{border-color:rgba(167,123,255,.5);}
+.dg-slot.filled.r-LEGENDARY{border-color:rgba(255,157,92,.55);}
 .dg-slot.filled.r-MYTHIC{border-color:rgba(255,206,90,.6);}
+.dg-slot.filled.r-ETERNAL{border-color:rgba(126,240,255,.65);}
 .dg-slot .slot-face{font-size:46px;}
 .dg-slot .slot-nm{font-size:13px;font-weight:800;}
 .dg-slot .slot-rl{font-size:11px;color:var(--text-tertiary);}
@@ -299,7 +340,9 @@ def get_css():
 .dg-hist-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:11px;
   background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);}
 .dg-hist-row.r-RARE{border-color:rgba(167,123,255,.3);}
+.dg-hist-row.r-LEGENDARY{border-color:rgba(255,157,92,.35);background:rgba(255,157,92,.04);}
 .dg-hist-row.r-MYTHIC{border-color:rgba(255,206,90,.4);background:rgba(255,206,90,.05);}
+.dg-hist-row.r-ETERNAL{border-color:rgba(126,240,255,.45);background:rgba(126,240,255,.06);}
 .dg-hist-row .hh-face{font-size:24px;width:28px;text-align:center;}
 .dg-hist-row .nm{font-weight:800;font-size:14px;min-width:120px;}
 .dg-hist-row .hh-rar{font-size:12px;font-weight:800;width:70px;}
@@ -353,14 +396,15 @@ def get_css():
 .dg-mini-btn.on{background:rgba(167,123,255,.25);border-color:rgba(167,123,255,.5);color:#fff;}
 .dg-side-group{flex:1;display:flex;flex-direction:column;gap:10px;justify-content:center;}
 .dg-side-label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-tertiary);font-weight:800;}
-.dg-units{display:flex;flex-direction:column;gap:9px;}
-.dg-units.enemies{}
+.dg-units{display:flex;flex-direction:row;flex-wrap:wrap;gap:9px;align-items:stretch;justify-content:center;}
+.dg-units > .dg-unit{flex:1 1 0;min-width:150px;max-width:260px;}
+.dg-units.enemies{align-items:flex-start;}
 .dg-unit{position:relative;padding:10px 12px;border-radius:13px;cursor:default;
   background:linear-gradient(120deg,rgba(30,28,54,.8),rgba(16,16,26,.6));border:1px solid rgba(255,255,255,.09);
   transition:transform .12s,box-shadow .12s,opacity .3s;}
 .dg-unit.enemy{cursor:pointer;}
 .dg-unit.enemy.target{border-color:#ff7a90;box-shadow:0 0 0 1px #ff7a90,0 0 16px rgba(255,90,112,.3);}
-.dg-unit.active{border-color:#ffce5a;box-shadow:0 0 0 1px #ffce5a,0 0 18px rgba(255,206,90,.35);transform:translateX(3px);}
+.dg-unit.active{border-color:#ffce5a;box-shadow:0 0 0 1px #ffce5a,0 0 18px rgba(255,206,90,.35);transform:translateY(-3px);}
 .dg-unit.dead{opacity:.32;filter:grayscale(1);}
 .dg-unit.hit{animation:dgHit .3s;}
 @keyframes dgHit{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
@@ -605,7 +649,8 @@ function initDiceRpg(container){
   var DIE_FACES=['\u2680','\u2681','\u2682','\u2683','\u2684','\u2685'];
   function elemColor(e){return getComputedStyle(root).getPropertyValue('--e-'+e)||'#fff';}
   function fmt(n){return Math.floor(n||0).toLocaleString();}
-  function rarColor(r){return r==='MYTHIC'?'#ffce5a':r==='RARE'?'#a77bff':'#5b8fd6';}
+  function rarColor(r){return r==='ETERNAL'?'#7ef0ff':r==='MYTHIC'?'#ffce5a':r==='LEGENDARY'?'#ff9d5c':r==='RARE'?'#a77bff':'#5b8fd6';}
+  var RAR_RANK={COMMON:0,RARE:1,LEGENDARY:2,MYTHIC:3,ETERNAL:4};
   var STATUS_ALIAS={broken:'Break',omen:'Omen',shattered:'Shattered',exposed:'Exposed',fracture:'Fracture',
     frozen:'Frozen',chill:'Chill',weighed:'WeighedDown',gravity:'Gravity',collapse:'Collapse',bleed:'Bleed',
     plague:'Plague',time_mark:'TimeMark',stun:'Stun',break_vuln:'Break',mirage:'Mirage',dodge:'Dodge',
@@ -677,12 +722,25 @@ function initDiceRpg(container){
     } else if(d.type==='dg_milestone_result'){
       applyMut(d, d.ok&&!d.already?('Milestone claimed!'):null); if(d.already) toast('Already claimed.');
     } else if(d.type==='dg_ascend_result'){
-      applyMut(d, d.ok?('Ascended to A'+d.level+'!'):null);
+      if(G.bulkAsc>0){
+        G.bulkAsc--;
+        if(d.state) G.state=d.state;
+        if(typeof d.balance==='number'){ G.bal=d.balance; }
+        updateBal();
+        if(!d.ok) G.bulkAscFail=(G.bulkAscFail||0)+1;
+        if(G.bulkAsc<=0){
+          var done=G.bulkAscN-(G.bulkAscFail||0);
+          toast('Ascend All: '+done+' ascension'+(done===1?'':'s')+' complete!');
+          G.bulkAscN=0; G.bulkAscFail=0; render();
+        }
+      } else applyMut(d, d.ok?('Ascended to A'+d.level+'!'):null);
     } else if(d.type==='dg_achievement_result'){
       applyMut(d, d.ok&&!d.already?('Reward claimed!'):null); if(d.already) toast('Already claimed.');
     } else if(d.type==='dg_presets_result'){
       if(d.ok){ if(d.state) G.state=d.state; toast('Presets saved.'); }
       else toast((d&&d.error)||'Save failed.');
+    } else if(d.type==='dg_abyss_result'){
+      if(window._dgOnAbyss) window._dgOnAbyss(d);
     }
   };
   function applyMut(d, okMsg){
@@ -770,7 +828,7 @@ function initDiceRpg(container){
   /* ---------- shared helpers ---------- */
   function capit(s){ s=String(s||''); return s.charAt(0)+s.slice(1).toLowerCase(); }
   function bestRarity(results){ var best='COMMON';
-    results.forEach(function(r){ if(r.rarity==='MYTHIC') best='MYTHIC'; else if(r.rarity==='RARE'&&best!=='MYTHIC') best='RARE'; });
+    results.forEach(function(r){ if((RAR_RANK[r.rarity]||0)>(RAR_RANK[best]||0)) best=r.rarity; });
     return best; }
   function toast(msg){
     var t=document.createElement('div'); t.className='dg-toast'; t.textContent=msg; root.appendChild(t);
@@ -820,7 +878,7 @@ function initDiceRpg(container){
     bodyEl.appendChild(prog);
 
     var filt=document.createElement('div'); filt.className='dg-filter';
-    [['ALL','All'],['MYTHIC','Mythic'],['RARE','Rare'],['COMMON','Common'],['OWNED','Owned'],['MISSING','Missing']].forEach(function(f){
+    [['ALL','All'],['ETERNAL','Eternal'],['MYTHIC','Mythic'],['LEGENDARY','Legendary'],['RARE','Rare'],['COMMON','Common'],['OWNED','Owned'],['MISSING','Missing']].forEach(function(f){
       var c=document.createElement('span'); c.className='dg-chip'+(G.dexFilter===f[0]?' active':''); c.textContent=f[1];
       c.onclick=function(){ G.dexFilter=f[0]; renderDex_refresh(); };
       filt.appendChild(c);
@@ -836,7 +894,7 @@ function initDiceRpg(container){
     G.dice.forEach(function(die){
       var own=!!coll[die.id]; var f=G.dexFilter;
       if(f==='OWNED'&&!own) return; if(f==='MISSING'&&own) return;
-      if(f==='MYTHIC'||f==='RARE'||f==='COMMON'){ if(die.rarity!==f) return; }
+      if(f!=='ALL'&&f!=='OWNED'&&f!=='MISSING'){ if(die.rarity!==f) return; }
       var card=document.createElement('div'); card.className='dg-card r-'+die.rarity+(own?'':' locked');
       var cons=own?(coll[die.id].constellation||0):0;
       card.innerHTML=
@@ -912,7 +970,8 @@ function initDiceRpg(container){
   /* ---------- summon ---------- */
   function bannerKicker(bid){ if(bid==='limited') return 'Limited Banner'; if(bid==='beginner') return 'Beginner Banner';
     if(bid==='standard') return 'Standard Banner';
-    var b=G.banners[bid]; return (b&&b.featured_mythic)?'Featured Banner':'Event Banner'; }
+    var b=G.banners[bid]; if(b&&b.featured_eternal) return 'Eternal Banner';
+    return (b&&b.featured_mythic)?'Featured Banner':'Event Banner'; }
   function featChip(die,big){
     if(!die) return '';
     return '<div class="feat-chip'+(big?' big':'')+'" style="border-color:'+rarColor(die.rarity)+'66">'+
@@ -931,9 +990,16 @@ function initDiceRpg(container){
       var pm=g.pity_mythic||0, pr=g.pity_rare||0, hard=89;
       var rareIn=10-(pr%10); if(rareIn>10) rareIn=10;
       var bdef=G.banners[bid]||{};
-      var gkey = bid==='limited' ? 'limited_guarantee' : ('guarantee_'+bid);
-      var guaranteed = !!g[gkey];
-      var fifty = (bdef.featured_mythic) ? (guaranteed?'Next Mythic: Featured GUARANTEED':'Next Mythic: 50/50') : '';
+      var fifty='';
+      if(bdef.featured_eternal){
+        var eGuaranteed=!!g['guarantee_e_'+bid];
+        fifty = eGuaranteed?'Next Eternal: Featured GUARANTEED':'Next Eternal: 50/50';
+      } else if(bdef.featured_mythic){
+        var gkey = bid==='limited' ? 'limited_guarantee' : ('guarantee_'+bid);
+        var guaranteed = !!g[gkey];
+        fifty = guaranteed?'Next Mythic: Featured GUARANTEED':'Next Mythic: 50/50';
+      }
+      var guaranteed = fifty.indexOf('GUARANTEED')>=0;
       box.innerHTML='<div class="pity-row"><span>Mythic Soft Pity</span><span>'+pm+' / '+hard+'</span></div>'+
         '<div class="dg-pbar"><i style="width:'+Math.min(100,pm/hard*100)+'%"></i></div>'+
         '<div class="pity-row" style="margin-top:9px"><span>Guaranteed Rare in</span><span>'+rareIn+' pull'+(rareIn===1?'':'s')+'</span></div>'+
@@ -943,7 +1009,7 @@ function initDiceRpg(container){
   }
   function renderSummon(){
     var g=G.state.gacha||{};
-    var order=['limited','cosmic','endless_winter','house_of_fortune','standard'];
+    var order=['eternal_convergence','limited','legends_rising','shadow_court','cosmic','endless_winter','house_of_fortune','standard'];
     var avail=order.filter(function(bid){ return G.banners[bid]; });
     if(!g.beginner_done && G.banners['beginner']) avail.unshift('beginner');
     if(avail.indexOf(G.banner)<0) G.banner=avail[0];
@@ -959,8 +1025,9 @@ function initDiceRpg(container){
     var bid=G.banner, b=G.banners[bid];
     var card=document.createElement('div'); card.className='dg-banner b-'+bid;
     var featHtml='';
-    if(b.featured_mythic){
-      featHtml='<div class="dg-feat">'+featChip(G.byId[b.featured_mythic],true)+
+    var featTop=b.featured_eternal||b.featured_mythic;
+    if(featTop){
+      featHtml='<div class="dg-feat">'+featChip(G.byId[featTop],true)+
         (b.featured_rares||[]).map(function(id){ return featChip(G.byId[id],false); }).join('')+'</div>';
     }
     card.innerHTML='<div class="dg-banner-art"><div>'+
@@ -988,8 +1055,9 @@ function initDiceRpg(container){
     }
 
     var note=document.createElement('div'); note.className='dg-rates-note';
-    note.innerHTML='Rates \u2014 Mythic 1% \u2022 Rare 5% \u2022 Common 94%. Mythic soft pity rises from pull 70, guaranteed by 89. Every 10th summon is at least Rare.'+
-      (bid==='limited'?'<br>Win the 50/50 for the featured Mythic; lose it and the next Mythic is guaranteed featured.':'')+
+    note.innerHTML='Rates \u2014 Eternal 0.1% \u2022 Mythic 0.9% \u2022 Legendary 3% \u2022 Rare 9% \u2022 Common 87%. Mythic soft pity rises from pull 70, guaranteed by 89. Every 10th summon is at least Rare.'+
+      (b.featured_eternal?'<br>Win the 50/50 for the featured Eternal; lose it and your next Eternal here is guaranteed featured.':'')+
+      (!b.featured_eternal&&b.featured_mythic?'<br>Win the 50/50 for the featured Mythic; lose it and the next Mythic is guaranteed featured.':'')+
       (bid==='beginner'?'<br>First 50 summons only, 20% off, with a guaranteed Rare within 10 and a Mythic within 40.':'')+
       '<br>Duplicates become Constellations (C1\u2013C6), then convert to Universal Shards.';
     bodyEl.appendChild(note);
@@ -1022,6 +1090,59 @@ function initDiceRpg(container){
   function doReveal(results,best){
     var ov=G.pullOverlay; if(!ov) return;
     if(G.rollTimer){ clearInterval(G.rollTimer); G.rollTimer=null; }
+    if(!results.length){ closePull(); return; }
+    G.cine={results:results, best:best, idx:0, busy:false};
+    showCineCard();
+  }
+  function cineRarSfx(rar){
+    if(rar==='ETERNAL') sfx('win');
+    else if(rar==='MYTHIC') sfx('ult');
+    else if(rar==='LEGENDARY') sfx('crit');
+    else sfx('ok');
+  }
+  function showCineCard(){
+    var ov=G.pullOverlay, C=G.cine; if(!ov||!C) return;
+    var r=C.results[C.idx], die=G.byId[r.id]||{name:r.id,element:'Arcane'};
+    var rc=rarColor(r.rarity), big=(r.rarity==='LEGENDARY'||r.rarity==='MYTHIC'||r.rarity==='ETERNAL');
+    ov.className='dg-pull-overlay r-'+r.rarity;
+    ov.innerHTML='';
+    ov.onclick=null;
+    var cine=document.createElement('div'); cine.className='dg-cine r-'+r.rarity;
+    var rays=document.createElement('div'); rays.className='dg-cine-rays'; cine.appendChild(rays);
+    if(big){
+      var flash=document.createElement('div'); flash.className='dg-cine-flash go';
+      flash.style.background='radial-gradient(circle at 50% 45%,'+rc+'88,transparent 70%)';
+      cine.appendChild(flash);
+    }
+    var count=document.createElement('div'); count.className='dg-cine-count';
+    count.textContent=(C.idx+1)+' / '+C.results.length; cine.appendChild(count);
+    var gl=document.createElement('div'); gl.className='dg-cine-glyph'; gl.style.color=rc;
+    gl.innerHTML=dieGlyph(r.id)+'<span class="dg-elem" style="color:'+elemColor(die.element)+'">'+String(die.element||'?').charAt(0)+'</span>';
+    cine.appendChild(gl);
+    var rl=document.createElement('div'); rl.className='dg-cine-rar'; rl.style.color=rc;
+    rl.textContent=r.rarity; cine.appendChild(rl);
+    var nm=document.createElement('div'); nm.className='dg-cine-nm'; nm.textContent=die.name||r.id; cine.appendChild(nm);
+    var subT=r.new?'NEW!':(r.shards?('+'+r.shards+' Universal Shards'):('Constellation C'+r.cons));
+    var sub=document.createElement('div'); sub.className='dg-cine-sub'+(r.new?' isnew':''); sub.textContent=subT; cine.appendChild(sub);
+    var hint=document.createElement('div'); hint.className='dg-cine-hint';
+    hint.textContent=(C.idx<C.results.length-1)?'Tap to continue':'Tap for summary'; cine.appendChild(hint);
+    var skip=document.createElement('button'); skip.className='dg-cine-skip'; skip.textContent='Skip All \u00BB';
+    skip.onclick=function(e){ e.stopPropagation(); showPullSummary(); }; cine.appendChild(skip);
+    ov.appendChild(cine);
+    cineRarSfx(r.rarity);
+    C.busy=true;
+    G.timers.push(setTimeout(function(){ if(C) C.busy=false; }, big?550:220));
+    cine.onclick=function(){
+      var CC=G.cine; if(!CC||CC.busy) return;
+      CC.idx++;
+      if(CC.idx>=CC.results.length) showPullSummary(); else showCineCard();
+    };
+  }
+  function showPullSummary(){
+    var C=G.cine; if(!C) return;
+    var results=C.results, best=C.best;
+    G.cine=null;
+    var ov=G.pullOverlay; if(!ov) return;
     ov.className='dg-pull-overlay r-'+best;
     ov.innerHTML='';
     var grid=document.createElement('div');
@@ -1047,7 +1168,7 @@ function initDiceRpg(container){
   function closePull(){
     if(G.rollTimer){ clearInterval(G.rollTimer); G.rollTimer=null; }
     if(G.pullOverlay){ G.pullOverlay.remove(); G.pullOverlay=null; }
-    G.pulling=false; render();
+    G.cine=null; G.pulling=false; render();
   }
   window._dgOnPull=function(d){
     if(!d || !d.ok){ G.pulling=false;
@@ -1084,6 +1205,14 @@ function initDiceRpg(container){
 
     var bar=document.createElement('div'); bar.className='dg-team-bar';
     bar.innerHTML='<span>'+draft.length+' / '+max+' selected</span>';
+    var ai=document.createElement('button'); ai.className='dg-btn ghost'; ai.textContent='\u2728 AI Build';
+    ai.title='Automatically pick your strongest, most synergetic team';
+    ai.onclick=function(){ var best=buildBestTeam(); if(!best.length){ toast('No dice to build with yet.'); return; }
+      G.teamDraft=best; toast('AI picked your best team \u2014 review and save!'); bodyEl.innerHTML=''; renderTeam(); };
+    bar.appendChild(ai);
+    var aa=document.createElement('button'); aa.className='dg-btn ghost'; aa.textContent='\u269C Ascend All';
+    aa.title='Spend Universal Shards ascending your best dice first';
+    aa.onclick=ascendAll; bar.appendChild(aa);
     var save=document.createElement('button'); save.className='dg-btn gold'; save.textContent='Save Team';
     save.onclick=saveTeam; bar.appendChild(save);
     bodyEl.appendChild(bar);
@@ -1100,7 +1229,7 @@ function initDiceRpg(container){
       e.innerHTML='<div class="big">\u2684</div><p>No dice yet \u2014 summon some first!</p>';
       bodyEl.appendChild(e); return;
     }
-    var order={MYTHIC:0,RARE:1,COMMON:2};
+    var order={ETERNAL:0,MYTHIC:1,LEGENDARY:2,RARE:3,COMMON:4};
     owned.sort(function(a,b){ return (order[a.rarity]-order[b.rarity]) || a.name.localeCompare(b.name); });
     var grid=document.createElement('div'); grid.className='dg-grid'; bodyEl.appendChild(grid);
     owned.forEach(function(die){
@@ -1152,6 +1281,73 @@ function initDiceRpg(container){
     dgSend({type:'dg_set_team', team:G.teamDraft.slice()});
     if(G.state) G.state.team=G.teamDraft.slice();
     toast('Team saved.');
+  }
+  /* ---------- AI team builder ---------- */
+  function dieScore(die){
+    var coll=G.state.collection||{}, c=coll[die.id]||{};
+    var s=(RAR_RANK[die.rarity]||0)*100;
+    s+=(c.constellation||0)*12 + (c.level||0)*10;
+    var st=die.stats||{}; s+=((st.hp||0)+(st.atk||0)*2+(st.def||0)+(st.spd||0))*0.02;
+    return s;
+  }
+  function teamValue(ids){
+    var v=0, counts={}, elems={};
+    ids.forEach(function(id){ var d=G.byId[id]; if(!d) return;
+      v+=dieScore(d);
+      (d.engine||[]).forEach(function(tg){ counts[tg]=(counts[tg]||0)+1; });
+      elems[d.element]=1; });
+    var SY=G.K.ENGINE_SYNERGY||{};
+    Object.keys(SY).forEach(function(tg){ var mn=(SY[tg]&&SY[tg].min)||3;
+      if((counts[tg]||0)>=mn) v+=140; });
+    v+=Object.keys(elems).length*10;                       // element coverage
+    var roles={}; ids.forEach(function(id){ var d=G.byId[id]; if(d) roles[(d.role||'').split(' ')[0]]=1; });
+    v+=Object.keys(roles).length*8;                        // role diversity
+    return v;
+  }
+  function buildBestTeam(){
+    var coll=G.state.collection||{}, max=G.K.TEAM_SIZE||4;
+    var owned=G.dice.filter(function(d){ return coll[d.id]; });
+    if(!owned.length) return [];
+    owned.sort(function(a,b){ return dieScore(b)-dieScore(a); });
+    var candidates=[];
+    candidates.push(owned.slice(0,max).map(function(d){ return d.id; }));   // raw power pick
+    var SY=G.K.ENGINE_SYNERGY||{};
+    Object.keys(SY).forEach(function(tg){                                    // synergy-stacked picks
+      var withTag=owned.filter(function(d){ return (d.engine||[]).indexOf(tg)>=0; });
+      var mn=(SY[tg]&&SY[tg].min)||3;
+      if(withTag.length<mn) return;
+      var pick=withTag.slice(0,Math.min(max,withTag.length)).map(function(d){ return d.id; });
+      for(var i=0;pick.length<max && i<owned.length;i++){ if(pick.indexOf(owned[i].id)<0) pick.push(owned[i].id); }
+      candidates.push(pick);
+    });
+    var best=candidates[0], bv=-1;
+    candidates.forEach(function(c){ var v=teamValue(c); if(v>bv){ bv=v; best=c; } });
+    return best.slice(0,max);
+  }
+  /* ---------- ascend all ---------- */
+  function ascendAll(){
+    if(G.bulkAsc>0){ toast('Ascend All already running\u2026'); return; }
+    var coll=G.state.collection||{}, maxLvl=G.K.ASCENSION_MAX_LEVEL||6;
+    var costs=G.K.ASCENSION_STEP_COST||{}, shards=wallet().universal_shards||0;
+    var owned=G.dice.filter(function(d){ return coll[d.id]; });
+    owned.sort(function(a,b){ return (RAR_RANK[b.rarity]||0)-(RAR_RANK[a.rarity]||0) || dieScore(b)-dieScore(a); });
+    var plan=[];
+    var lvls={}; owned.forEach(function(d){ lvls[d.id]=(coll[d.id].level||0); });
+    var moved=true;
+    while(moved){
+      moved=false;
+      for(var i=0;i<owned.length;i++){
+        var d=owned[i], lv=lvls[d.id];
+        if(lv>=maxLvl) continue;
+        var steps=costs[d.rarity]||[], cost=steps[lv];
+        if(cost==null || shards<cost) continue;
+        shards-=cost; lvls[d.id]=lv+1; plan.push(d.id); moved=true;
+      }
+    }
+    if(!plan.length){ toast('Not enough Universal Shards for any ascension.'); return; }
+    G.bulkAsc=plan.length; G.bulkAscN=plan.length; G.bulkAscFail=0;
+    plan.forEach(function(id){ dgSend({type:'dg_ascend', die_id:id}); });
+    toast('Ascending '+plan.length+' level'+(plan.length===1?'':'s')+'\u2026');
   }
   function presets(){ return ((G.state.campaign&&G.state.campaign.presets)||[]); }
   function renderPresets(){
@@ -1214,11 +1410,11 @@ function initDiceRpg(container){
   /* ---------- history ---------- */
   function renderHistory(){
     var hist=(G.state.history||[]).slice().reverse(), g=G.state.gacha||{};
-    var m=0,r=0; hist.forEach(function(h){ if(h.rarity==='MYTHIC')m++; else if(h.rarity==='RARE')r++; });
+    var e=0,m=0,l=0,r=0; hist.forEach(function(h){ if(h.rarity==='ETERNAL')e++; else if(h.rarity==='MYTHIC')m++; else if(h.rarity==='LEGENDARY')l++; else if(h.rarity==='RARE')r++; });
     var stats=document.createElement('div'); stats.className='dg-stats';
-    function stat(v,l){ return '<div class="dg-stat"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>'; }
-    stats.innerHTML=stat(fmt(g.total_pulls||0),'Total Summons')+stat(m,'Mythics Shown')+
-      stat(r,'Rares Shown')+stat(fmt(g.universal_shards||0),'Universal Shards');
+    function stat(v,l2){ return '<div class="dg-stat"><div class="v">'+v+'</div><div class="l">'+l2+'</div></div>'; }
+    stats.innerHTML=stat(fmt(g.total_pulls||0),'Total Summons')+stat(e,'Eternals')+stat(m,'Mythics')+
+      stat(l,'Legendaries')+stat(r,'Rares')+stat(fmt(g.universal_shards||0),'Universal Shards');
     bodyEl.appendChild(stats);
     if(!hist.length){ renderSoon('History','\u23F3','No summons yet \u2014 visit the altar!'); return; }
     var wrap=document.createElement('div'); wrap.className='dg-hist'; bodyEl.appendChild(wrap);
@@ -1288,7 +1484,7 @@ function initDiceRpg(container){
     var B=G.battle;
     if(B && B.live){ renderBattle(); return; }
     var tabs=document.createElement('div'); tabs.className='dg-hub-tabs';
-    [['campaign','Campaign'],['endless','Endless Arena']].forEach(function(p){
+    [['campaign','Campaign'],['endless','Endless Arena'],['abyss','Astral Abyss']].forEach(function(p){
       var b=document.createElement('button'); b.className='dg-banner-tab'+((G.hubTab||'campaign')===p[0]?' active':'');
       b.textContent=p[1]; b.onclick=function(){ G.hubTab=p[0]; bodyEl.innerHTML=''; renderBattleHub(); };
       tabs.appendChild(b);
@@ -1303,8 +1499,39 @@ function initDiceRpg(container){
       go.textContent='Go to Team'; go.onclick=function(){ G.view='team'; render(); };
       w.appendChild(go); bodyEl.appendChild(w); return;
     }
-    if((G.hubTab||'campaign')==='campaign') renderCampaignList();
+    var ht=G.hubTab||'campaign';
+    if(ht==='campaign') renderCampaignList();
+    else if(ht==='abyss') renderAbyss();
     else renderEndless();
+  }
+  function abyssCleared(){ return (G.state.campaign&&G.state.campaign.abyss_clears)||[]; }
+  function renderAbyss(){
+    var floors=G.K.ABYSS_FLOORS||[], mods=G.K.ABYSS_MODIFIERS||{}, cleared=abyssCleared();
+    var hd=document.createElement('div'); hd.className='dg-rates-note';
+    hd.innerHTML='<b>Astral Abyss</b> \u2014 12 descending floors, each twisted by modifiers. First clear pays Gems <b>and</b> Universal Shards. Floors unlock in order.';
+    bodyEl.appendChild(hd);
+    floors.forEach(function(st,idx){
+      var done=cleared.indexOf(st.id)>=0;
+      var locked=idx>0 && cleared.indexOf(floors[idx-1].id)<0;
+      var row=document.createElement('div'); row.className='dg-stage t-'+st.tier+(done?' cleared':'')+(locked?' locked':'');
+      var modHtml=(st.modifiers||[]).map(function(mk){ var m=mods[mk]||{};
+        return '<span class="st-tier" style="color:#c98bff;border-color:#c98bff55" title="'+(m.desc||'')+'">'+(m.name||mk)+'</span>'; }).join('');
+      var rw=st.reward||{}, rews=[]; if(rw.gems) rews.push('\u25C6 '+rw.gems); if(rw.shards) rews.push('\u269C '+rw.shards);
+      row.innerHTML='<div class="st-icon">'+(done?'\u2713':'\u2666')+'</div>'+
+        '<div class="st-body"><div class="st-nm">Floor '+(idx+1)+' \u2014 '+st.name+
+          '<span class="st-tier">'+st.tier+'</span>'+modHtml+
+          (done?'':'<span class="dg-reward-tag">First clear '+rews.join(' + ')+'</span>')+'</div>'+
+          '<div class="st-lore">'+st.lore+'</div></div>';
+      var slot=document.createElement('div'); slot.className='st-go';
+      if(locked){ slot.innerHTML='<div class="st-done" style="color:var(--text-muted)">\uD83D\uDD12 Locked</div>'; }
+      else {
+        var btn=document.createElement('button'); btn.className='dg-btn '+(done?'ghost':'gold');
+        btn.textContent=done?'Replay':'Descend'; btn.onclick=function(){ startBattle('abyss',st); };
+        slot.appendChild(btn);
+      }
+      row.appendChild(slot);
+      bodyEl.appendChild(row);
+    });
   }
   function renderCampaignList(){
     var cleared=clearedList(), rew=(G.K.BATTLE_FIRST_CLEAR_REWARD||50);
@@ -1579,8 +1806,28 @@ function initDiceRpg(container){
     G.battle=B;
     computeSynergy(B);
     if(mode==='campaign'){ B.enemies=stage.enemies.map(function(t){ return buildEnemy(t,stage.tier); }); }
+    else if(mode==='abyss'){
+      var mods=G.K.ABYSS_MODIFIERS||{};
+      B.enemies=stage.enemies.map(function(t){ return buildEnemy(t,stage.tier); });
+      (stage.modifiers||[]).forEach(function(mk){ var m=mods[mk]; if(!m) return;
+        B.enemies.forEach(function(en){
+          if(m.hp){ en.max=Math.round(en.max*(1+m.hp)); en.hp=en.max; }
+          if(m.atk) en.atk=Math.round(en.atk*(1+m.atk));
+          if(m.spd) en.spd=Math.round(en.spd*(1+m.spd));
+          if(m.shield) en.shield=(en.shield||0)+Math.round(en.max*m.shield);
+          if(m.dr) en.abyssDR=(en.abyssDR||0)+m.dr;
+          if(m.reflect) en.abyssReflect=(en.abyssReflect||0)+m.reflect;
+          if(m.heal) en.abyssRegen=(en.abyssRegen||0)+m.heal;
+          if(m.atk_per_round) en.abyssEnrage=(en.abyssEnrage||0)+m.atk_per_round;
+          if(m.lifesteal) en.abyssLifesteal=(en.abyssLifesteal||0)+m.lifesteal;
+          if(m.cc_immune) en.ccImmune=true;
+        });
+      });
+      B.abyssMods=(stage.modifiers||[]).map(function(mk){ return mods[mk]||{name:mk,desc:''}; });
+    }
     else { spawnWave(B,1); }
     logMsg('\u2684 Battle begins \u2014 <b>'+B.stageName+'</b>!','sys');
+    if(B.abyssMods&&B.abyssMods.length){ B.abyssMods.forEach(function(m){ logMsg('\u2666 <b>Abyss Modifier</b> \u2014 <b>'+m.name+'</b>: '+m.desc,'anom'); }); }
     // synergy: Power Grid start energy / Loaded Dice fortune / Perfect Sequence combo
     if(B.syn.start_energy) B.allies.forEach(function(a){ addEnergy(a,B.syn.start_energy); });
     if(B.syn.fortune) B.fortune+=B.syn.fortune;
@@ -1693,6 +1940,12 @@ function initDiceRpg(container){
   }
   /* ---- synergy reader + status helpers ---- */
   function synB(k){ var B=G.battle; return (B&&B.syn&&B.syn[k])||0; }
+  function auraSum(field){ var m=0; if(!G.battle) return 0;
+    G.battle.allies.forEach(function(a){ if(a.alive && !a.summon){ var v=(a.params||{})[field]; if(v) m+=v; } });
+    return m; }
+  function decayMax(){ var m=0; if(!G.battle) return 0;
+    G.battle.allies.forEach(function(a){ if(a.alive && !a.summon){ var v=(a.params||{}).decay; if(v&&v>m) m=v; } });
+    return m; }
   function statusDmgMult(t){
     if(!t) return 1; var m=1, f=t.fracture||0;
     if(f>=10) m*=1.30; else if(f>=5) m*=1.15;
@@ -1717,7 +1970,9 @@ function initDiceRpg(container){
     logMsg('Fracture detonates on <b>'+tgt.name+'</b> for '+fmt(dmg)+'.','frac'); }
   function applyChill(tgt,n){ if(!tgt||!tgt.alive) return; tgt.chill=(tgt.chill||0)+n;
     var at=(tgt._freezeAt||10);
-    if(tgt.chill>=at && tgt.frozen<=0){ tgt.frozen=ccTurns(2); tgt.chill=0; logMsg('\u2744 <b>'+tgt.name+'</b> is <b>Frozen</b>!','chill'); } }
+    if(tgt.chill>=at && tgt.frozen<=0){
+      if(tgt.ccImmune){ tgt.chill=0; logMsg('<b>'+tgt.name+'</b> shrugs off the freeze (Unstoppable).','chill'); return; }
+      tgt.frozen=ccTurns(2); tgt.chill=0; logMsg('\u2744 <b>'+tgt.name+'</b> is <b>Frozen</b>!','chill'); } }
   function applyGravity(tgt,n){ if(!tgt||!tgt.alive) return; tgt.gravity=Math.min(8,(tgt.gravity||0)+n);
     if(tgt.gravity>=5 && !tgt._weighed){ tgt._weighed=true; logMsg('<b>'+tgt.name+'</b> is <b>Weighed Down</b>.','grav'); } }
   function applyPlague(tgt,n,dmg){ if(!tgt||!tgt.alive) return; tgt.plague=(tgt.plague||0)+n;
@@ -1740,15 +1995,32 @@ function initDiceRpg(container){
     base *= elemMult(src.element,tgt.element);
     base *= (1+(src.dmgUp||0)+(src.mutAtk||0));
     if(opts.mult) base*=opts.mult;
+    var sp=src.params||{};
+    if(src.side==='ally'){
+      base*=(1+auraSum('aura_atk'));
+      if(sp.execute_pct && tgt.max && (tgt.hp/tgt.max)<=(sp.execute_th||0.35)) base*=(1+sp.execute_pct);
+      if(sp.shield_break && (tgt.shield||0)>0) base*=(1+sp.shield_break);
+      if(sp.overload_pct) base*=(1+sp.overload_pct);
+      if(src._resoBoost) base*=1.5;
+    }
     var cc=(G.K.CRIT_BASE||0.08)+(src.critUp||0), crit=opts.crit||Math.random()<cc;
     if(crit) base*=(G.K.CRIT_MULT||1.5);
     var tdef=tgt.def*(1-(tgt.defDown||0)); if(tdef<0) tdef=0;
     base*=220/(220+tdef);
     if(tgt.broken) base*=(G.K.BROKEN_DMG_MULT||1.3)+synB('broken_dmg');
     base*=statusDmgMult(tgt);
+    if(tgt.side==='enemy' && tgt.abyssDR>0) base*=(1-Math.min(0.6,tgt.abyssDR));
     if(G.battle&&G.battle.anomaly&&G.battle.anomaly.dmg) base*=(1+G.battle.anomaly.dmg);
     var dmg=Math.max(1,Math.round(base));
     applyDamage(tgt,dmg);
+    if(src.side==='ally' && sp.lifesteal && dmg>0 && src.alive){
+      var ls=healUnit(src,Math.round(dmg*sp.lifesteal));
+      if(ls>0) logMsg('\u{1FA78} <b>'+src.name+'</b> drains '+fmt(ls)+' HP.','heal');
+    }
+    if(tgt.side==='enemy' && tgt.abyssReflect>0 && src.alive){
+      var th=Math.max(1,Math.round(dmg*tgt.abyssReflect));
+      applyDamage(src,th); logMsg('\u{1F335} Thorns \u2014 <b>'+src.name+'</b> takes '+fmt(th)+' back.','dmg');
+    }
     if(crit && src.side==='ally') addCombo(1);
     return {dmg:dmg,crit:crit,roll:roll};
   }
@@ -1795,6 +2067,12 @@ function initDiceRpg(container){
   function preAct(u){ var p=u.params||{};
     if(p.ramp_per_turn){ u.dmgUp=(u.dmgUp||0)+p.ramp_per_turn; u.dmgUpT=99; }
     if(p.passive_energy) addEnergy(u,p.passive_energy);
+    u._resoBoost=false;
+    if(p.resonance_n){ u.reso=(u.reso||0)+1;
+      if(u.reso>p.resonance_n){ u.reso=0; u._resoBoost=true;
+        logMsg('\u266B <b>'+u.name+'</b> resonates \u2014 this action is empowered!','sys'); } }
+    if(p.overload_pct && u.hp>1){ var oc=Math.max(1,Math.round(u.max*0.04));
+      u.hp=Math.max(1,u.hp-oc); }
   }
   function checkJackpot(u){ var p=u.params||{}, cost=p.transform_cost||50;
     if((u.jackpot||0)>=cost && u.transformTurns<=0){ u.jackpot-=cost; transform(u,p.transform_turns||2); } }
@@ -1809,6 +2087,8 @@ function initDiceRpg(container){
     var r=computeHit(u,t,mult);
     sfx(r&&r.crit?'crit':'hit');
     logMsg('<b>'+u.name+'</b> uses '+u.basicName+(r&&r.crit?' \u2014 <span style="color:#ffce5a">CRIT!</span>':'')+' for '+fmt(r?r.dmg:0)+'.','dmg');
+    if(p.twin_hit){ var tw=curTarget(); if(tw){ var rt=computeHit(u,tw,mult*0.65);
+      if(rt) logMsg('\u21B3 twin strike for '+fmt(rt.dmg)+'.','dmg'); } }
     if(p.double_chance && Math.random()<p.double_chance){ var r2=computeHit(u,t,mult*0.6);
       if(r2) logMsg('\u21B3 strikes again for '+fmt(r2.dmg)+'.','dmg'); }
     addEnergy(u,22);
@@ -1959,8 +2239,9 @@ function initDiceRpg(container){
       if(e.ai==='debuff'){ var tg=lowest(allies,'def'); enemyHit(e,tg,e.pow||1);
         var v=0.25; tg.defDown=Math.max(tg.defDown||0,v); tg.defDownT=2;
         logMsg('<b>'+e.name+'</b> exposes <b>'+tg.name+'</b> (DEF down).','dmg'); return; }
-      if(e.ai==='heal'){ var hurt=lowestEnemy(); if(hurt){ var h=Math.round(hurt.max*0.18); hurt.hp=Math.min(hurt.max,hurt.hp+h);
-        logMsg('<b>'+e.name+'</b> heals <b>'+hurt.name+'</b> for '+fmt(h)+'.','heal'); } return; }
+      if(e.ai==='heal'){ var hurt=lowestEnemy(); if(hurt){ var h=Math.round(hurt.max*0.18*(1-decayMax()));
+        hurt.hp=Math.min(hurt.max,hurt.hp+h);
+        logMsg('<b>'+e.name+'</b> heals <b>'+hurt.name+'</b> for '+fmt(h)+(decayMax()>0?' (decayed)':'')+'.','heal'); } return; }
       if(e.ai==='boss'){ var tot2=0; allies.forEach(function(a){ var r=enemyHit(e,a,(e.pow||1)*0.7); tot2+=r; });
         var foc=lowest(allies,'hp'); if(foc&&foc.alive){ foc.dmgUp=Math.min(foc.dmgUp||0,0); }
         logMsg('<b>'+e.name+'</b> tilts the table \u2014 AoE for '+fmt(tot2)+'.','dmg'); return; }
@@ -1979,12 +2260,18 @@ function initDiceRpg(container){
       counterStrike(tgt,e); return 0; }
     var base=e.atk*pow*(0.9+Math.random()*0.3)*1.0;
     base*=elemMult(e.element,tgt.element);
+    base*=(1+(e.abyssRamp||0));
     var tdef=tgt.def*(1-(tgt.defDown||0)); if(tdef<0) tdef=0;
     base*=220/(220+tdef);
     if(Math.random()<0.08) base*=1.4;
     if(tgt.dr>0) base*=(1-Math.min(0.8,tgt.dr));
+    var ad=auraSum('aura_def'); if(ad>0) base*=(1-Math.min(0.5,ad));
     var dmg=Math.max(1,Math.round(base*1.7));
     applyDamage(tgt,dmg);
+    if(e.abyssLifesteal>0 && dmg>0 && e.alive){ var lh=Math.round(dmg*e.abyssLifesteal*(1-decayMax()));
+      if(lh>0){ e.hp=Math.min(e.max,e.hp+lh); logMsg('\u{1F9DB} <b>'+e.name+'</b> drains '+fmt(lh)+' HP.','heal'); } }
+    if(tgt.params && tgt.params.reflect && e.alive){ var rf=Math.max(1,Math.round(dmg*tgt.params.reflect));
+      applyDamage(e,rf); logMsg('\u21A9 <b>'+tgt.name+'</b> reflects '+fmt(rf)+' back.','dmg'); }
     counterStrike(tgt,e);
     return dmg;
   }
@@ -2038,10 +2325,15 @@ function initDiceRpg(container){
     B.allies.forEach(function(a){ var p=a.params||{};
       if(p.round_energy) addEnergy(a,p.round_energy);
       if(p.drift_heal) healUnit(a,Math.round(a.max*p.drift_heal));
+      if(p.ramp_atk && a.alive){ a.mutAtk=(a.mutAtk||0)+p.ramp_atk; }
       if(p.auto_cycle){ a.eclipse=(a.eclipse==='day')?'night':'day';
         if(a.eclipse==='night'){ a.mutAtk=(a.mutAtk||0)+0.15; } else { a.mutAtk=Math.max(0,(a.mutAtk||0)-0.15); } }
     });
-    B.enemies.forEach(function(e){ e.delay=0; tickDots(e); });
+    B.enemies.forEach(function(e){ e.delay=0; tickDots(e);
+      if(e.alive && e.abyssRegen>0){ var rh=Math.round(e.max*e.abyssRegen*(1-decayMax()));
+        if(rh>0){ e.hp=Math.min(e.max,e.hp+rh); logMsg('\u267B <b>'+e.name+'</b> regenerates '+fmt(rh)+'.','heal'); } }
+      if(e.alive && e.abyssEnrage>0){ e.abyssRamp=(e.abyssRamp||0)+e.abyssEnrage; }
+    });
     B.order=B.allies.concat(B.enemies).filter(function(u){return u.alive;}).sort(function(a,b){return effSpd(b)-effSpd(a);});
     B.qi=0; }
   function sd(ms){ return Math.max(50, (ms||0)/(G.speed||1)); }
@@ -2086,9 +2378,63 @@ function initDiceRpg(container){
     if(checkEnd()) return;
     B.phase='Resolving'; if(G.view==='battle') renderBattle();
     scheduleStep(560); }
+  /* ---------- smart auto-battle ---------- */
+  function estDmg(u,t,mult){
+    if(!u||!t) return 0;
+    var atk=u.atk*(1+(u.mutAtk||0))*(1+(u.dmgUp||0));
+    var raw=atk*mult*elemMult(u.element,t.element);
+    var mit=atk/(atk+(t.def||0)*0.9);
+    if(t.broken) raw*=1.25;
+    if((t.defDown||0)>0) raw*=(1+t.defDown*0.5);
+    return raw*mit;
+  }
+  function scoreTarget(u,e){
+    if(!e||!e.alive) return -1;
+    var s=0, basic=estDmg(u,e,K_DM().BASIC);
+    if(basic>=e.hp+(e.shield||0)) s+=1000;                         // finishing blow
+    s+=(1-e.hp/e.max)*220;                                          // focus fire the wounded
+    var em=elemMult(u.element,e.element);
+    if(em>1) s+=90; else if(em<1) s-=60;                            // element advantage
+    if(primaryTag(u)==='Omen') s+=(e.omen||0)*30;                   // detonation combo fuel
+    if(e.broken) s+=70;
+    if((e.defDown||0)>0||(e.fracture||0)>=5) s+=45;                 // exploit debuffs
+    if(e.abyssReflect>0 && basic<e.hp) s-=25;                       // avoid poking thorns
+    s+=(e.atk||0)/50;                                               // prefer removing threats
+    return s;
+  }
+  function smartTarget(u){
+    var B=G.battle, en=B.enemies, bi=B.target, bs=-1e9;
+    en.forEach(function(e,i){ var s=scoreTarget(u,e); if(s>bs){ bs=s; bi=i; } });
+    B.target=bi;
+  }
   function autoAct(u){ var B=G.battle; if(!B||B.over||B.active!==u) return;
-    if(u.energy>=u.ultCost) useUlt(u);
-    else if(u.skillCd<=0 && Math.random()<0.7) useSkill(u);
+    smartTarget(u);
+    var t=curTarget(), p=u.params||{}, dm=K_DM(), tag=primaryTag(u);
+    var basicD=t?estDmg(u,t,dm.BASIC):0, skillD=t?estDmg(u,t,dm.SKILL):0;
+    var hurtAllies=aliveAllies().filter(function(a){ return a.hp/a.max<0.5; }).length;
+    var nEn=aliveEnemies().length;
+    var canSkill=u.skillCd<=0, canUlt=u.energy>=u.ultCost;
+    var ultScore=0;
+    if(canUlt && t){
+      var multi=(u.role||'').indexOf('Multi')>=0||p.ult_spread||p.ult_plague_pct||p.ult_bleed_pct||tag==='Omen';
+      ultScore=estDmg(u,t,dm.ULT)*(multi?Math.min(nEn,3)*0.62:1);
+      if(tag==='Omen') ultScore+=aliveEnemies().reduce(function(a,e){ return a+(e.omen||0)*u.atk*0.12; },0);
+      if(p.ult_shield||p.shield_pct) ultScore+=hurtAllies*u.max*0.2;      // defensive ults when team is hurt
+      if(p.ult_full_energy||p.ult_team_energy||p.ult_energy) ultScore+=u.atk*1.2;
+      if(basicD>=t.hp+(t.shield||0) && nEn<=1 && !multi) ultScore=0;      // don't waste ult on a dying last enemy
+    }
+    var skillScore=0;
+    if(canSkill && t){
+      skillScore=skillD;
+      if(tag==='Omen') skillScore+=(t.omen||0)*u.atk*0.15;                // skill detonates omen
+      if(p.skill_break||tag==='Break') skillScore+=u.atk*0.4;
+      if(p.cleanse_all||p.dr_pct||p.shield_pct) skillScore+=hurtAllies*u.max*0.15;
+      if(p.dmg_up||p.crit_up||p.team_dmg) skillScore+=u.atk*(nEn>1?0.5:0.25);
+      if(basicD>=t.hp+(t.shield||0) && nEn<=1) skillScore=0;              // basic finishes the fight
+    }
+    var basicScore=basicD+u.atk*0.15;                                     // basics build energy
+    if(canUlt && ultScore>=skillScore && ultScore>=basicScore) useUlt(u);
+    else if(canSkill && skillScore>=basicScore) useSkill(u);
     else useBasic(u);
     B.awaiting=false; afterAction(); }
   function playerAct(kind){
@@ -2124,8 +2470,23 @@ function initDiceRpg(container){
     if(B.mode==='campaign' && cleared.indexOf(B.stageId)<0){
       B.rewardPending=true; dgSend({type:'dg_claim_reward', stage:B.stageId});
     }
+    if(B.mode==='abyss' && abyssCleared().indexOf(B.stageId)<0){
+      B.rewardPending=true; dgSend({type:'dg_claim_abyss', floor:B.stageId});
+    }
     if(G.view==='battle') renderBattle();
   }
+  window._dgOnAbyss=function(d){
+    var B=G.battle;
+    if(d && d.ok){
+      if(typeof d.balance==='number'){ G.bal=d.balance; updateBal(); }
+      if(d.state) G.state=d.state;
+      if(B){ B.rewardPending=false; B.rewardGot=d.gems||0; if(G.view==='battle') renderBattle(); }
+      if(!d.already){ sfx('win'); toast('Floor conquered! +'+fmt(d.gems||0)+' Gems, +'+fmt(d.shards||0)+' Shards.'); }
+    } else {
+      if(B){ B.rewardPending=false; if(G.view==='battle') renderBattle(); }
+      if(d&&d.error) toast(d.error);
+    }
+  };
   window._dgOnReward=function(d){
     var B=G.battle;
     if(d && d.ok){
@@ -2324,6 +2685,11 @@ function initDiceRpg(container){
       r.textContent = B.rewardPending? 'Claiming first-clear reward\u2026' : (B.rewardGot? ('First clear reward: +'+fmt(B.rewardGot)+' balance!') : 'Stage already cleared \u2014 no reward.');
       o.appendChild(r);
     }
+    if(B.win && B.mode==='abyss'){
+      var ra=document.createElement('div'); ra.className='rs-reward';
+      ra.textContent = B.rewardPending? 'Claiming floor reward\u2026' : (B.rewardGot? ('Floor conquered: +'+fmt(B.rewardGot)+' Gems!') : 'Floor already conquered \u2014 no reward.');
+      o.appendChild(ra);
+    }
     if(B.win && B.mode==='endless'){
       var r2=document.createElement('div'); r2.className='rs-reward'; r2.textContent='Reached Wave '+B.wave+'.'; o.appendChild(r2);
     }
@@ -2331,8 +2697,17 @@ function initDiceRpg(container){
     if(B.win && B.mode==='campaign' && campIndex(B.stageId)<CAMPAIGN.length-1){
       var nb=document.createElement('button'); nb.className='dg-btn gold'; nb.textContent='Next Stage'; nb.onclick=nextStage; btns.appendChild(nb);
     }
+    if(B.win && B.mode==='abyss'){
+      var fl=G.K.ABYSS_FLOORS||[], ai=-1;
+      fl.forEach(function(f,i){ if(f.id===B.stageId) ai=i; });
+      if(ai>=0 && ai<fl.length-1){
+        var nxf=fl[ai+1];
+        var nb2=document.createElement('button'); nb2.className='dg-btn gold'; nb2.textContent='Next Floor';
+        nb2.onclick=function(){ G.battle=null; startBattle('abyss',nxf); }; btns.appendChild(nb2);
+      }
+    }
     if(!B.win){ var rb=document.createElement('button'); rb.className='dg-btn gold'; rb.textContent='Retry';
-      rb.onclick=function(){ var st=B.stage, md=B.mode; G.battle=null; if(md==='endless') startBattle('endless',null); else startBattle('campaign',st); }; btns.appendChild(rb); }
+      rb.onclick=function(){ var st=B.stage, md=B.mode; G.battle=null; if(md==='endless') startBattle('endless',null); else startBattle(md,st); }; btns.appendChild(rb); }
     var back=document.createElement('button'); back.className='dg-btn ghost'; back.textContent='Back to Hub';
     back.onclick=function(){ G.battle=null; render(); }; btns.appendChild(back);
     o.appendChild(btns);
@@ -2350,7 +2725,7 @@ function initDiceRpg(container){
   window._gameCleanup=function(){
     G.timers.forEach(function(t){ clearTimeout(t); clearInterval(t); });
     G.timers=[];
-    window._diceMessageHandler=null; window._dgOnPull=null; window._dgOnReward=null;
+    window._diceMessageHandler=null; window._dgOnPull=null; window._dgOnReward=null; window._dgOnAbyss=null;
     window._gameCleanup=null;
   };
 }
