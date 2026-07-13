@@ -113,6 +113,9 @@ Preferred communication style: Simple, everyday language.
 - `dg_buy_relic` - Client buys a relic with Crystals (`{relic_id}`)
 - `dg_equip_relic` - Client equips/unequips a relic on an owned die (`{die_id, relic_id|null}`)
 - `dg_relic_result` - Server confirms relic purchase or equip change
+- `dg_set_target` / `dg_target_result` - Pick the rate-up die on a Target banner (`{banner, die_id}`; stored in `gacha.targets`)
+- `dg_set_rift_best` / `dg_rift_best_result` - Report deepest Rift depth (monotonic, stored in `campaign.rift.best`)
+- `dg_claim_rift` / `dg_rift_result` - Claim one-time Rift depth milestone (idempotent, validated vs `RIFT_MILESTONES_BY_DEPTH`)
 
 ### Key Design Decisions
 1. **Three-tier join page**: Single page at `/` offers Guest, Admin, or Owner choice
@@ -239,6 +242,15 @@ Preferred communication style: Simple, everyday language.
 - **Background-tab low-resource mode**: `document.hidden` guards in sfx() and dice-wall animation
 - **Gimmick Guide**: tutorial modal now includes a searchable glossary built from `STATUS_INFO`, plus a Relics & Gear tutorial section
 - **Engine param fixes**: freeze_at, weighed_at, bleed_dmg, omen_amp, echo_dmg, combo_max, recoil all wired into combat
+
+### Dice RPG v3.2 "RIFT & RITUAL"
+- **Gacha nerf**: rates 88.5% common / 9% rare / 2% legendary / 0.45% mythic / 0.05% eternal; mythic soft pity now starts at pull 75 (`MYTHIC_SOFT_PITY_START` in `dice_data.py`)
+- **Banner overhaul**: Limited removed. **MEGA banner** (full pool, every 10th pull Legendary+, tracked via `gacha.mega_pulls`) + 4 **Target banners** (target_doom/assault/aegis/tempo) where the player picks their own rate-up die from `K.TARGET_POOLS` (pulls disabled until chosen; per-banner 50/50 guarantee key `guarantee_<bid>`)
+- **Rift of Ruin (roguelike)**: hub tab "Rift" — endless depth run, pick 1-of-3 blessings after each depth (`RIFT_BLESSINGS`, additive effects incl. atk/hp/def/spd %, start energy/shield, crit, dmg_taken, heal_after), HP fractions carried between depths, depth%5 boss / %3 elite (`RIFT_SCALE`), flee/loss ends run (client `G.rift`, run not persisted). Depth milestones 3/6/9/12/15 (`RIFT_MILESTONES`) claimable in hub; best depth stored server-side under `campaign.rift`
+- **Relic Sanctum**: Team tab inner tabs (Team | Relic Sanctum) — full relic list with tier colors, detail pane with lore/stats/buy, and equip/unequip across the whole team in one place
+- **Relic tutorial**: "? How relics work" button in Shop → Relics opens a 5-section field manual modal
+- **Campaign c7–c12**: six new stages (c12 boss "The Auditor", 30000 HP), sequential first-clear rewards as before
+- **QoL**: opaque pull overlay (no bleed-through), pull suspense 1450ms, Ascend All button also in Dex, profile fix, 2× speed in fallback speed list, updated in-game tutorial rates text
 
 ### Dice RPG v6 additions (T7)
 - **Battle layout**: unit cards flow in a row (flex-wrap, 150–260px), enemies rendered above allies

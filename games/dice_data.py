@@ -46,13 +46,15 @@ BEGINNER_MYTHIC_BY   = 40
 BATTLE_FIRST_CLEAR_REWARD = 150  # paid in Gems (v4.0)
 # Campaign stage ids the server will honor for one-time first-clear rewards.
 # Must stay in sync with the CAMPAIGN array in games/dice_rpg.py.
-CAMPAIGN_STAGE_IDS = ["c1", "c2", "c3", "c4", "c5", "c6"]
+CAMPAIGN_STAGE_IDS = ["c1", "c2", "c3", "c4", "c5", "c6",
+                      "c7", "c8", "c9", "c10", "c11", "c12"]
 
-BASE_RATES = {"COMMON": 0.87, "RARE": 0.09, "LEGENDARY": 0.03, "MYTHIC": 0.009, "ETERNAL": 0.001}
+# v3.2 rate nerf — mythics were dropping far too often.
+BASE_RATES = {"COMMON": 0.885, "RARE": 0.09, "LEGENDARY": 0.02, "MYTHIC": 0.0045, "ETERNAL": 0.0005}
 
 # Mythic soft pity: pull index (1-based count since last mythic) -> rate.
-# 1..69 = 1%, then ramps; hard pity at 89 = 100%.
-MYTHIC_SOFT_PITY_START = 70
+# 1..74 = base rate, then ramps; hard pity at 89 = 100%.
+MYTHIC_SOFT_PITY_START = 75
 MYTHIC_HARD_PITY       = 89
 
 # Duplicate -> constellation (max C6); overflow -> universal shards by rarity.
@@ -253,6 +255,67 @@ RELICS = [
 RELICS_BY_ID = {r["id"]: r for r in RELICS}
 RELIC_TIER_COLORS = {"WORN": "#9aa3b8", "HONED": "#a77bff", "EXALTED": "#ff9d5c", "TRANSCENDENT": "#ffce5a"}
 
+# v3.2 — long-form lore shown in the Team tab's Genshin-style relic menu.
+RELIC_LORE = {
+    "iron_totem":    "Dug from the crater of a fallen star, the totem was carried by pit fighters who believed the sky itself watched over them. It never made them stronger — it made them too stubborn to fall.",
+    "whetstone":     "Ten thousand blades were drawn across this stone, and it remembers every single one. Hold it and your strikes borrow the memory of edges long rusted away.",
+    "swift_charm":   "A courier once outran an avalanche wearing this charm. She said it whispered the route. The avalanche never said anything at all.",
+    "guard_sigil":   "Blacksmiths press this sigil into shields the night before a siege. The shields that carry it come home dented, scorched — and whole.",
+    "vital_core":    "Somewhere deep inside the crystal, a heartbeat continues. Nobody knows whose it was. Wearers report dreaming of a door that is always slightly open.",
+    "war_banner":    "This banner has flown over a hundred last stands and never once been captured. Dice that march beneath it hit like they have something to prove.",
+    "gale_boots":    "Cobbled from the tail-end of a storm that refused to die, these boots never quite touch the ground. Their previous owner arrived everywhere a heartbeat early.",
+    "aegis_plate":   "Forged in a vault the ocean swallowed, the plate still carries the pressure of the deep. Blows that should shatter bone simply... arrive tired.",
+    "titan_heart":   "Cut from a colossus that fought for nine days after its head was gone. The heart doesn't know how to stop — and neither will you.",
+    "executioner":   "The axe-bearer's medallion. It grows warm when a finishing blow is near, as if it's leaning in to watch.",
+    "stormstride":   "Lightning struck the same runner seven times and missed. These are the greaves she wore. The storm still holds a grudge.",
+    "sanctum_ward":  "A shard of the last unbroken temple wall. Everything behind it survived. Everything in front of it is a cautionary tale.",
+    "world_engine":  "A gear from the machine that allegedly turns the world. It shouldn't fit any mechanism you own — and yet everything runs better with it near.",
+    "chrono_locket": "The locket ticks backwards. Its wearer always seems to have acted a moment before they decided to. Do not open it during battle.",
+    "eternity_shell":"The shell of a creature that outlived its own extinction. Time slides off its surface like rain off glass.",
+    "apex_idol":     "Every predator that ever mattered is carved somewhere on this idol, and the carvings are still being added. Look closely — there's an empty space shaped like you.",
+}
+for _r in RELICS:
+    _r["lore"] = RELIC_LORE.get(_r["id"], "")
+
+# ─── v3.2 Rift of Ruin — roguelike mode config ───────────────────────────────
+# Each depth = one battle. After every victory the player picks 1 of 3
+# blessings that lasts the rest of the run. Enemy stats scale per depth.
+RIFT_SCALE = {"hp": 0.18, "atk": 0.11}
+RIFT_BLESSINGS = [
+    {"id": "bl_might",    "name": "Rift Might",      "icon": "\u2694",
+     "desc": "+15% ATK for the rest of the run.",              "effect": {"atk_pct": 0.15}},
+    {"id": "bl_vitality", "name": "Rift Vitality",   "icon": "\u2764",
+     "desc": "+20% Max HP for the rest of the run.",           "effect": {"hp_pct": 0.20}},
+    {"id": "bl_aegis",    "name": "Rift Aegis",      "icon": "\u26E8",
+     "desc": "+18% DEF for the rest of the run.",              "effect": {"def_pct": 0.18}},
+    {"id": "bl_haste",    "name": "Rift Haste",      "icon": "\u21AF",
+     "desc": "+10% SPD for the rest of the run.",              "effect": {"spd_pct": 0.10}},
+    {"id": "bl_surge",    "name": "Energy Surge",    "icon": "\u26A1",
+     "desc": "Start every battle with +25 Energy.",            "effect": {"start_energy": 25}},
+    {"id": "bl_bulwark",  "name": "Rift Bulwark",    "icon": "\u26CA",
+     "desc": "Start every battle with a 15% Max-HP shield.",   "effect": {"start_shield": 0.15}},
+    {"id": "bl_edge",     "name": "Gambler's Edge",  "icon": "\u2684",
+     "desc": "+10% Crit chance for the rest of the run.",      "effect": {"crit": 0.10}},
+    {"id": "bl_mend",     "name": "Rift Mending",    "icon": "\u2695",
+     "desc": "Heal 12% Max HP after every victory.",           "effect": {"heal_after": 0.12}},
+    {"id": "bl_wrath",    "name": "Deep Wrath",      "icon": "\u2620",
+     "desc": "+30% ATK, but your team takes +10% damage.",     "effect": {"atk_pct": 0.30, "dmg_taken": 0.10}},
+    {"id": "bl_glass",    "name": "Glass Fortune",   "icon": "\u2666",
+     "desc": "+20% Crit chance, but -10% Max HP.",             "effect": {"crit": 0.20, "hp_pct": -0.10}},
+    {"id": "bl_focus",    "name": "Battle Focus",    "icon": "\u25CE",
+     "desc": "+12% ATK and +6% SPD for the rest of the run.",  "effect": {"atk_pct": 0.12, "spd_pct": 0.06}},
+    {"id": "bl_stone",    "name": "Stoneblood",      "icon": "\u25A0",
+     "desc": "+15% Max HP and +10% DEF for the rest of the run.", "effect": {"hp_pct": 0.15, "def_pct": 0.10}},
+]
+RIFT_MILESTONES = [
+    {"depth": 3,  "gems": 150,  "shards": 0},
+    {"depth": 6,  "gems": 300,  "shards": 20},
+    {"depth": 9,  "gems": 500,  "shards": 40},
+    {"depth": 12, "gems": 800,  "shards": 80},
+    {"depth": 15, "gems": 1200, "shards": 120},
+]
+RIFT_MILESTONES_BY_DEPTH = {m["depth"]: m for m in RIFT_MILESTONES}
+
 # ─── v4.0 Endless arena milestone rewards (one-time, by best wave reached) ────
 # Claimable once each, in ascending order, only up to the player's best wave.
 ENDLESS_MILESTONES = [
@@ -338,6 +401,19 @@ TEAM_COMPS = [
     {"id": "universal", "name": "Universal Goodstuff", "primary": "Universal",
      "desc": "Energy, shields and speed — a reliable team for any fight.",
      "core": ["signal_die", "stability_die", "tempo_die"], "flex": "amplifier_die"},
+    # ── v3.2 meta comps built around the v7 roster ──
+    {"id": "solar_rush", "name": "Solar Rush", "primary": "Combo",
+     "desc": "Solar Tyrant chains Combo hits while Ember support keeps the streak alive.",
+     "core": ["solar_tyrant", "matchstick", "ember_squire"], "flex": "glass_arbiter"},
+    {"id": "winter_lock", "name": "Winter Lockdown", "primary": "Control",
+     "desc": "Glacier Empress freezes the field while Control support slows every enemy turn.",
+     "core": ["glacier_empress", "sleet_pixie", "tick_tocker"], "flex": "brine_oracle"},
+    {"id": "grave_curse", "name": "Grave Curse", "primary": "Omen",
+     "desc": "Gravemind Die stacks Omen from beyond; Black Cat and Moon Moth feed the hex.",
+     "core": ["gravemind_die", "black_cat", "moon_moth"], "flex": "vial_tosser"},
+    {"id": "colossus_wall", "name": "Colossus Wall", "primary": "Break",
+     "desc": "Iron Colossus cracks toughness while gritty brawlers finish Broken targets.",
+     "core": ["iron_colossus", "grit_miner", "anvil_clerk"], "flex": "scrap_pugilist"},
 ]
 
 
@@ -357,9 +433,9 @@ def mythic_rate_at(pity):
         return 1.0
     if n < MYTHIC_SOFT_PITY_START:
         return BASE_RATES["MYTHIC"]
-    # 70->5%, +5% per pull, 89->100%
-    steps = n - MYTHIC_SOFT_PITY_START  # 0 at pull 70
-    return min(1.0, 0.05 + 0.05 * steps)
+    # 75->4%, +4.5% per pull, hard pity 89->100%
+    steps = n - MYTHIC_SOFT_PITY_START  # 0 at pull 75
+    return min(1.0, 0.04 + 0.045 * steps)
 
 
 # ─── Dice roster ─────────────────────────────────────────────────────────────
@@ -10052,12 +10128,10 @@ BANNERS = {
         "subtitle": "Every permanent Dice. The House always has room at the table.",
         "type": "standard", "cost": PULL_COST, "featured": [],
     },
-    "limited": {
-        "id": "limited", "name": "Fractured Reality",
-        "subtitle": "Featured: House Edge. When you win the 50/50, the House loses.",
-        "type": "limited", "cost": PULL_COST,
-        "featured_mythic": "house_edge",
-        "featured_rares": ["flip_protocol", "variance_weaver", "loaded_clerk"],
+    "mega": {
+        "id": "mega", "name": "MEGA Jackpot Rally",
+        "subtitle": "EVERYTHING in one pool \u2014 and every 10th summon here is Legendary or better. Pure chaos, maximum fun.",
+        "type": "mega", "cost": PULL_COST, "featured": [],
     },
     "beginner": {
         "id": "beginner", "name": "Novice's Gambit",
@@ -10115,7 +10189,40 @@ BANNERS = {
         "featured_mythic": "iron_colossus",
         "featured_rares": ["grit_miner", "anvil_clerk", "scrap_pugilist"],
     },
+    # ── v3.2 Target banners — YOU pick the rate-up Mythic for an archetype ──
+    # Pool = every Mythic carrying one of the listed engine tags. The chosen
+    # target gets the 50/50 rate-up (with per-banner guarantee, like Limited).
+    "target_doom": {
+        "id": "target_doom", "name": "Sealed Fate",
+        "subtitle": "Choose your doom. Pick any Omen or Fracture Mythic as this banner's rate-up.",
+        "type": "target", "cost": PULL_COST, "engines": ["Omen", "Fracture"],
+    },
+    "target_assault": {
+        "id": "target_assault", "name": "Warpath",
+        "subtitle": "Choose your weapon. Pick any Break or Combo Mythic as this banner's rate-up.",
+        "type": "target", "cost": PULL_COST, "engines": ["Break", "Combo"],
+    },
+    "target_aegis": {
+        "id": "target_aegis", "name": "Bulwark Oath",
+        "subtitle": "Choose your shield. Pick any Sustain or Summon Mythic as this banner's rate-up.",
+        "type": "target", "cost": PULL_COST, "engines": ["Sustain", "Summon"],
+    },
+    "target_tempo": {
+        "id": "target_tempo", "name": "House Tempo",
+        "subtitle": "Choose your edge. Pick any Fortune, Energy or Control Mythic as this banner's rate-up.",
+        "type": "target", "cost": PULL_COST, "engines": ["Fortune", "Energy", "Control"],
+    },
 }
+
+
+def target_banner_pool(banner_id):
+    """Mythic ids eligible as the user-chosen rate-up for a target banner."""
+    bdef = BANNERS.get(banner_id) or {}
+    engines = set(bdef.get("engines") or [])
+    if not engines:
+        return []
+    return [d["id"] for d in DICE_CATALOG
+            if d["rarity"] == "MYTHIC" and engines.intersection(d.get("tags") or [])]
 
 # ─── v4.1 Endgame: Astral Abyss ─────────────────────────────────────────────
 # Deep 12-floor endless dungeon. Enemy dicts copy the CAMPAIGN stage enemy
@@ -10730,7 +10837,73 @@ ABYSS_FLOORS = [
     }
 ]
 
-ABYSS_FLOOR_IDS = ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10", "a11", "a12"]
+# ── v3.2 — floors 13-20: the Abyss deepens ──
+ABYSS_FLOORS += [
+    {"id": "a13", "name": "The Counting House", "tier": "NORMAL",
+     "lore": "Ledgers line the walls, each page a debt someone paid in years.",
+     "modifiers": ["hp_up", "thorns"],
+     "enemies": [
+         {"name": "Debt Auditor", "element": "Time",  "hp": 9200, "atk": 240, "def": 150, "spd": 118, "pow": 1.3, "ai": "debuff"},
+         {"name": "Debt Auditor", "element": "Void",  "hp": 9200, "atk": 240, "def": 150, "spd": 114, "pow": 1.3, "ai": "basic"},
+         {"name": "Ledger Golem", "element": "Earth", "hp": 12500, "atk": 225, "def": 190, "spd": 96,  "pow": 1.35, "ai": "aoe"}],
+     "reward": {"gems": 800, "shards": 106}},
+    {"id": "a14", "name": "Gallery of Losses", "tier": "NORMAL",
+     "lore": "Portraits of every gambler who reached this floor. There is room for one more.",
+     "modifiers": ["atk_up", "vampiric"],
+     "enemies": [
+         {"name": "Framed Regret", "element": "Dark",  "hp": 10200, "atk": 258, "def": 155, "spd": 121, "pow": 1.32, "ai": "debuff"},
+         {"name": "Framed Regret", "element": "Blood", "hp": 10200, "atk": 258, "def": 155, "spd": 117, "pow": 1.32, "ai": "heal"},
+         {"name": "Curator of Ruin", "element": "Arcane", "hp": 13800, "atk": 244, "def": 175, "spd": 108, "pow": 1.38, "ai": "aoe"}],
+     "reward": {"gems": 900, "shards": 114}},
+    {"id": "a15", "name": "The Rigged Scale", "tier": "ELITE",
+     "lore": "Justice lives here, but the House re-weighted her scales long ago.",
+     "modifiers": ["shielded", "fast"],
+     "enemies": [
+         {"name": "Scale Warden", "element": "Light", "hp": 11800, "atk": 268, "def": 185, "spd": 126, "pow": 1.36, "ai": "debuff"},
+         {"name": "Verdict Engine", "element": "Electric", "hp": 16500, "atk": 282, "def": 205, "spd": 112, "pow": 1.42, "ai": "boss"}],
+     "reward": {"gems": 1000, "shards": 122}},
+    {"id": "a16", "name": "Vault of Echoing Coin", "tier": "NORMAL",
+     "lore": "Every coin ever lost rings here at once. The sound has a body count.",
+     "modifiers": ["regen", "resist_all"],
+     "enemies": [
+         {"name": "Coin Chorus", "element": "Wind",  "hp": 11500, "atk": 270, "def": 168, "spd": 130, "pow": 1.36, "ai": "aoe"},
+         {"name": "Coin Chorus", "element": "Ice",   "hp": 11500, "atk": 270, "def": 168, "spd": 124, "pow": 1.36, "ai": "basic"},
+         {"name": "Vault Resonant", "element": "Arcane", "hp": 15200, "atk": 262, "def": 195, "spd": 110, "pow": 1.4, "ai": "heal"}],
+     "reward": {"gems": 1100, "shards": 130}},
+    {"id": "a17", "name": "The Dealer's Shadow", "tier": "ELITE",
+     "lore": "It deals from a deck of moments you regret. It never shuffles — it remembers.",
+     "modifiers": ["enrage", "thorns"],
+     "enemies": [
+         {"name": "Shadow Croupier", "element": "Dark", "hp": 13500, "atk": 292, "def": 188, "spd": 132, "pow": 1.4, "ai": "debuff"},
+         {"name": "Mirror of Debts", "element": "Void", "hp": 18500, "atk": 300, "def": 215, "spd": 116, "pow": 1.45, "ai": "boss"}],
+     "reward": {"gems": 1250, "shards": 140}},
+    {"id": "a18", "name": "Furnace of Fortunes", "tier": "NORMAL",
+     "lore": "Where losing tickets go to burn. The fire has learned to want.",
+     "modifiers": ["atk_up", "enrage"],
+     "enemies": [
+         {"name": "Ash Croupier", "element": "Fire",  "hp": 13000, "atk": 305, "def": 180, "spd": 128, "pow": 1.42, "ai": "aoe"},
+         {"name": "Ash Croupier", "element": "Blood", "hp": 13000, "atk": 305, "def": 180, "spd": 122, "pow": 1.42, "ai": "basic"},
+         {"name": "Fortune Pyre", "element": "Light", "hp": 17500, "atk": 290, "def": 205, "spd": 112, "pow": 1.46, "ai": "heal"}],
+     "reward": {"gems": 1400, "shards": 150}},
+    {"id": "a19", "name": "Antechamber of the House", "tier": "ELITE",
+     "lore": "The final waiting room. The chairs are bolted down so nobody can leave with them.",
+     "modifiers": ["unstoppable", "shielded"],
+     "enemies": [
+         {"name": "Doorman Prime", "element": "Earth", "hp": 16000, "atk": 315, "def": 225, "spd": 118, "pow": 1.45, "ai": "debuff"},
+         {"name": "The Reservation", "element": "Time", "hp": 21000, "atk": 325, "def": 235, "spd": 124, "pow": 1.5, "ai": "boss"}],
+     "reward": {"gems": 1600, "shards": 162}},
+    {"id": "a20", "name": "The House Always Wins", "tier": "BOSS",
+     "lore": "The bottom of the Abyss. The House itself sits here, counting you among its chips.",
+     "modifiers": ["unstoppable", "enrage", "vampiric"],
+     "enemies": [
+         {"name": "Chip Sovereign", "element": "Nature", "hp": 15500, "atk": 320, "def": 210, "spd": 130, "pow": 1.45, "ai": "aoe"},
+         {"name": "THE HOUSE ETERNAL", "element": "Void", "hp": 34000, "atk": 355, "def": 260, "spd": 126, "pow": 1.6, "ai": "boss"},
+         {"name": "Chip Sovereign", "element": "Light", "hp": 15500, "atk": 320, "def": 210, "spd": 127, "pow": 1.45, "ai": "basic"}],
+     "reward": {"gems": 2500, "shards": 220}},
+]
+
+ABYSS_FLOOR_IDS = ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10", "a11", "a12",
+                   "a13", "a14", "a15", "a16", "a17", "a18", "a19", "a20"]
 
 # ─── v7 Expansion: +90 dice (210 -> 300) ────────────────────────────────────
 from games.dice_data_v7 import V7_DICE
@@ -10781,5 +10954,12 @@ def public_catalog():
             "UNIVERSAL_SHARD_YIELD": UNIVERSAL_SHARD_YIELD,
             "ABYSS_FLOORS": ABYSS_FLOORS, "ABYSS_MODIFIERS": ABYSS_MODIFIERS,
             "ABYSS_FLOOR_IDS": ABYSS_FLOOR_IDS,
+            # v3.2
+            "CAMPAIGN_STAGE_IDS": CAMPAIGN_STAGE_IDS,
+            "TARGET_POOLS": {bid: target_banner_pool(bid)
+                             for bid, b in BANNERS.items() if b.get("type") == "target"},
+            "RIFT_BLESSINGS": RIFT_BLESSINGS,
+            "RIFT_MILESTONES": RIFT_MILESTONES,
+            "RIFT_SCALE": RIFT_SCALE,
         },
     }
