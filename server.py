@@ -110,9 +110,20 @@ OWNER_PASSWORD = secrets.token_urlsafe(10)
 OWNER_TOKEN = secrets.token_hex(16)  # internal session token handed out after owner login
 
 db_pool = None
-CURRENT_VERSION = "3.0"
+CURRENT_VERSION = "3.1"
 CHANGELOG_NOTES = (
-    "<b>What's new in v3.0 \u2014 DICE RPG</b><br><br>"
+    "<b>What's new in v3.1 \u2014 MEGA UPDATE 2</b><br><br>"
+    "&#x2022; <b>300 Dice</b> \u2014 90 brand-new dice join the Dex (now 300 total) with new mythic gimmicks across every element<br>"
+    "&#x2022; <b>Relics &amp; Gear</b> \u2014 Buy Relics with Crystals in the Shop's new Relics tab and equip one per die for stat bonuses; four tiers from Worn to Transcendent<br>"
+    "&#x2022; <b>Banner Rework</b> \u2014 Refreshed event banners with new featured mythics and their own 50/50 guarantees<br>"
+    "&#x2022; <b>Full-Screen Summons</b> \u2014 The pull cinematic now takes over the whole screen for maximum drama<br>"
+    "&#x2022; <b>2\u00D7 Battle Speed</b> \u2014 New top speed for battles, plus smarter low-resource mode when the tab is in the background<br>"
+    "&#x2022; <b>Gimmick Guide</b> \u2014 The in-game tutorial now includes a searchable glossary explaining every mythic mechanic and status<br>"
+    "&#x2022; <b>Sharper Combat</b> \u2014 Freeze, Gravity, Bleed, Omen, Echo, Combo and recoil effects now all work exactly as their descriptions say<br>"
+    "&#x2022; <b>Profile Redesign</b> \u2014 A brand-new profile popup with cleaner layout and live cosmetic previews<br>"
+    "&#x2022; <b>160 Cosmetics, All Functional</b> \u2014 Every shop cosmetic now visibly applies in chat and the user list<br>"
+    "&#x2022; <b>Cleaner Login</b> \u2014 Simplified join page<br>"
+    "<br><b>Previously in v3.0 \u2014 DICE RPG</b><br>"
     "&#x2022; <b>Dice RPG</b> \u2014 A full turn-based tactical gacha RPG now lives in the Games tab: summon Dice, build a team and battle<br>"
     "&#x2022; <b>Summon System</b> \u2014 Spend your balance to roll Dice with real pity, a Beginner banner and a 50/50 Limited banner<br>"
     "&#x2022; <b>Campaign &amp; Endless</b> \u2014 A story campaign (Normal \u2192 Elite \u2192 Boss) plus an endless arena, with a live battle log<br>"
@@ -234,8 +245,7 @@ SHOP_CATALOG = {
     "np_glass":        {"name":"Glass Nameplate",    "desc":"Crystal-clear frosted glass effect",           "price":750,   "cat":"nameplate","rarity":"rare",      "emoji":"\U0001F976"},
     "np_cyber":        {"name":"Cyber Nameplate",    "desc":"Cyberpunk neon-grid aesthetic",                "price":1800,  "cat":"nameplate","rarity":"epic",      "emoji":"\U0001F916"},
     # Extra rings
-    "ring_neon":       {"name":"Neon Ring",          "desc":"Glowing neon outline around avatar",           "price":500,   "cat":"ring",     "rarity":"rare",      "emoji":"\U0001F4A1"},
-    "ring_stars":      {"name":"Star Ring",          "desc":"Twinkling stars orbit your avatar",            "price":700,   "cat":"ring",     "rarity":"rare",      "emoji":"\u2B50"},
+    "ring_stars":      {"name":"Constellation Ring", "desc":"Twinkling constellation orbits your avatar",   "price":700,   "cat":"ring",     "rarity":"rare",      "emoji":"\u2B50"},
     # Extra effects
     "fx_rain":         {"name":"Rain",               "desc":"Digital rain falls around your profile",       "price":450,   "cat":"effect",   "rarity":"uncommon",  "emoji":"\U0001F327\uFE0F"},
     "fx_fireworks":    {"name":"Fireworks",          "desc":"Spectacular fireworks burst around you",       "price":900,   "cat":"effect",   "rarity":"rare",      "emoji":"\U0001F386"},
@@ -243,7 +253,6 @@ SHOP_CATALOG = {
     "th_lava":         {"name":"Lava Lamp",          "desc":"Slow morphing lava lamp vibes",                "price":500,   "cat":"theme",    "rarity":"uncommon",  "emoji":"\U0001FAE7"},
     "th_matrix":       {"name":"Matrix Mode",        "desc":"Everything goes green \u2014 stay in the sim","price":800,  "cat":"theme",    "rarity":"rare",      "emoji":"\U0001F4BB"},
     # Extra titles
-    "title_goat":      {"name":"GOAT",               "desc":"Greatest of all time status",                  "price":2000,  "cat":"title",    "rarity":"epic",      "emoji":"\U0001F410"},
     "title_chad":      {"name":"Chad",               "desc":"Ultra-based chad energy",                      "price":1500,  "cat":"title",    "rarity":"rare",      "emoji":"\U0001F5FF"},
     "title_wizard":    {"name":"Wizard",             "desc":"Ancient arcane knowledge",                     "price":1200,  "cat":"title",    "rarity":"rare",      "emoji":"\U0001F9D9"},
     "title_phantom":   {"name":"Phantom",            "desc":"You were never here...",                       "price":3000,  "cat":"title",    "rarity":"legendary", "emoji":"\U0001F47B"},
@@ -254,6 +263,87 @@ SHOP_CATALOG = {
     "ring_pulse":     {"name":"Pulse Ring",        "desc":"Rhythmically pulsing glow border",             "price":1500,  "cat":"ring",     "rarity":"epic",      "emoji":"\U0001F499"},
     "title_legendary":{"name":"Legendary",         "desc":"A truly legendary title badge",                "price":2500,  "cat":"title",    "rarity":"legendary", "emoji":"\U0001F31F"},
     "th_midnight":    {"name":"Midnight",          "desc":"Deep midnight blue elegance",                  "price":600,   "cat":"theme",    "rarity":"rare",      "emoji":"\U0001F319"},
+    # ── v3.1 expansion: every category has exactly 20 fully-functional items ──
+    # Nameplates (+7 → 20)
+    "np_emerald":   {"name":"Emerald Nameplate",   "desc":"Rich jewel-green shimmer on your name",        "price":800,   "cat":"nameplate","rarity":"rare",      "emoji":"\U0001F49A"},
+    "np_royal":     {"name":"Royal Nameplate",     "desc":"Majestic purple-and-gold royalty",             "price":1200,  "cat":"nameplate","rarity":"epic",      "emoji":"\U0001F451"},
+    "np_blood":     {"name":"Blood Nameplate",     "desc":"Deep crimson menace around your name",         "price":1600,  "cat":"nameplate","rarity":"epic",      "emoji":"\U0001FA78"},
+    "np_toxic":     {"name":"Toxic Nameplate",     "desc":"Radioactive acid-green glow",                  "price":1400,  "cat":"nameplate","rarity":"epic",      "emoji":"\u2622\uFE0F"},
+    "np_sunset":    {"name":"Sunset Nameplate",    "desc":"Warm orange-to-pink sunset gradient",          "price":900,   "cat":"nameplate","rarity":"rare",      "emoji":"\U0001F305"},
+    "np_ocean":     {"name":"Ocean Nameplate",     "desc":"Deep blue-to-teal wave gradient",              "price":900,   "cat":"nameplate","rarity":"rare",      "emoji":"\U0001F30A"},
+    "np_shadow":    {"name":"Shadow Nameplate",    "desc":"Your name lurks in living shadow",             "price":3500,  "cat":"nameplate","rarity":"mythic",    "emoji":"\U0001F311"},
+    # Fonts (+10 → 20)
+    "font_serif":   {"name":"Classic Serif",       "desc":"Timeless bookish elegance",                    "price":250,   "cat":"font",     "rarity":"common",    "emoji":"\U0001F4D6"},
+    "font_impact":  {"name":"Impact",              "desc":"MAXIMUM MEME ENERGY font",                     "price":450,   "cat":"font",     "rarity":"uncommon",  "emoji":"\U0001F4A5"},
+    "font_georgia": {"name":"Georgia",             "desc":"Warm editorial print style",                   "price":300,   "cat":"font",     "rarity":"common",    "emoji":"\U0001F4F0"},
+    "font_trebuchet":{"name":"Trebuchet",          "desc":"Clean early-web classic",                      "price":275,   "cat":"font",     "rarity":"common",    "emoji":"\U0001F3F0"},
+    "font_verdana": {"name":"Verdana",             "desc":"Extra-readable wide sans",                     "price":275,   "cat":"font",     "rarity":"common",    "emoji":"\U0001F50E"},
+    "font_times":   {"name":"Times",               "desc":"The essay-deadline special",                   "price":225,   "cat":"font",     "rarity":"common",    "emoji":"\U0001F552"},
+    "font_brush":   {"name":"Brush Script",        "desc":"Painted brushstroke flair",                    "price":600,   "cat":"font",     "rarity":"rare",      "emoji":"\U0001F58C\uFE0F"},
+    "font_fantasy": {"name":"Fantasy",             "desc":"Storybook adventure lettering",                "price":700,   "cat":"font",     "rarity":"rare",      "emoji":"\U0001F409"},
+    "font_narrow":  {"name":"Narrow",              "desc":"Slim condensed style",                         "price":350,   "cat":"font",     "rarity":"uncommon",  "emoji":"\U0001F4CF"},
+    "font_outline": {"name":"Outlined Text",       "desc":"Hollow outlined letters that pop",             "price":1200,  "cat":"font",     "rarity":"epic",      "emoji":"\u2B1C"},
+    # Avatar Rings (+9 → 20)
+    "ring_emerald": {"name":"Emerald Ring",        "desc":"Lush green gemstone glow",                     "price":650,   "cat":"ring",     "rarity":"rare",      "emoji":"\U0001F49A"},
+    "ring_blood":   {"name":"Blood Ring",          "desc":"Ominous crimson aura",                         "price":900,   "cat":"ring",     "rarity":"epic",      "emoji":"\U0001FA78"},
+    "ring_shadow":  {"name":"Shadow Ring",         "desc":"A dark void halo",                             "price":2500,  "cat":"ring",     "rarity":"legendary", "emoji":"\U0001F311"},
+    "ring_toxic":   {"name":"Toxic Ring",          "desc":"Radioactive green hazard glow",                "price":800,   "cat":"ring",     "rarity":"rare",      "emoji":"\u2622\uFE0F"},
+    "ring_sunset":  {"name":"Sunset Ring",         "desc":"Orange-pink gradient halo",                    "price":700,   "cat":"ring",     "rarity":"rare",      "emoji":"\U0001F305"},
+    "ring_ocean":   {"name":"Ocean Ring",          "desc":"Deep sea blue-teal ripple",                    "price":700,   "cat":"ring",     "rarity":"rare",      "emoji":"\U0001F30A"},
+    "ring_royal":   {"name":"Royal Ring",          "desc":"Purple and gold nobility",                     "price":1100,  "cat":"ring",     "rarity":"epic",      "emoji":"\U0001F451"},
+    "ring_silver":  {"name":"Silver Ring",         "desc":"Understated cool silver band",                 "price":250,   "cat":"ring",     "rarity":"uncommon",  "emoji":"\U0001F948"},
+    "ring_double":  {"name":"Double Halo",         "desc":"Two-tone double ring — ultimate flex",         "price":4000,  "cat":"ring",     "rarity":"mythic",    "emoji":"\U0001F4AB"},
+    # Profile FX (+8 → 20)
+    "fx_leaves":    {"name":"Falling Leaves",      "desc":"Autumn leaves drift around you",               "price":450,   "cat":"effect",   "rarity":"uncommon",  "emoji":"\U0001F342"},
+    "fx_petals":    {"name":"Sakura Petals",       "desc":"Cherry blossom petals float by",               "price":550,   "cat":"effect",   "rarity":"rare",      "emoji":"\U0001F338"},
+    "fx_music":     {"name":"Music Notes",         "desc":"Notes dance around your avatar",               "price":500,   "cat":"effect",   "rarity":"uncommon",  "emoji":"\U0001F3B5"},
+    "fx_ghosts":    {"name":"Spooky Ghosts",       "desc":"Friendly ghosts haunt your profile",           "price":800,   "cat":"effect",   "rarity":"rare",      "emoji":"\U0001F47B"},
+    "fx_gems":      {"name":"Gem Shower",          "desc":"Precious gems sparkle around you",             "price":1200,  "cat":"effect",   "rarity":"epic",      "emoji":"\U0001F48E"},
+    "fx_zzz":       {"name":"Sleepy Zzz",          "desc":"Cozy sleepy Zzz bubbles",                      "price":300,   "cat":"effect",   "rarity":"common",    "emoji":"\U0001F4A4"},
+    "fx_clovers":   {"name":"Lucky Clovers",       "desc":"Four-leaf clovers bring the luck",             "price":777,   "cat":"effect",   "rarity":"rare",      "emoji":"\U0001F340"},
+    "fx_butterflies":{"name":"Butterflies",        "desc":"Delicate butterflies flutter about",           "price":650,   "cat":"effect",   "rarity":"rare",      "emoji":"\U0001F98B"},
+    # Themes (+5 → 20)
+    "th_obsidian":  {"name":"Obsidian",            "desc":"Pure black volcanic glass",                    "price":900,   "cat":"theme",    "rarity":"epic",      "emoji":"\U0001F5FF"},
+    "th_mint":      {"name":"Fresh Mint",          "desc":"Cool minty pastel greens",                     "price":350,   "cat":"theme",    "rarity":"common",    "emoji":"\U0001F33F"},
+    "th_coffee":    {"name":"Coffee Shop",         "desc":"Warm espresso browns and cream",               "price":400,   "cat":"theme",    "rarity":"uncommon",  "emoji":"\u2615"},
+    "th_synthwave": {"name":"Synthwave",           "desc":"80s retro grid sunset vibes",                  "price":1000,  "cat":"theme",    "rarity":"epic",      "emoji":"\U0001F3B9"},
+    "th_dracula":   {"name":"Dracula",             "desc":"The cult classic coder palette",               "price":850,   "cat":"theme",    "rarity":"rare",      "emoji":"\U0001F9DB"},
+    # Titles (+5 → 20)
+    "title_sigma":  {"name":"Sigma",               "desc":"On your own grindset",                         "price":1300,  "cat":"title",    "rarity":"rare",      "emoji":"\U0001F43A"},
+    "title_menace": {"name":"Menace",              "desc":"A certified menace to society",                "price":1800,  "cat":"title",    "rarity":"epic",      "emoji":"\U0001F608"},
+    "title_cracked":{"name":"Cracked",             "desc":"Mechanically gifted beyond belief",            "price":2200,  "cat":"title",    "rarity":"legendary", "emoji":"\U0001F3AF"},
+    "title_lucky":  {"name":"Lucky",               "desc":"Fortune favors you",                           "price":777,   "cat":"title",    "rarity":"uncommon",  "emoji":"\U0001F340"},
+    "title_royalty":{"name":"Royalty",             "desc":"Bow before the crown",                         "price":4500,  "cat":"title",    "rarity":"mythic",    "emoji":"\U0001F451"},
+    # Chat Bubbles (+14 → 20)
+    "bub_gradient": {"name":"Gradient Glow",       "desc":"Subtle purple-blue gradient bubbles",          "price":650,   "cat":"bubble",   "rarity":"rare",      "emoji":"\U0001F52E"},
+    "bub_gold":     {"name":"Golden Frame",        "desc":"Luxurious gold-trimmed messages",              "price":1500,  "cat":"bubble",   "rarity":"epic",      "emoji":"\U0001F4B0"},
+    "bub_steel":    {"name":"Blue Steel",          "desc":"Cold industrial steel-blue plating",           "price":450,   "cat":"bubble",   "rarity":"uncommon",  "emoji":"\U0001F529"},
+    "bub_pink":     {"name":"Bubblegum",           "desc":"Soft pink pastel bubbles",                     "price":350,   "cat":"bubble",   "rarity":"common",    "emoji":"\U0001F338"},
+    "bub_forest":   {"name":"Forest",              "desc":"Earthy deep-green woodland style",             "price":400,   "cat":"bubble",   "rarity":"uncommon",  "emoji":"\U0001F332"},
+    "bub_royal":    {"name":"Royal Court",         "desc":"Purple velvet with gold trim",                 "price":1100,  "cat":"bubble",   "rarity":"epic",      "emoji":"\U0001F451"},
+    "bub_sunset":   {"name":"Sunset Fade",         "desc":"Warm orange-pink sunset wash",                 "price":600,   "cat":"bubble",   "rarity":"rare",      "emoji":"\U0001F305"},
+    "bub_ocean":    {"name":"Ocean Depth",         "desc":"Deep sea blue with teal edge",                 "price":600,   "cat":"bubble",   "rarity":"rare",      "emoji":"\U0001F30A"},
+    "bub_blood":    {"name":"Blood Pact",          "desc":"Dark crimson intimidation",                    "price":900,   "cat":"bubble",   "rarity":"epic",      "emoji":"\U0001FA78"},
+    "bub_toxic":    {"name":"Biohazard",           "desc":"Radioactive green warning label",              "price":800,   "cat":"bubble",   "rarity":"rare",      "emoji":"\u2622\uFE0F"},
+    "bub_holo":     {"name":"Holographic Card",    "desc":"Prismatic rare-card shimmer border",           "price":2500,  "cat":"bubble",   "rarity":"legendary", "emoji":"\u2728"},
+    "bub_paper":    {"name":"Paper Note",          "desc":"Cozy notepad paper style",                     "price":300,   "cat":"bubble",   "rarity":"common",    "emoji":"\U0001F4DD"},
+    "bub_midnight": {"name":"Midnight Ink",        "desc":"Deep navy with starlight border",              "price":700,   "cat":"bubble",   "rarity":"rare",      "emoji":"\U0001F319"},
+    "bub_void":     {"name":"Void Whisper",        "desc":"Messages from the abyss itself",               "price":3500,  "cat":"bubble",   "rarity":"mythic",    "emoji":"\U0001F573\uFE0F"},
+    # Message Effects (+14 → 20)
+    "msg_fire":     {"name":"Flame Text",          "desc":"Fiery orange-red gradient text",               "price":900,   "cat":"message",  "rarity":"rare",      "emoji":"\U0001F525"},
+    "msg_ice":      {"name":"Frost Text",          "desc":"Icy blue shimmer on your words",               "price":900,   "cat":"message",  "rarity":"rare",      "emoji":"\u2744\uFE0F"},
+    "msg_gold":     {"name":"Golden Words",        "desc":"Every word you say is golden",                 "price":1400,  "cat":"message",  "rarity":"epic",      "emoji":"\U0001F4B0"},
+    "msg_toxic":    {"name":"Toxic Text",          "desc":"Radioactive green glow text",                  "price":800,   "cat":"message",  "rarity":"rare",      "emoji":"\u2622\uFE0F"},
+    "msg_royal":    {"name":"Royal Decree",        "desc":"Majestic purple gradient text",                "price":1000,  "cat":"message",  "rarity":"epic",      "emoji":"\U0001F451"},
+    "msg_blood":    {"name":"Blood Writing",       "desc":"Ominous deep red text",                        "price":850,   "cat":"message",  "rarity":"rare",      "emoji":"\U0001FA78"},
+    "msg_neon_pink":{"name":"Neon Pink",           "desc":"Hot pink neon sign text",                      "price":750,   "cat":"message",  "rarity":"rare",      "emoji":"\U0001F496"},
+    "msg_emerald":  {"name":"Emerald Text",        "desc":"Lush green jewel-toned words",                 "price":700,   "cat":"message",  "rarity":"uncommon",  "emoji":"\U0001F49A"},
+    "msg_sunset":   {"name":"Sunset Gradient",     "desc":"Warm orange-to-pink text fade",                "price":950,   "cat":"message",  "rarity":"rare",      "emoji":"\U0001F305"},
+    "msg_ocean":    {"name":"Ocean Gradient",      "desc":"Cool blue-to-teal flowing text",               "price":950,   "cat":"message",  "rarity":"rare",      "emoji":"\U0001F30A"},
+    "msg_mini":     {"name":"Whisper Mode",        "desc":"Your messages appear small and soft",          "price":250,   "cat":"message",  "rarity":"common",    "emoji":"\U0001F90F"},
+    "msg_spread":   {"name":"S p r e a d",         "desc":"D r a m a t i c letter spacing",               "price":400,   "cat":"message",  "rarity":"uncommon",  "emoji":"\u2194\uFE0F"},
+    "msg_outline":  {"name":"Ghost Outline",       "desc":"Hollow outlined message text",                 "price":1600,  "cat":"message",  "rarity":"epic",      "emoji":"\U0001F47B"},
+    "msg_starlit":  {"name":"Starlit Text",        "desc":"White text with a starry twinkle glow",        "price":2800,  "cat":"message",  "rarity":"legendary", "emoji":"\U0001F320"},
 }
 
 # ─── Economy: Idle game upgrades ─────────────────────────────────────────────
@@ -1259,6 +1349,68 @@ async def dice_ascend_txn(username, ws, die_id):
         gacha["universal_shards"] = shards - cost
         coll[die_id]["level"] = level + 1
         return None, {"ok": True, "die_id": die_id, "level": level + 1, "cost": cost}
+    return await _dg_mutate(username, ws, _do)
+
+
+def _dg_relics(dg):
+    """Return (and initialize) the relic store inside campaign."""
+    rel = dg["campaign"].setdefault("relics", {})
+    if not isinstance(rel, dict):
+        rel = {}; dg["campaign"]["relics"] = rel
+    if not isinstance(rel.get("owned"), dict): rel["owned"] = {}
+    if not isinstance(rel.get("equipped"), dict): rel["equipped"] = {}
+    return rel
+
+
+async def dice_buy_relic_txn(username, ws, relic_id):
+    """Buy one copy of a relic with Crystals (server-authoritative)."""
+    if not isinstance(relic_id, str):
+        return {"ok": False, "error": "Unknown relic.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    relic = dice_data.RELICS_BY_ID.get(relic_id)
+    if not relic:
+        return {"ok": False, "error": "Unknown relic.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    def _do(bal, dg):
+        gacha = dg["gacha"]; cry = int(gacha.get("crystals", 0))
+        cost = int(relic["cost"])
+        if cry < cost:
+            return None, {"ok": False, "error": "Not enough Crystals."}
+        gacha["crystals"] = cry - cost
+        rel = _dg_relics(dg)
+        rel["owned"][relic_id] = int(rel["owned"].get(relic_id, 0)) + 1
+        return None, {"ok": True, "kind": "buy", "relic_id": relic_id,
+                      "owned": rel["owned"][relic_id], "cost": cost}
+    return await _dg_mutate(username, ws, _do)
+
+
+async def dice_equip_relic_txn(username, ws, die_id, relic_id):
+    """Equip (or unequip with relic_id=None) a relic on an owned die.
+    Each owned copy can only be worn by one die at a time."""
+    if not isinstance(die_id, str) or (relic_id is not None and not isinstance(relic_id, str)):
+        return {"ok": False, "error": "Bad request.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    if die_id not in dice_data.DICE_BY_ID:
+        return {"ok": False, "error": "Unknown die.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    if relic_id and relic_id not in dice_data.RELICS_BY_ID:
+        return {"ok": False, "error": "Unknown relic.",
+                "balance": connected.get(ws, {}).get("balance", 0)}
+    def _do(bal, dg):
+        if die_id not in dg["collection"]:
+            return None, {"ok": False, "error": "You don't own this die."}
+        rel = _dg_relics(dg)
+        if not relic_id:
+            rel["equipped"].pop(die_id, None)
+            return None, {"ok": True, "kind": "equip", "die_id": die_id, "relic_id": None}
+        have = int(rel["owned"].get(relic_id, 0))
+        in_use = sum(1 for d, r in rel["equipped"].items() if r == relic_id and d != die_id)
+        if have <= 0:
+            return None, {"ok": False, "error": "You don't own this relic."}
+        if in_use >= have:
+            return None, {"ok": False, "error": "All copies of this relic are already equipped."}
+        rel["equipped"][die_id] = relic_id
+        return None, {"ok": True, "kind": "equip", "die_id": die_id, "relic_id": relic_id}
     return await _dg_mutate(username, ws, _do)
 
 
@@ -2587,45 +2739,45 @@ body.theme-rose {
       </div>
       <button id="resetBackBtn" data-testid="button-reset-back" style="margin-top:8px;background:var(--input-bg);color:var(--text-secondary);">Back to Sign In</button>
     </div>
-    <div style="text-align:center;margin-top:14px;"><a href="#" id="ownerLink" data-testid="link-owner-login" style="font-size:11px;color:var(--text-muted);text-decoration:none;">Server owner? Sign in here</a></div>
-  </div>
-  <div class="join-box" id="adminBox" style="display:none;">
-    <h2>Owner Sign In</h2>
-    <p>Enter the owner credentials printed in the server console (new each boot).</p>
-    <div class="join-error" id="adminError"></div>
-    <label for="ownerUserInput">Owner Username</label>
-    <input type="text" id="ownerUserInput" data-testid="input-owner-username" placeholder="Owner username..." autocomplete="off" />
-    <label for="ownerPassInput">Owner Password</label>
-    <input type="password" id="ownerPassInput" data-testid="input-owner-password" placeholder="Owner password..." autocomplete="off" />
-    <button id="adminLoginBtn" data-testid="button-admin-login">Sign In</button>
-    <button id="backBtn2" data-testid="button-back-admin" style="margin-top:8px;background:var(--input-bg);color:var(--text-secondary);">Back</button>
   </div>
 </div>
 
 <!-- Profile Modal -->
-<div id="profileModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2000;align-items:center;justify-content:center;">
-  <div style="background:var(--bg-primary);border-radius:10px;padding:28px;max-width:440px;width:90%;max-height:90vh;overflow-y:auto;position:relative;">
-    <button id="profileModalClose" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;">&#x2715;</button>
-    <h2 style="font-size:18px;font-weight:700;margin-bottom:18px;">Your Profile</h2>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:20px;">
-      <div id="profilePfpPreview" style="width:80px;height:80px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff;overflow:hidden;border:3px solid var(--border);cursor:pointer;" title="Click to change picture">?</div>
-      <input type="file" id="pfpFileInput" accept="image/*" style="display:none;" />
-      <button id="changePfpBtn" style="font-size:12px;padding:5px 12px;background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border);border-radius:4px;cursor:pointer;">Change Picture</button>
-      <div style="font-size:12px;color:var(--text-muted);">@<span id="profileUsernameDisplay">username</span></div>
-    </div>
-    <div class="join-error" id="profileError" style="display:none;"></div>
-    <label style="display:block;font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Display Name</label>
-    <input type="text" id="profileDisplayName" maxlength="30" placeholder="Your display name..." style="width:100%;padding:10px 12px;border:none;border-radius:4px;font-size:14px;margin-bottom:16px;background:var(--bg-tertiary);color:var(--text-primary);outline:none;box-sizing:border-box;" />
-    <label style="display:block;font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Status</label>
-    <select id="profileStatus" style="width:100%;padding:10px 12px;border:none;border-radius:4px;font-size:14px;margin-bottom:16px;background:var(--bg-tertiary);color:var(--text-primary);outline:none;box-sizing:border-box;cursor:pointer;">
-      <option value="online">🟢 Online</option>
-      <option value="idle">🟡 Idle</option>
-      <option value="dnd">🔴 Do Not Disturb</option>
-      <option value="invisible">⚫ Invisible</option>
-    </select>
-    <label style="display:block;font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Bio</label>
-    <textarea id="profileBio" maxlength="300" placeholder="Say something about yourself..." rows="3" style="width:100%;padding:10px 12px;border:none;border-radius:4px;font-size:14px;margin-bottom:16px;background:var(--bg-tertiary);color:var(--text-primary);outline:none;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
-    <button id="saveProfileBtn" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;">Save Changes</button>
+<div id="profileModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-primary);border-radius:14px;max-width:460px;width:92%;max-height:92vh;overflow-y:auto;position:relative;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.55);">
+    <button id="profileModalClose" style="position:absolute;top:10px;right:12px;background:rgba(0,0,0,.35);border:none;color:#fff;font-size:16px;cursor:pointer;line-height:1;width:28px;height:28px;border-radius:50%;z-index:3;display:flex;align-items:center;justify-content:center;">&#x2715;</button>
+    <div id="profileBanner" style="height:88px;background:linear-gradient(120deg,var(--accent),#1e1f3a 90%);border-radius:14px 14px 0 0;"></div>
+    <div style="padding:0 20px 20px;">
+      <div style="display:flex;align-items:flex-end;gap:12px;margin-top:-40px;position:relative;z-index:2;">
+        <div id="profilePfpWrap" style="position:relative;flex-shrink:0;">
+          <div id="profilePfpPreview" style="width:84px;height:84px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;color:#fff;overflow:hidden;border:5px solid var(--bg-primary);cursor:pointer;box-sizing:content-box;" title="Click to change picture">?</div>
+          <div id="profilePfpEdit" style="position:absolute;bottom:2px;right:2px;width:26px;height:26px;border-radius:50%;background:var(--bg-tertiary);border:2px solid var(--bg-primary);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;" title="Change picture">&#x270F;&#xFE0F;</div>
+        </div>
+        <input type="file" id="pfpFileInput" accept="image/*" style="display:none;" />
+        <button id="changePfpBtn" style="display:none;"></button>
+        <div style="flex:1;min-width:0;padding-bottom:6px;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span id="profileNameHero" style="font-size:18px;font-weight:800;color:var(--text-primary);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">You</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);">@<span id="profileUsernameDisplay">username</span></div>
+        </div>
+      </div>
+      <div id="profileEquippedRow" style="display:none;margin:12px 0 0;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:10px 12px;"></div>
+      <div class="join-error" id="profileError" style="display:none;margin-top:12px;"></div>
+      <div style="margin-top:16px;">
+      <label style="display:block;font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Display Name</label>
+      <input type="text" id="profileDisplayName" maxlength="30" placeholder="Your display name..." style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:14px;background:var(--bg-tertiary);color:var(--text-primary);outline:none;box-sizing:border-box;" />
+      <label style="display:block;font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Status</label>
+      <select id="profileStatus" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:14px;background:var(--bg-tertiary);color:var(--text-primary);outline:none;box-sizing:border-box;cursor:pointer;">
+        <option value="online">🟢 Online</option>
+        <option value="idle">🟡 Idle</option>
+        <option value="dnd">🔴 Do Not Disturb</option>
+        <option value="invisible">⚫ Invisible</option>
+      </select>
+      <label style="display:block;font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Bio</label>
+      <textarea id="profileBio" maxlength="300" placeholder="Say something about yourself..." rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:14px;background:var(--bg-tertiary);color:var(--text-primary);outline:none;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
+      <button id="saveProfileBtn" style="width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Save Changes</button>
+      </div>
     <div id="securitySection" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
       <label style="display:block;font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Account Security</label>
       <div class="join-error" id="securityError" style="display:none;"></div>
@@ -2645,7 +2797,8 @@ body.theme-rose {
       </label>
       <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Codes go to your email — or the server console if email isn't set up.</div>
     </div>
-    <button id="logoutBtn" style="width:100%;padding:10px;background:transparent;color:var(--red);border:1px solid var(--red);border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">Log Out</button>
+    <button id="logoutBtn" style="width:100%;padding:10px;background:transparent;color:var(--red);border:1px solid var(--red);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px;">Log Out</button>
+    </div>
   </div>
 </div>
 
@@ -2946,6 +3099,7 @@ function doLogin() {
     .then(function(r){return r.json();})
     .then(function(d){
       if (d.error) { err.textContent=d.error; err.style.display='block'; return; }
+      if (d.owner_token) { connectOwner(d.owner_token); return; }
       if (d.twofa_required) {
         _pendingTwofaUser = d.username || un;
         setJoinTab('twofa');
@@ -3056,16 +3210,6 @@ if (mySessionToken) {
       }
     }).catch(function(){});
 }
-document.getElementById('ownerLink').addEventListener('click', function(e) {
-  e.preventDefault();
-  document.getElementById('guestBox').style.display = 'none';
-  document.getElementById('adminBox').style.display = 'block';
-  document.getElementById('ownerUserInput').focus();
-});
-document.getElementById('backBtn2').addEventListener('click', function() {
-  document.getElementById('adminBox').style.display = 'none';
-  document.getElementById('guestBox').style.display = 'block';
-});
 
 function switchChannel(channel) {
   // Save current draft before switching
@@ -3594,9 +3738,12 @@ function makeFullMessageDiv(m) {
   row.appendChild(content);
   row.appendChild(buildReactionBar(msgKey, m));
   row.addEventListener('dblclick', function(e) { e.preventDefault(); addReaction(msgKey, '👍'); });
-  // Apply shop cosmetics (nameplate on name, ring on avatar, font on message body)
+  // Apply shop cosmetics (nameplate, ring, font, title badge, bubble, message fx)
   var _eq = getUserEquipped(m.sender);
-  if (_eq) { applyNameplateTo(nameEl, _eq); applyRingTo(avatar, _eq); applyFontTo(body, _eq); }
+  if (_eq) {
+    applyNameplateTo(nameEl, _eq); applyRingTo(avatar, _eq); applyFontTo(body, _eq);
+    applyTitleTo(nameEl, _eq); applyBubbleTo(body, _eq); applyMsgFxTo(body, _eq);
+  }
   return row;
 }
 
@@ -3609,6 +3756,8 @@ function makeGroupedMessageDiv(m) {
   row.addEventListener('contextmenu', function(e) { showContextMenu(e, m); });
   var body = renderRichText(m.text || '');
   if (m.edited) { var _et2 = document.createElement('span'); _et2.className = 'msg-edited-tag'; _et2.textContent = '(edited)'; body.appendChild(_et2); }
+  var _geq = getUserEquipped(m.sender);
+  if (_geq) { applyFontTo(body, _geq); applyBubbleTo(body, _geq); applyMsgFxTo(body, _geq); }
   row.appendChild(body);
   var pills = buildReactionPills(msgKey);
   if (pills) { pills.style.paddingLeft = '52px'; row.appendChild(pills); }
@@ -4531,6 +4680,7 @@ function renderUsers(list) {
     }
     applyNameplateTo(nameEl, eqp);
     div.appendChild(nameEl);
+    applyTitleTo(nameEl, eqp);
     if (name !== myUsername) {
       div.style.cursor = 'pointer';
       div.title = 'Click to DM ' + name;
@@ -4949,8 +5099,9 @@ function handleMessage(data) {
       }
     }
     document.dispatchEvent(new CustomEvent('_balance_msg', {detail: data}));
-    // Re-render so cosmetic changes (nameplate/ring/font) show immediately
+    // Re-render so cosmetic changes (nameplate/ring/font/title/bubble/theme) show immediately
     if ((data.type === 'equip_result' && data.ok) || data.type === 'balance_data') {
+      if (typeof applyThemeCosmetic === 'function') applyThemeCosmetic();
       if (typeof renderMessages === 'function') renderMessages();
       if (typeof lastUserList !== 'undefined' && lastUserList && typeof renderUsers === 'function') renderUsers(lastUserList);
     }
@@ -4999,9 +5150,8 @@ function connectOwner(token) {
   var _ownerReconnectDelay = 2000;
   ws.onclose = function() {
     if (!adminConnected) {
-      var err = document.getElementById('adminError');
-      err.textContent = 'Invalid owner key or connection failed.';
-      err.style.display = 'block';
+      var err = document.getElementById('loginError');
+      if (err) { err.textContent = 'Owner sign-in failed. Check the console credentials.'; err.style.display = 'block'; }
       ws = null;
       return;
     }
@@ -5089,7 +5239,14 @@ window.GECO_NP_STYLES = {
   'np_holo':'background:linear-gradient(90deg,#ff6ec4,#7873f5,#4ade80,#ff6ec4);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;border:none',
   'np_glass':'background:rgba(255,255,255,.1);color:#eaf6ff;border:1px solid rgba(255,255,255,.35);text-shadow:0 1px 2px rgba(0,0,0,.3)',
   'np_cyber':'background:linear-gradient(90deg,#00f0ff,#ff00e5);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;border:1px solid rgba(0,240,255,.4)',
-  'np_void':'color:#b388ff;background:rgba(20,0,40,.45);border:1px solid rgba(138,43,226,.55);text-shadow:0 0 8px #8a2be2,0 0 14px #6a0dad'
+  'np_void':'color:#b388ff;background:rgba(20,0,40,.45);border:1px solid rgba(138,43,226,.55);text-shadow:0 0 8px #8a2be2,0 0 14px #6a0dad',
+  'np_emerald':'background:rgba(52,211,153,.14);color:#34d399;border:1px solid rgba(52,211,153,.4);text-shadow:0 0 6px rgba(52,211,153,.5)',
+  'np_royal':'background:linear-gradient(90deg,#a855f7,#FFD700);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;border:1px solid rgba(168,85,247,.4)',
+  'np_blood':'background:rgba(127,29,29,.35);color:#f87171;border:1px solid rgba(220,38,38,.55);text-shadow:0 0 6px rgba(220,38,38,.6)',
+  'np_toxic':'background:rgba(63,98,18,.3);color:#a3e635;border:1px dashed rgba(132,204,22,.6);text-shadow:0 0 6px rgba(163,230,53,.6)',
+  'np_sunset':'background:linear-gradient(90deg,#fb923c,#ec4899);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;border:none',
+  'np_ocean':'background:linear-gradient(90deg,#38bdf8,#2dd4bf);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;border:none',
+  'np_shadow':'color:#cbd5e1;background:rgba(2,6,23,.75);border:1px solid rgba(71,85,105,.6);text-shadow:0 0 10px #000,0 0 4px #475569'
 };
 window.GECO_RING_STYLES = {
   'ring_gold':'box-shadow:0 0 0 2px #FFD700,0 0 10px rgba(255,215,0,.6)',
@@ -5102,7 +5259,16 @@ window.GECO_RING_STYLES = {
   'ring_crown':'box-shadow:0 0 0 2px #FFD700',
   'ring_star':'box-shadow:0 0 0 2px #ffe066,0 0 10px rgba(255,224,102,.7)',
   'ring_stars':'box-shadow:0 0 0 2px #fff,0 0 12px rgba(255,255,255,.85),0 0 20px rgba(160,200,255,.6)',
-  'ring_pulse':'box-shadow:0 0 0 2px #ff4081,0 0 14px rgba(255,64,129,.85);animation:gecoPulseRing 1.4s ease-in-out infinite'
+  'ring_pulse':'box-shadow:0 0 0 2px #ff4081,0 0 14px rgba(255,64,129,.85);animation:gecoPulseRing 1.4s ease-in-out infinite',
+  'ring_emerald':'box-shadow:0 0 0 2px #10b981,0 0 10px rgba(16,185,129,.7)',
+  'ring_blood':'box-shadow:0 0 0 2px #dc2626,0 0 12px rgba(220,38,38,.75)',
+  'ring_shadow':'box-shadow:0 0 0 2px #1e293b,0 0 14px rgba(0,0,0,.9),0 0 22px rgba(71,85,105,.5)',
+  'ring_toxic':'box-shadow:0 0 0 2px #84cc16,0 0 12px rgba(132,204,22,.7)',
+  'ring_sunset':'box-shadow:0 0 0 2px #fb923c,0 0 0 4px rgba(236,72,153,.55),0 0 12px rgba(251,146,60,.6)',
+  'ring_ocean':'box-shadow:0 0 0 2px #38bdf8,0 0 0 4px rgba(45,212,191,.5),0 0 12px rgba(56,189,248,.6)',
+  'ring_royal':'box-shadow:0 0 0 2px #a855f7,0 0 0 4px rgba(255,215,0,.55),0 0 12px rgba(168,85,247,.65)',
+  'ring_silver':'box-shadow:0 0 0 2px #c0c0c0,0 0 8px rgba(192,192,192,.55)',
+  'ring_double':'box-shadow:0 0 0 2px #FFD700,0 0 0 5px #a855f7,0 0 16px rgba(255,215,0,.7)'
 };
 window.GECO_FONT_STYLES = {
   'font_bold':'font-weight:900',
@@ -5114,7 +5280,17 @@ window.GECO_FONT_STYLES = {
   'font_wide':'letter-spacing:4px',
   'font_tiny':'font-variant:small-caps',
   'font_handwriting':'font-family:cursive;font-style:italic;font-size:15px',
-  'font_typewriter':'font-family:"Courier New","Lucida Console",monospace;letter-spacing:1px'
+  'font_typewriter':'font-family:"Courier New","Lucida Console",monospace;letter-spacing:1px',
+  'font_serif':'font-family:"Palatino Linotype",Palatino,serif',
+  'font_impact':'font-family:Impact,"Arial Black",sans-serif;letter-spacing:.5px',
+  'font_georgia':'font-family:Georgia,serif',
+  'font_trebuchet':'font-family:"Trebuchet MS",sans-serif',
+  'font_verdana':'font-family:Verdana,sans-serif',
+  'font_times':'font-family:"Times New Roman",Times,serif',
+  'font_brush':'font-family:"Brush Script MT",cursive;font-size:16px',
+  'font_fantasy':'font-family:fantasy',
+  'font_narrow':'font-family:"Arial Narrow",Arial,sans-serif;letter-spacing:-.3px',
+  'font_outline':'-webkit-text-stroke:1px currentColor;-webkit-text-fill-color:transparent;font-weight:800'
 };
 function getNameplateStyle(id){ return (id&&window.GECO_NP_STYLES[id])||''; }
 function getRingStyle(id){ return (id&&window.GECO_RING_STYLES[id])||''; }
@@ -5144,7 +5320,7 @@ function applyFontTo(el, equipped){
   var st=getFontStyle(equipped.font);
   if(st) el.style.cssText += ';'+st;
 }
-window.GECO_FX_EMOJI={fx_sparkles:'\u2728',fx_snow:'\u2744\uFE0F',fx_stars:'\U0001F31F',fx_flames:'\U0001F525',fx_lightning:'\u26A1',fx_bubbles:'\U0001FAE7',fx_matrix:'\U0001F4BB',fx_aurora:'\U0001F30C',fx_confetti:'\U0001F389',fx_hearts:'\U0001F495',fx_rain:'\U0001F327\uFE0F',fx_fireworks:'\U0001F386'};
+window.GECO_FX_EMOJI={fx_sparkles:'\u2728',fx_snow:'\u2744\uFE0F',fx_stars:'\U0001F31F',fx_flames:'\U0001F525',fx_lightning:'\u26A1',fx_bubbles:'\U0001FAE7',fx_matrix:'\U0001F4BB',fx_aurora:'\U0001F30C',fx_confetti:'\U0001F389',fx_hearts:'\U0001F495',fx_rain:'\U0001F327\uFE0F',fx_fireworks:'\U0001F386',fx_leaves:'\U0001F342',fx_petals:'\U0001F338',fx_music:'\U0001F3B5',fx_ghosts:'\U0001F47B',fx_gems:'\U0001F48E',fx_zzz:'\U0001F4A4',fx_clovers:'\U0001F340',fx_butterflies:'\U0001F98B'};
 (function(){
   var st=document.createElement('style');
   st.textContent='@keyframes gecoFxFloat{0%{transform:translateY(3px) scale(.6);opacity:0}30%{opacity:1}100%{transform:translateY(-13px) scale(1.1);opacity:0}}'+
@@ -5164,6 +5340,153 @@ function applyEffectTo(wrap, equipped){
     wrap.appendChild(p);
   }
 }
+// ── Titles (badge shown next to name) ────────────────────────────────────────
+window.GECO_TITLE_META = {
+  'title_fresh':   {label:'FRESH',    color:'#38bdf8'},
+  'title_elite':   {label:'ELITE',    color:'#3b82f6'},
+  'title_vip':     {label:'VIP',      color:'#f59e0b'},
+  'title_pro':     {label:'PRO',      color:'#eab308'},
+  'title_grind':   {label:'GRINDER',  color:'#94a3b8'},
+  'title_boss':    {label:'BOSS',     color:'#ef4444'},
+  'title_legend':  {label:'LEGEND',   color:'#a855f7'},
+  'title_champ':   {label:'CHAMPION', color:'#FFD700'},
+  'title_og':      {label:'OG',       color:'#f97316'},
+  'title_goat':    {label:'GOAT',     color:'#ef4444', glow:true},
+  'title_rich':    {label:'RICH',     color:'#22c55e', glow:true},
+  'title_chad':    {label:'CHAD',     color:'#a8a29e'},
+  'title_wizard':  {label:'WIZARD',   color:'#8b5cf6'},
+  'title_phantom': {label:'PHANTOM',  color:'#64748b'},
+  'title_legendary':{label:'LEGENDARY',color:'#f59e0b', glow:true},
+  'title_sigma':   {label:'SIGMA',    color:'#475569'},
+  'title_menace':  {label:'MENACE',   color:'#dc2626'},
+  'title_cracked': {label:'CRACKED',  color:'#06b6d4', glow:true},
+  'title_lucky':   {label:'LUCKY',    color:'#22c55e'},
+  'title_royalty': {label:'ROYALTY',  color:'#FFD700', glow:true}
+};
+function applyTitleTo(nameEl, equipped){
+  if(!nameEl||!equipped||!equipped.title) return;
+  var meta=window.GECO_TITLE_META[equipped.title];
+  if(!meta) return;
+  var b=document.createElement('span');
+  b.className='geco-title-badge';
+  b.textContent=meta.label;
+  b.style.cssText='font-size:9px;font-weight:800;letter-spacing:.5px;color:'+meta.color+';border:1px solid '+meta.color+';padding:0 5px;border-radius:4px;vertical-align:middle;margin-left:5px;white-space:nowrap;'+(meta.glow?('text-shadow:0 0 6px '+meta.color+';box-shadow:0 0 6px '+meta.color+'55;'):'');
+  if(nameEl.parentNode) nameEl.parentNode.insertBefore(b, nameEl.nextSibling);
+  else nameEl.appendChild(b);
+}
+// ── Chat bubbles (style the message body container) ─────────────────────────
+window.GECO_BUBBLE_STYLES = {
+  'bub_round':'background:var(--bg-tertiary);border-radius:16px;padding:6px 12px',
+  'bub_speech':'background:var(--bg-tertiary);border:1px solid var(--border);border-radius:12px 12px 12px 2px;padding:6px 12px',
+  'bub_neon':'border:1px solid #0ff;box-shadow:0 0 8px rgba(0,255,255,.35);border-radius:10px;padding:5px 10px',
+  'bub_shadow':'background:var(--bg-tertiary);box-shadow:0 4px 12px rgba(0,0,0,.5);border-radius:8px;padding:6px 10px',
+  'bub_glass':'background:rgba(255,255,255,.06);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:6px 12px',
+  'bub_retro':'background:#000;border:1px solid #0f0;border-radius:4px;padding:5px 10px',
+  'bub_gradient':'background:linear-gradient(135deg,rgba(123,47,247,.25),rgba(59,130,246,.25));border-radius:12px;padding:6px 12px',
+  'bub_gold':'background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.5);border-radius:10px;padding:6px 12px',
+  'bub_steel':'background:rgba(71,85,105,.35);border:1px solid #64748b;border-radius:6px;padding:6px 10px',
+  'bub_pink':'background:rgba(244,114,182,.15);border:1px solid rgba(244,114,182,.4);border-radius:16px;padding:6px 12px',
+  'bub_forest':'background:rgba(22,101,52,.25);border:1px solid rgba(34,197,94,.35);border-radius:10px;padding:6px 12px',
+  'bub_royal':'background:rgba(88,28,135,.3);border:1px solid rgba(255,215,0,.45);border-radius:10px;padding:6px 12px',
+  'bub_sunset':'background:linear-gradient(135deg,rgba(251,146,60,.2),rgba(236,72,153,.2));border-radius:12px;padding:6px 12px',
+  'bub_ocean':'background:rgba(3,105,161,.25);border:1px solid rgba(45,212,191,.4);border-radius:12px;padding:6px 12px',
+  'bub_blood':'background:rgba(127,29,29,.35);border:1px solid rgba(220,38,38,.5);border-radius:8px;padding:6px 10px',
+  'bub_toxic':'background:rgba(63,98,18,.3);border:1px dashed rgba(132,204,22,.6);border-radius:8px;padding:6px 10px',
+  'bub_holo':'background:linear-gradient(135deg,rgba(255,110,196,.15),rgba(120,115,245,.15),rgba(74,222,128,.15));border:1px solid rgba(255,255,255,.35);border-radius:12px;padding:6px 12px',
+  'bub_paper':'background:rgba(250,240,210,.92);border-radius:4px;padding:6px 10px;box-shadow:0 1px 3px rgba(0,0,0,.35)',
+  'bub_midnight':'background:rgba(15,23,42,.85);border:1px solid rgba(148,163,184,.35);border-radius:12px;padding:6px 12px',
+  'bub_void':'background:rgba(10,0,20,.85);border:1px solid rgba(138,43,226,.6);box-shadow:0 0 10px rgba(106,13,173,.5);border-radius:10px;padding:6px 12px'
+};
+// A few bubbles force a text color so they stay readable
+window.GECO_BUBBLE_TEXT = {'bub_retro':'#0f0','bub_paper':'#333'};
+function applyBubbleTo(el, equipped){
+  if(!el||!equipped||!equipped.bubble) return;
+  var st=window.GECO_BUBBLE_STYLES[equipped.bubble];
+  if(!st) return;
+  el.style.cssText += ';display:inline-block;max-width:100%;box-sizing:border-box;'+st;
+  var tc=window.GECO_BUBBLE_TEXT[equipped.bubble];
+  if(tc) el.style.color=tc;
+}
+// ── Message effects (styled inner span so gradients don't fight bubbles) ────
+window.GECO_MSG_STYLES = {
+  'msg_gradient':'background:linear-gradient(90deg,#f00,#f90,#ff0,#0f0,#0af,#90f);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent',
+  'msg_glow':'text-shadow:0 0 8px currentColor',
+  'msg_big':'font-size:16px',
+  'msg_shadow':'text-shadow:2px 2px 3px rgba(0,0,0,.7)',
+  'msg_caps':'text-transform:uppercase;font-weight:700',
+  'msg_wave':'display:inline-block;animation:gecoMsgWave 2.2s ease-in-out infinite',
+  'msg_fire':'background:linear-gradient(90deg,#f97316,#ef4444);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:600',
+  'msg_ice':'color:#b9f2ff;text-shadow:0 0 6px rgba(185,242,255,.7)',
+  'msg_gold':'color:#FFD700;text-shadow:0 0 5px rgba(255,215,0,.5)',
+  'msg_toxic':'color:#a3e635;text-shadow:0 0 6px rgba(163,230,53,.6)',
+  'msg_royal':'background:linear-gradient(90deg,#a855f7,#FFD700);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:600',
+  'msg_blood':'color:#dc2626;text-shadow:0 0 4px rgba(220,38,38,.45)',
+  'msg_neon_pink':'color:#ff4dc4;text-shadow:0 0 7px rgba(255,77,196,.7)',
+  'msg_emerald':'color:#34d399',
+  'msg_sunset':'background:linear-gradient(90deg,#fb923c,#ec4899);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent',
+  'msg_ocean':'background:linear-gradient(90deg,#38bdf8,#2dd4bf);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent',
+  'msg_mini':'font-size:11px;opacity:.85',
+  'msg_spread':'letter-spacing:3px',
+  'msg_outline':'-webkit-text-stroke:1px currentColor;-webkit-text-fill-color:transparent;font-weight:800',
+  'msg_starlit':'color:#fff;text-shadow:0 0 6px #fff,0 0 14px #9bb8ff'
+};
+function applyMsgFxTo(el, equipped){
+  if(!el||!equipped||!equipped.message) return;
+  var st=window.GECO_MSG_STYLES[equipped.message];
+  if(!st) return;
+  var span=document.createElement('span');
+  span.style.cssText=st;
+  while(el.firstChild) span.appendChild(el.firstChild);
+  el.appendChild(span);
+}
+// ── Purchasable themes (CSS variable overrides, applied only for yourself) ──
+window.GECO_THEME_VARS = {
+  'th_cyberpunk':['#0a0a12','#12121f','#1a1a2e','#00f0ff'],
+  'th_sakura':['#2a1f24','#362830','#44323c','#ff8fb3'],
+  'th_arctic':['#0e1a24','#14242f','#1b2f3d','#7dd3fc'],
+  'th_inferno':['#1a0c0a','#261210','#331816','#f97316'],
+  'th_emerald':['#0a1a12','#102418','#16301f','#34d399'],
+  'th_royal':['#16102a','#1e1638','#281d48','#a855f7'],
+  'th_bloodmoon':['#170a0c','#211013','#2c151a','#ef4444'],
+  'th_golden':['#1c1408','#28200e','#342a14','#f59e0b'],
+  'th_space':['#0a0e1a','#101828','#182236','#93c5fd'],
+  'th_candy':['#241a26','#302334','#3d2d42','#f9a8d4'],
+  'th_toxic':['#0d1405','#131d08','#1a280c','#a3e635'],
+  'th_vapor':['#180f28','#221638','#2d1d4a','#f472b6'],
+  'th_lava':['#190d05','#241408','#301b0c','#fb923c'],
+  'th_matrix':['#020a02','#041404','#072007','#22c55e'],
+  'th_midnight':['#070d1c','#0c1528','#121e38','#60a5fa'],
+  'th_obsidian':['#050505','#0c0c0c','#141414','#e5e5e5'],
+  'th_mint':['#0f1f1a','#152a23','#1c362d','#6ee7b7'],
+  'th_coffee':['#1a120c','#241a12','#302318','#d6a05c'],
+  'th_synthwave':['#14081f','#1d0c2e','#28123d','#ff2ec4'],
+  'th_dracula':['#282a36','#21222c','#343746','#bd93f9']
+};
+window._gecoThemeActive = false;
+function applyThemeCosmetic(){
+  var eq = window.myEquipped || {};
+  var root = document.documentElement;
+  var vars = eq.theme && window.GECO_THEME_VARS[eq.theme];
+  if(vars){
+    root.style.setProperty('--bg-primary', vars[0]);
+    root.style.setProperty('--bg-secondary', vars[1]);
+    root.style.setProperty('--bg-tertiary', vars[2]);
+    // Respect a user-picked custom accent from Settings if one is saved
+    if(!localStorage.getItem('chat-accent-color')) root.style.setProperty('--accent', vars[3]);
+    window._gecoThemeActive = true;
+  } else if(window._gecoThemeActive){
+    root.style.removeProperty('--bg-primary');
+    root.style.removeProperty('--bg-secondary');
+    root.style.removeProperty('--bg-tertiary');
+    if(!localStorage.getItem('chat-accent-color')) root.style.removeProperty('--accent');
+    window._gecoThemeActive = false;
+  }
+}
+(function(){
+  var st=document.createElement('style');
+  st.textContent='@keyframes gecoMsgWave{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}';
+  document.head.appendChild(st);
+})();
 (function(){
   // Display-only tick. The SERVER is the source of truth for balance & idle money
   // (it accrues idle on every action and on reconnect). We never persist to
@@ -5199,6 +5522,7 @@ document.getElementById('profileBtn').addEventListener('click', function() {
   showProfileModal();
 });
 
+var _PROFILE_CAT_ICON = {nameplate:'\U0001F3F7\uFE0F', ring:'\u2B55', font:'\U0001F524', effect:'\u2728', title:'\U0001F396\uFE0F', bubble:'\U0001F4AC', msgfx:'\U0001F308', theme:'\U0001F3A8'};
 function showProfileModal() {
   var modal = document.getElementById('profileModal');
   modal.style.display = 'flex';
@@ -5217,10 +5541,53 @@ function showProfileModal() {
     preview.style.backgroundImage = '';
     preview.textContent = (myDisplayName || myUsername || '?').charAt(0).toUpperCase();
   }
+  var eq = window.myEquipped || {};
+  // Hero name row: rebuild fresh each open
+  var hero = document.getElementById('profileNameHero');
+  var heroRow = hero.parentNode;
+  heroRow.innerHTML = '';
+  hero = document.createElement('span');
+  hero.id = 'profileNameHero';
+  hero.style.cssText = 'font-size:18px;font-weight:800;color:var(--text-primary);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+  hero.textContent = myDisplayName || myUsername || 'You';
+  heroRow.appendChild(hero);
+  applyNameplateTo(hero, eq);
+  applyFontTo(hero, eq);
+  applyTitleTo(hero, eq);
+  // Ring on avatar (reset base border first, then apply equipped ring)
+  preview.style.border = '5px solid var(--bg-primary)';
+  preview.style.boxShadow = '';
+  preview.style.animation = '';
+  applyRingTo(preview, eq);
+  // Floating effect particles around the avatar
+  var wrap = document.getElementById('profilePfpWrap');
+  Array.prototype.slice.call(wrap.querySelectorAll('.geco-fx-particle')).forEach(function(n){n.remove();});
+  applyEffectTo(wrap, eq);
+  // Equipped showcase
+  var row = document.getElementById('profileEquippedRow');
+  row.innerHTML = '';
+  var chips = [];
+  ['title','nameplate','ring','font','effect','bubble','msgfx','theme'].forEach(function(cat){
+    var id = eq[cat];
+    if (!id) return;
+    var item = (window.SHOP_BY_ID && window.SHOP_BY_ID[id]) || null;
+    var label = item ? item.name : id;
+    chips.push('<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:999px;padding:3px 10px;font-size:11px;color:var(--text-secondary);margin:2px;" data-testid="chip-equipped-'+cat+'">'+(_PROFILE_CAT_ICON[cat]||'')+' '+escapeHtml(label)+'</span>');
+  });
+  if (chips.length) {
+    row.style.display = 'block';
+    row.innerHTML = '<div style="font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">Equipped Cosmetics</div><div style="display:flex;flex-wrap:wrap;">' + chips.join('') + '</div>';
+  } else {
+    row.style.display = 'block';
+    row.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">No cosmetics equipped yet — visit the \U0001F6D2 Shop to grab some flair!</div>';
+  }
   var errEl = document.getElementById('profileError');
   errEl.style.display = 'none';
   loadSecuritySection();
 }
+document.getElementById('profilePfpEdit').addEventListener('click', function() {
+  document.getElementById('pfpFileInput').click();
+});
 
 function _secMsg(ok, msg) {
   var errEl = document.getElementById('securityError');
@@ -5487,7 +5854,6 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
   document.getElementById('chatScreen').style.display = 'none';
   document.getElementById('joinScreen').style.display = 'flex';
   document.getElementById('guestBox').style.display = 'block';
-  document.getElementById('adminBox').style.display = 'none';
   setJoinTab('login');
 });
 
@@ -5793,23 +6159,6 @@ document.getElementById('suggestInput').addEventListener('keydown', function(e) 
 
 loadUserSettings();
 
-document.getElementById('adminLoginBtn').addEventListener('click', function() {
-  var u = document.getElementById('ownerUserInput').value.trim();
-  var p = document.getElementById('ownerPassInput').value;
-  var err = document.getElementById('adminError');
-  err.style.display = 'none';
-  if (!u || !p) { err.textContent = 'Enter the owner username and password.'; err.style.display = 'block'; return; }
-  fetch('/api/owner-login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if (d.error || !d.token) { err.textContent = d.error || 'Login failed.'; err.style.display = 'block'; return; }
-      connectOwner(d.token);
-    }).catch(function(){err.textContent = 'Connection error.'; err.style.display = 'block';});
-});
-
-document.getElementById('ownerPassInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') document.getElementById('adminLoginBtn').click();
-});
 
 // ── Reply state ──────────────────────────────────────────────────────
 var _replyTo = null;
@@ -8164,6 +8513,9 @@ function convertTabToBalance(tabId) {
     // Shop card affordability border
     '.shop-card.can-afford{border-color:rgba(34,197,94,.4)}'+
     '.shop-card.no-afford{border-color:rgba(239,68,68,.25)}'+
+    '.sc-visual{display:flex;align-items:center;justify-content:center;min-height:34px;max-width:100%;overflow:hidden;pointer-events:none}'+
+    '.sc-eqp-badge{position:absolute;top:6px;right:6px;font-size:7px;font-weight:900;letter-spacing:.5px;color:#4f9cf9;border:1px solid rgba(79,156,249,.6);background:rgba(79,156,249,.12);padding:1px 5px;border-radius:4px}'+
+    '.shop-card{position:relative}.inv-card{position:relative}'+
     // Shop detail popup
     '.shop-popup-overlay{position:absolute;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px}'+
     '.shop-popup{background:var(--bg-secondary);border:1px solid rgba(255,255,255,.12);border-radius:20px;'+
@@ -8381,18 +8733,12 @@ function convertTabToBalance(tabId) {
     {id:'theme',name:'Themes',emoji:'🎨'},{id:'title',name:'Titles',emoji:'🏆'},
     {id:'bubble',name:'Chat Bubbles',emoji:'💬'},{id:'message',name:'Msg Effects',emoji:'⚡'}
   ];
-  var FONT_STYLES={
-    'font_bold':        'font-weight:900',
-    'font_italic':      'font-style:italic',
-    'font_mono':        'font-family:monospace',
-    'font_cursive':     'font-family:cursive',
-    'font_pixel':       'font-family:"Courier New",monospace;letter-spacing:2px',
-    'font_comic':       'font-family:"Comic Sans MS",cursive',
-    'font_wide':        'letter-spacing:4px',
-    'font_tiny':        'font-variant:small-caps',
-    'font_handwriting': 'font-family:cursive;font-style:italic;font-size:15px',
-    'font_typewriter':  'font-family:"Courier New","Lucida Console",monospace;letter-spacing:1px',
-  };
+  function _prevBox(center){
+    var w=document.createElement('div');
+    w.style.cssText='background:var(--bg-tertiary);border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid rgba(255,255,255,.07);'+(center?'text-align:center;':'');
+    var l=document.createElement('div');l.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:700;margin-bottom:8px;';l.textContent='Preview';
+    w.appendChild(l);return w;
+  }
   function openShopPopup(item){
     var existing=document.querySelector('.shop-popup-overlay');if(existing)existing.remove();
     var owned=S.inv.indexOf(item.id)!==-1;
@@ -8408,68 +8754,75 @@ function convertTabToBalance(tabId) {
     var nameEl=document.createElement('div');nameEl.className='sp-name';nameEl.textContent=item.name;popup.appendChild(nameEl);
     var rarEl=document.createElement('div');rarEl.className='sp-rarity';rarEl.style.color=rc;rarEl.textContent=item.rarity.toUpperCase();popup.appendChild(rarEl);
     var descEl=document.createElement('div');descEl.className='sp-desc';descEl.textContent=item.desc;popup.appendChild(descEl);
-    // ── Preview box (font / nameplate / effect / ring) ───────────────────────
-    if(item.cat==='font'&&FONT_STYLES[item.id]){
-      var prevWrap=document.createElement('div');
-      prevWrap.style.cssText='background:var(--bg-tertiary);border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1px solid rgba(255,255,255,.07)';
-      var prevLbl=document.createElement('div');prevLbl.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:700;margin-bottom:6px;';prevLbl.textContent='Preview';
+    // ── Preview box (every category gets a live preview) ─────────────────────
+    var _meName=myDisplayName||myUsername||'You';
+    if(item.cat==='font'&&window.GECO_FONT_STYLES[item.id]){
+      var prevWrap=_prevBox(false);
       var prevMsg=document.createElement('div');
       prevMsg.style.cssText='display:flex;align-items:flex-start;gap:8px;';
       var prevAvatar=document.createElement('div');prevAvatar.style.cssText='width:32px;height:32px;border-radius:50%;background:var(--accent);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;';
-      prevAvatar.textContent=(myDisplayName||myUsername||'You')[0].toUpperCase();
+      prevAvatar.textContent=_meName[0].toUpperCase();
       var prevText=document.createElement('div');prevText.style.cssText='flex:1;';
-      var prevName=document.createElement('div');prevName.style.cssText='font-size:11px;font-weight:700;color:var(--accent);margin-bottom:2px;';prevName.textContent=myDisplayName||myUsername||'You';
-      var prevContent=document.createElement('div');prevContent.style.cssText='font-size:13px;color:var(--text-primary);'+FONT_STYLES[item.id];
+      var prevName=document.createElement('div');prevName.style.cssText='font-size:11px;font-weight:700;color:var(--accent);margin-bottom:2px;';prevName.textContent=_meName;
+      var prevContent=document.createElement('div');prevContent.style.cssText='font-size:13px;color:var(--text-primary);'+window.GECO_FONT_STYLES[item.id];
       prevContent.textContent='This is how your chat messages will look!';
       prevText.appendChild(prevName);prevText.appendChild(prevContent);
       prevMsg.appendChild(prevAvatar);prevMsg.appendChild(prevText);
-      prevWrap.appendChild(prevLbl);prevWrap.appendChild(prevMsg);
+      prevWrap.appendChild(prevMsg);
       popup.appendChild(prevWrap);
     } else if(item.cat==='nameplate'){
-      var prevWrap=document.createElement('div');
-      prevWrap.style.cssText='background:var(--bg-tertiary);border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1px solid rgba(255,255,255,.07);text-align:center;';
-      var prevLbl=document.createElement('div');prevLbl.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:700;margin-bottom:8px;';prevLbl.textContent='Preview';
+      var prevWrap=_prevBox(true);
       var nameDemo=document.createElement('span');nameDemo.style.cssText='font-size:16px;font-weight:800;padding:3px 10px;border-radius:8px;';
-      nameDemo.textContent=myDisplayName||myUsername||'You';
-      var npStyles={'np_bronze':'background:rgba(205,127,50,.2);color:#cd7f32;border:1px solid rgba(205,127,50,.4)',
-        'np_silver':'background:rgba(192,192,192,.15);color:#c0c0c0;border:1px solid rgba(192,192,192,.3)',
-        'np_gold':'background:rgba(255,215,0,.18);color:#FFD700;border:1px solid rgba(255,215,0,.4)',
-        'np_diamond':'background:rgba(185,242,255,.15);color:#b9f2ff;border:1px solid rgba(185,242,255,.3)',
-        'np_rainbow':'background:linear-gradient(90deg,#f00,#f90,#ff0,#0f0,#00f,#90f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;border:none',
-        'np_neon':'color:#0ff;text-shadow:0 0 6px #0ff,0 0 12px #0ff;border:1px solid rgba(0,255,255,.3)',
-        'np_fire':'background:linear-gradient(90deg,#f97316,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;border:none',
-        'np_glass':'background:rgba(255,255,255,.08);color:var(--text-primary);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(4px)',
-        'np_cyber':'color:#0f0;text-shadow:0 0 4px #0f0;font-family:"Courier New",monospace;border:1px solid rgba(0,255,0,.3)',
-      };
-      nameDemo.style.cssText+=(npStyles[item.id]||'border:1px solid var(--border)');
-      prevWrap.appendChild(prevLbl);prevWrap.appendChild(nameDemo);
+      nameDemo.textContent=_meName;
+      nameDemo.style.cssText+=';'+(window.GECO_NP_STYLES[item.id]||'border:1px solid var(--border)');
+      prevWrap.appendChild(nameDemo);
       popup.appendChild(prevWrap);
     } else if(item.cat==='ring'){
-      var prevWrap=document.createElement('div');
-      prevWrap.style.cssText='background:var(--bg-tertiary);border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid rgba(255,255,255,.07);text-align:center;';
-      var prevLbl=document.createElement('div');prevLbl.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:700;margin-bottom:8px;';prevLbl.textContent='Preview';
-      var ringDemo=document.createElement('div');ringDemo.style.cssText='width:52px;height:52px;border-radius:50%;background:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;';
-      ringDemo.textContent=(myDisplayName||myUsername||'U')[0].toUpperCase();
-      var ringStyles={'ring_gold':'box-shadow:0 0 0 3px #FFD700,0 0 12px rgba(255,215,0,.6)',
-        'ring_neon':'box-shadow:0 0 0 2px #0ff,0 0 10px #0ff',
-        'ring_fire':'box-shadow:0 0 0 2px #f97316,0 0 14px rgba(249,115,22,.7)',
-        'ring_rainbow':'outline:3px solid transparent;box-shadow:0 0 0 3px #f00,0 0 0 6px #ff0',
-        'ring_crown':'box-shadow:0 0 0 3px #FFD700',
-        'ring_star':'box-shadow:0 0 0 2px #ffe066,0 0 10px rgba(255,224,102,.7)',
-      };
-      ringDemo.style.cssText+=(ringStyles[item.id]||'box-shadow:0 0 0 3px var(--accent)');
-      prevWrap.appendChild(prevLbl);prevWrap.appendChild(ringDemo);
+      var prevWrap=_prevBox(true);
+      var ringDemo=document.createElement('div');ringDemo.style.cssText='width:52px;height:52px;border-radius:50%;background:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;margin:6px;';
+      ringDemo.textContent=_meName[0].toUpperCase();
+      ringDemo.style.cssText+=';'+(window.GECO_RING_STYLES[item.id]||'box-shadow:0 0 0 3px var(--accent)');
+      prevWrap.appendChild(ringDemo);
       popup.appendChild(prevWrap);
     } else if(item.cat==='effect'&&window.GECO_FX_EMOJI&&window.GECO_FX_EMOJI[item.id]){
-      var prevWrap=document.createElement('div');
-      prevWrap.style.cssText='background:var(--bg-tertiary);border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid rgba(255,255,255,.07);text-align:center;';
-      var prevLbl=document.createElement('div');prevLbl.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:700;margin-bottom:8px;';prevLbl.textContent='Preview';
+      var prevWrap=_prevBox(true);
       var fxWrap=document.createElement('div');fxWrap.style.cssText='position:relative;display:inline-block;';
       var fxDemo=document.createElement('div');fxDemo.style.cssText='width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;';
-      fxDemo.textContent=(myDisplayName||myUsername||'U')[0].toUpperCase();
+      fxDemo.textContent=_meName[0].toUpperCase();
       fxWrap.appendChild(fxDemo);
       applyEffectTo(fxWrap,{effect:item.id});
-      prevWrap.appendChild(prevLbl);prevWrap.appendChild(fxWrap);
+      prevWrap.appendChild(fxWrap);
+      popup.appendChild(prevWrap);
+    } else if(item.cat==='title'&&window.GECO_TITLE_META&&window.GECO_TITLE_META[item.id]){
+      var prevWrap=_prevBox(true);
+      var tName=document.createElement('span');tName.style.cssText='font-size:14px;font-weight:700;color:var(--text-primary);';tName.textContent=_meName;
+      prevWrap.appendChild(tName);
+      applyTitleTo(tName,{title:item.id});
+      popup.appendChild(prevWrap);
+    } else if(item.cat==='bubble'&&window.GECO_BUBBLE_STYLES&&window.GECO_BUBBLE_STYLES[item.id]){
+      var prevWrap=_prevBox(false);
+      var bDemo=document.createElement('div');
+      bDemo.style.cssText='font-size:13px;color:var(--text-primary);';
+      bDemo.textContent='This is how your messages will look!';
+      applyBubbleTo(bDemo,{bubble:item.id});
+      prevWrap.appendChild(bDemo);
+      popup.appendChild(prevWrap);
+    } else if(item.cat==='message'&&window.GECO_MSG_STYLES&&window.GECO_MSG_STYLES[item.id]){
+      var prevWrap=_prevBox(false);
+      var mDemo=document.createElement('div');
+      mDemo.style.cssText='font-size:13px;color:var(--text-primary);';
+      mDemo.textContent='Your words, but with extra style!';
+      applyMsgFxTo(mDemo,{message:item.id});
+      prevWrap.appendChild(mDemo);
+      popup.appendChild(prevWrap);
+    } else if(item.cat==='theme'&&window.GECO_THEME_VARS&&window.GECO_THEME_VARS[item.id]){
+      var prevWrap=_prevBox(true);
+      var tv=window.GECO_THEME_VARS[item.id];
+      var thDemo=document.createElement('div');
+      thDemo.style.cssText='display:inline-block;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.15);width:180px;text-align:left;background:'+tv[0]+';';
+      thDemo.innerHTML='<div style="height:22px;background:'+tv[1]+';display:flex;align-items:center;padding:0 8px;"><span style="width:8px;height:8px;border-radius:50%;background:'+tv[3]+';margin-right:6px;"></span><span style="font-size:9px;font-weight:700;color:'+tv[3]+';">'+escapeHtml(item.name)+'</span></div>'+
+        '<div style="padding:8px;"><div style="height:8px;border-radius:4px;background:'+tv[2]+';margin-bottom:5px;width:85%;"></div><div style="height:8px;border-radius:4px;background:'+tv[2]+';width:60%;margin-bottom:5px;"></div><div style="height:8px;border-radius:4px;background:'+tv[3]+';width:40%;"></div></div>';
+      prevWrap.appendChild(thDemo);
       popup.appendChild(prevWrap);
     }
     var priceRow=document.createElement('div');priceRow.className='sp-price-row';
@@ -8500,6 +8853,56 @@ function convertTabToBalance(tabId) {
     popup.appendChild(btn);
     overlay.appendChild(popup);
     el.appendChild(overlay);
+  }
+  // Build a live mini-preview element for a shop item (used on cards)
+  function shopCardVisual(item){
+    var v=document.createElement('div');v.className='sc-visual';
+    try{
+      if(item.cat==='nameplate'&&window.GECO_NP_STYLES&&window.GECO_NP_STYLES[item.id]){
+        var s=document.createElement('span');s.textContent='Name';
+        s.style.cssText='font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;'+window.GECO_NP_STYLES[item.id];
+        v.appendChild(s);return v;
+      }
+      if(item.cat==='font'&&window.GECO_FONT_STYLES&&window.GECO_FONT_STYLES[item.id]){
+        var s=document.createElement('span');s.textContent='Abc';
+        s.style.cssText='font-size:15px;color:var(--text-primary);'+window.GECO_FONT_STYLES[item.id];
+        v.appendChild(s);return v;
+      }
+      if(item.cat==='title'&&window.GECO_TITLE_META&&window.GECO_TITLE_META[item.id]){
+        var m=window.GECO_TITLE_META[item.id];
+        var s=document.createElement('span');s.textContent=m.label;
+        s.style.cssText='font-size:9px;font-weight:800;letter-spacing:.5px;color:'+m.color+';border:1px solid '+m.color+';padding:1px 6px;border-radius:4px;'+(m.glow?('text-shadow:0 0 6px '+m.color+';'):'');
+        v.appendChild(s);return v;
+      }
+      if(item.cat==='ring'&&window.GECO_RING_STYLES&&window.GECO_RING_STYLES[item.id]){
+        var s=document.createElement('span');
+        s.style.cssText='display:inline-block;width:26px;height:26px;border-radius:50%;background:var(--accent);'+window.GECO_RING_STYLES[item.id];
+        v.appendChild(s);return v;
+      }
+      if(item.cat==='bubble'&&window.GECO_BUBBLE_STYLES&&window.GECO_BUBBLE_STYLES[item.id]){
+        var s=document.createElement('span');s.textContent='Hey!';
+        s.style.cssText='font-size:10px;color:var(--text-primary);'+window.GECO_BUBBLE_STYLES[item.id];
+        var tc=window.GECO_BUBBLE_TEXT&&window.GECO_BUBBLE_TEXT[item.id];if(tc)s.style.color=tc;
+        v.appendChild(s);return v;
+      }
+      if(item.cat==='message'&&window.GECO_MSG_STYLES&&window.GECO_MSG_STYLES[item.id]){
+        var s=document.createElement('span');s.textContent='Style!';
+        s.style.cssText='font-size:12px;font-weight:700;color:var(--text-primary);'+window.GECO_MSG_STYLES[item.id];
+        v.appendChild(s);return v;
+      }
+      if(item.cat==='theme'&&window.GECO_THEME_VARS&&window.GECO_THEME_VARS[item.id]){
+        var tv=window.GECO_THEME_VARS[item.id];
+        var s=document.createElement('span');s.style.cssText='display:inline-flex;gap:3px;';
+        [tv[1],tv[2],tv[3]].forEach(function(c){
+          var d=document.createElement('span');
+          d.style.cssText='width:12px;height:12px;border-radius:50%;background:'+c+';border:1px solid rgba(255,255,255,.25);';
+          s.appendChild(d);
+        });
+        v.appendChild(s);return v;
+      }
+    }catch(err){}
+    var e=document.createElement('span');e.className='sc-emoji';e.style.fontSize='24px';e.textContent=item.emoji;
+    v.appendChild(e);return v;
   }
   function renderShop(){
     var p=panels['shop'];p.innerHTML='';
@@ -8533,10 +8936,16 @@ function convertTabToBalance(tabId) {
       if(!owned)cls+=(canAfford?' can-afford':' no-afford');
       var card=document.createElement('div');card.className=cls;card.style.cursor='pointer';
       var rc=rarityColor(item.rarity);
-      card.innerHTML='<div class="sc-emoji">'+escapeHtml(item.emoji)+'</div>'+
-        '<div class="sc-name">'+escapeHtml(item.name)+'</div>'+
-        '<div class="sc-rarity" style="color:'+rc+'">'+item.rarity.toUpperCase()+'</div>'+
-        '<div class="sc-price">'+(owned?'\u2705 Owned':fmtBal(item.price))+'</div>';
+      card.style.borderTop='3px solid '+rc;
+      if(equipped){
+        var eqb=document.createElement('div');eqb.className='sc-eqp-badge';eqb.textContent='\u2713 EQUIPPED';
+        card.appendChild(eqb);
+      }
+      card.appendChild(shopCardVisual(item));
+      var nm=document.createElement('div');nm.className='sc-name';nm.textContent=item.name;
+      var rr=document.createElement('div');rr.className='sc-rarity';rr.style.color=rc;rr.textContent=item.rarity.toUpperCase();
+      var pr=document.createElement('div');pr.className='sc-price';pr.textContent=owned?'\u2705 Owned':fmtBal(item.price);
+      card.appendChild(nm);card.appendChild(rr);card.appendChild(pr);
       card.addEventListener('click',(function(it){return function(){openShopPopup(it);};})(item));
       grid.appendChild(card);
     });
@@ -8578,7 +8987,8 @@ function convertTabToBalance(tabId) {
         var equipped=S.eqp[item.cat]===item.id;
         var rc=rarityColor(item.rarity);
         var card=document.createElement('div');card.className='inv-card'+(equipped?' inv-equipped':'');
-        var eEl=document.createElement('div');eEl.className='inv-card-emoji';eEl.textContent=item.emoji;
+        card.style.borderTop='3px solid '+rc;
+        var eEl=shopCardVisual(item);
         var nEl=document.createElement('div');nEl.className='inv-card-name';nEl.textContent=item.name;
         var rEl=document.createElement('div');rEl.className='inv-card-rarity';rEl.style.color=rc;rEl.textContent=item.rarity;
         var eBtn=document.createElement('button');eBtn.className='inv-eqp-btn '+(equipped?'is-eqp':'not-eqp');
@@ -9436,6 +9846,7 @@ function convertTabToBalance(tabId) {
       S.savings=d.savings||[];S.txns=d.transactions||[];
       S.idleMoney=d.idle_money||0;S.idleUpgrades=d.idle_upgrades||{};
       S.isGuest=!!d.is_guest;S.shopCatalog=d.shop_catalog||[];S.idleUpgDef=d.idle_upgrades_def||[];
+      window.SHOP_BY_ID={};S.shopCatalog.forEach(function(it){window.SHOP_BY_ID[it.id]=it;});
       _recalcIdle();updateBalDisplay();
       if(S.innerTab==='dashboard') renderDashboard();
       else if(S.innerTab==='shop') renderShop();
@@ -11138,6 +11549,24 @@ async def handle_client_ws(request):
                         await ws.send_str(json.dumps({"type": "dg_ascend_result", "ok": False, "error": "Ascension failed."})); continue
                     await ws.send_str(json.dumps({"type": "dg_ascend_result", **result}))
 
+                elif data.get("type") == "dg_buy_relic":
+                    if ws not in connected: continue
+                    try:
+                        result = await dice_buy_relic_txn(username, ws, data.get("relic_id", ""))
+                    except Exception as _e:
+                        print(f"[dice_buy_relic] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_relic_result", "ok": False, "error": "Purchase failed."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_relic_result", **result}))
+
+                elif data.get("type") == "dg_equip_relic":
+                    if ws not in connected: continue
+                    try:
+                        result = await dice_equip_relic_txn(username, ws, data.get("die_id", ""), data.get("relic_id") or None)
+                    except Exception as _e:
+                        print(f"[dice_equip_relic] error: {_e}")
+                        await ws.send_str(json.dumps({"type": "dg_relic_result", "ok": False, "error": "Equip failed."})); continue
+                    await ws.send_str(json.dumps({"type": "dg_relic_result", **result}))
+
                 elif data.get("type") == "dg_claim_achievement":
                     if ws not in connected: continue
                     try:
@@ -11737,6 +12166,9 @@ async def handle_api_login(request):
         return web.Response(text=json.dumps({"error": "Invalid JSON"}), content_type="application/json", status=400)
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
+    # Owner signs in through the normal login form with the per-boot console credentials
+    if secrets.compare_digest(username, OWNER_USERNAME) and secrets.compare_digest(password, OWNER_PASSWORD):
+        return web.Response(text=json.dumps({"owner_token": OWNER_TOKEN}), content_type="application/json")
     result = await db_login(username, password)
     if "error" in result:
         return web.Response(text=json.dumps(result), content_type="application/json", status=401)
@@ -12153,7 +12585,7 @@ async def main():
     print("  OWNER LOGIN (new credentials every boot - keep secret!):")
     print(f"    Username: {OWNER_USERNAME}")
     print(f"    Password: {OWNER_PASSWORD}")
-    print("  Sign in via the 'Owner' link on the main page, or /admin")
+    print("  Type these into the normal Sign In form on the main page.")
     print()
     print("  Friends open your Replit URL and Sign In / Sign Up to chat.")
     print()

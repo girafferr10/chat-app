@@ -8,6 +8,8 @@ This is a real-time chat application built with Python using aiohttp for WebSock
 
 Preferred communication style: Simple, everyday language.
 
+**ALWAYS update the in-app Update Log**: whenever features are added or changed, update `CHANGELOG_NOTES` and bump `CURRENT_VERSION` in `server.py` so users see what's new in the app's Update Log popup.
+
 ## System Architecture
 
 ### Python Application
@@ -108,6 +110,9 @@ Preferred communication style: Simple, everyday language.
 - `dg_achievement_result` - Server grants reward after server-side condition verification
 - `dg_save_presets` - Client persists team presets (`{presets:[[...ids]]}`)
 - `dg_presets_result` - Server confirms saved presets
+- `dg_buy_relic` - Client buys a relic with Crystals (`{relic_id}`)
+- `dg_equip_relic` - Client equips/unequips a relic on an owned die (`{die_id, relic_id|null}`)
+- `dg_relic_result` - Server confirms relic purchase or equip change
 
 ### Key Design Decisions
 1. **Three-tier join page**: Single page at `/` offers Guest, Admin, or Owner choice
@@ -225,6 +230,15 @@ Preferred communication style: Simple, everyday language.
 - **Daily login rewards**: `daily_rewards` table (username PK, last_claim DATE, streak); granted once per Mountain-Time day on join under a `FOR UPDATE` lock; $100 + min(streak,7)×$50, toast + confetti at 3+ streak, balance chip updates live
 - **Edit own messages**: right-click → Edit (own #General messages while server remembers the id, ~600 recent); modal editor, broadcasts to everyone with an "(edited)" tag; edits sync into pinned copies
 - **Starred messages**: right-click → Star saves a local bookmark (localStorage, cap 100); ⭐ header button opens the starred list with per-item remove
+
+### Dice RPG v7 additions (MEGA UPDATE 2, v3.1)
+- **300 dice**: +90 new dice (`games/dice_data_v7.py` merged into catalog), banner rework with new featured event banners
+- **Relic/Gear system**: `RELICS` catalog in `dice_data.py` (16 relics, 4 tiers: WORN/HONED/EXALTED/TRANSCENDENT, 300/900/2200/4500 Crystals). Bought with Crystals (Shop → Relics tab), one relic per die equipped from the die detail page ("Gear" section). Each owned copy worn by one die at a time. Server-authoritative: `dice_buy_relic_txn` / `dice_equip_relic_txn`; storage under `campaign.relics = {owned:{rid:count}, equipped:{die_id:rid}}`. Client applies stat bonuses in `buildAlly` (hp/atk/def/spd pct+flat, start_energy, start_shield, heal_recv)
+- **Full-screen pull cinematic**: `.dg-pull-overlay` is position:fixed, z-index 4000, appended to document.body, cleaned up in `_gameCleanup`
+- **2× battle speed**: `SPEED_OPTIONS` now [0.75, 1.0, 1.5, 2.0]
+- **Background-tab low-resource mode**: `document.hidden` guards in sfx() and dice-wall animation
+- **Gimmick Guide**: tutorial modal now includes a searchable glossary built from `STATUS_INFO`, plus a Relics & Gear tutorial section
+- **Engine param fixes**: freeze_at, weighed_at, bleed_dmg, omen_amp, echo_dmg, combo_max, recoil all wired into combat
 
 ### Dice RPG v6 additions (T7)
 - **Battle layout**: unit cards flow in a row (flex-wrap, 150–260px), enemies rendered above allies
