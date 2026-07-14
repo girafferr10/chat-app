@@ -1,12 +1,28 @@
-node_modules
-dist
+node_modules/
+dist/
+
 .DS_Store
+Thumbs.db
+
 server/public
 vite.config.ts.*
 *.tar.gz
 
+# Python
 __pycache__/
 *.pyc
+.venv/
+venv/
+
+# Replit
+.config/
 .local/
-node_modules/
+
+# Secrets
+secrets.txt
 .env
+.env.*
+
+# Local folders
+secrets/
+other stuff (important)/
