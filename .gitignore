@@ -4,3 +4,9 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+__pycache__/
+*.pyc
+.local/
+node_modules/
+.env
